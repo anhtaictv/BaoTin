@@ -1,0 +1,315 @@
+// Báo Tin — Giai đoạn 1 schema.
+// PostGIS geometry columns use Unsupported(...) — see docs/adr/0001-postgis-geometry-via-unsupported-raw-sql.md.
+// All geometry reads/writes happen via parameterized $queryRaw/$executeRaw in src/geo and prisma/seed.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReportSource {
+  citizen
+  social_media
+
+  @@map("report_source")
+}
+
+enum ReportUrgency {
+  emergency
+  normal
+
+  @@map("report_urgency")
+}
+
+enum ReportStatus {
+  pending
+  verifying
+  confirmed_true
+  confirmed_false
+
+  @@map("report_status")
+}
+
+enum TrustLevel {
+  verified_press
+  unverified_social
+
+  @@map("trust_level")
+}
+
+enum OfficerRole {
+  officer
+  senior_officer
+  admin
+
+  @@map("officer_role")
+}
+
+enum ExtractionRequestStatus {
+  pending
+  sent
+  fulfilled
+  rejected
+
+  @@map("extraction_request_status")
+}
+
+/// Citizen accounts. phoneNumberEnc/fullNameEnc are AES-256-GCM ciphertext (iv:tag:ciphertext,
+/// base64-joined) — see src/crypto/aesGcm.ts. phoneHash is a deterministic HMAC-SHA256 blind
+/// index used only for equality lookup (OTP request/verify) — see docs/adr and src/crypto/phoneBlindIndex.ts.
+model User {
+  id                String    @id @default(uuid())
+  phoneNumberEnc    String    @map("phone_number_enc")
+  phoneHash         String    @unique @map("phone_hash")
+  fullNameEnc       String?   @map("full_name_enc")
+  verifiedAt        DateTime? @map("verified_at")
+  isAnonymousPublic Boolean   @default(true) @map("is_anonymous_public")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  reports       Report[]
+  otpChallenges OtpChallenge[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// Officer accounts. Same encrypted-field + blind-index pattern as User.
+model Officer {
+  id             String      @id @default(uuid())
+  phoneNumberEnc String      @map("phone_number_enc")
+  phoneHash      String      @unique @map("phone_hash")
+  fullNameEnc    String      @map("full_name_enc")
+  unitName       String?     @map("unit_name")
+  role           OfficerRole @default(officer)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  assignments        OfficerDistrictAssignment[]
+  assignedReports     Report[]                    @relation("AssignedOfficer")
+  statusChanges       ReportStatusHistory[]
+  refreshTokens       RefreshToken[]
+  auditLogEntries     AdminAuditLog[]
+  cameraExtractionRequests CameraExtractionRequest[]
+
+  @@map("officers")
+}
+
+/// Administrative ward/commune (xã/phường, post-2025 merger) — the geo-matching unit.
+/// boundary is Geometry(MultiPolygon,4326) — see docs/adr/0002.
+model District {
+  id         String   @id @default(uuid())
+  maXa       String?  @unique @map("ma_xa")
+  tenXa      String   @map("ten_xa")
+  parentName String?  @map("parent_name")
+  loai       String?
+  dtichKm2   Float?   @map("dtich_km2")
+  danSo      Int?     @map("dan_so")
+  boundary   Unsupported("geometry(MultiPolygon,4326)")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  assignments OfficerDistrictAssignment[]
+  reports     Report[]
+  signals     SocialMediaSignal[]
+  cameras     Camera[]
+
+  @@map("districts")
+}
+
+model OfficerDistrictAssignment {
+  id         String   @id @default(uuid())
+  officerId  String   @map("officer_id")
+  districtId String   @map("district_id")
+  isActive   Boolean  @default(true) @map("is_active")
+
+  officer  Officer  @relation(fields: [officerId], references: [id])
+  district District @relation(fields: [districtId], references: [id])
+
+  @@unique([officerId, districtId])
+  @@index([districtId, isActive])
+  @@map("officer_district_assignments")
+}
+
+/// Citizen reports — the central table. Never mixed with SocialMediaSignal in any query/view.
+model Report {
+  id                    String        @id @default(uuid())
+  source                ReportSource  @default(citizen)
+  userId                String?       @map("user_id")
+  category              String?
+  urgency               ReportUrgency @default(normal)
+  description           String?
+  voiceNoteUrl          String?       @map("voice_note_url")
+  location              Unsupported("geometry(Point,4326)")
+  locationSource        String?       @map("location_source") // 'exif' | 'device_gps' | 'manual_pin'
+  districtId            String?       @map("district_id")
+  assignedOfficerId     String?       @map("assigned_officer_id")
+  status                ReportStatus  @default(pending)
+  createdAt             DateTime      @default(now()) @map("created_at")
+  verifiedAt            DateTime?     @map("verified_at")
+  responseTimeSeconds   Int?          @map("response_time_seconds")
+
+  user            User?                  @relation(fields: [userId], references: [id])
+  district        District?              @relation(fields: [districtId], references: [id])
+  assignedOfficer Officer?               @relation("AssignedOfficer", fields: [assignedOfficerId], references: [id])
+  attachments     ReportAttachment[]
+  statusHistory   ReportStatusHistory[]
+  officialCaseLinks OfficialCaseLink[]
+  cameraExtractionRequests CameraExtractionRequest[]
+
+  @@index([districtId])
+  @@map("reports")
+}
+
+model ReportAttachment {
+  id          String   @id @default(uuid())
+  reportId    String   @map("report_id")
+  fileUrl     String   @map("file_url")
+  fileType    String?  @map("file_type")
+  exifGpsLat  Float?   @map("exif_gps_lat")
+  exifGpsLng  Float?   @map("exif_gps_lng")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  report Report @relation(fields: [reportId], references: [id])
+
+  @@map("report_attachments")
+}
+
+/// Open-source-intelligence signals (crawler, Giai đoạn 2). Deliberately has NO status/officer
+/// columns — this table never enters the officer verification workflow (see CONTEXT.md "Signal").
+model SocialMediaSignal {
+  id               String     @id @default(uuid())
+  sourceName       String?    @map("source_name")
+  sourceUrl        String?    @map("source_url")
+  trustLevel       TrustLevel @map("trust_level")
+  summary          String?
+  rawSnippet       String?    @map("raw_snippet")
+  districtId       String?    @map("district_id")
+  detectedCategory String?    @map("detected_category")
+  publishedAt      DateTime?  @map("published_at")
+  crawledAt        DateTime   @default(now()) @map("crawled_at")
+  duplicateOfId    String?    @map("duplicate_of")
+
+  district    District?           @relation(fields: [districtId], references: [id])
+  duplicateOf SocialMediaSignal?  @relation("SignalDuplicate", fields: [duplicateOfId], references: [id])
+  duplicates  SocialMediaSignal[] @relation("SignalDuplicate")
+
+  @@map("social_media_signals")
+}
+
+model ReportStatusHistory {
+  id         String       @id @default(uuid())
+  reportId   String       @map("report_id")
+  oldStatus  ReportStatus? @map("old_status")
+  newStatus  ReportStatus  @map("new_status")
+  changedBy  String?       @map("changed_by")
+  changedAt  DateTime      @default(now()) @map("changed_at")
+
+  report  Report   @relation(fields: [reportId], references: [id])
+  officer Officer? @relation(fields: [changedBy], references: [id])
+
+  @@map("report_status_history")
+}
+
+model OfficialCaseLink {
+  id             String   @id @default(uuid())
+  reportId       String   @map("report_id")
+  externalCaseId String?  @map("external_case_id")
+  linkedAt       DateTime @default(now()) @map("linked_at")
+
+  report Report @relation(fields: [reportId], references: [id])
+
+  @@map("official_case_links")
+}
+
+/// Short-lived OTP challenges. Code stored as HMAC hash only, self-expiring — see src/crypto/otpHash.ts.
+model OtpChallenge {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  codeHash     String    @map("code_hash")
+  expiresAt    DateTime  @map("expires_at")
+  attemptCount Int       @default(0) @map("attempt_count")
+  consumedAt   DateTime? @map("consumed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, expiresAt])
+  @@map("otp_challenges")
+}
+
+/// Refresh tokens — hash stored only, rotated on every use (old row deleted/superseded on refresh).
+/// subjectType distinguishes citizen vs officer since they're separate tables.
+model RefreshToken {
+  id           String    @id @default(uuid())
+  tokenHash    String    @unique @map("token_hash")
+  subjectType  String    @map("subject_type") // 'user' | 'officer'
+  userId       String?   @map("user_id")
+  officerId    String?   @map("officer_id")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user    User?    @relation(fields: [userId], references: [id])
+  officer Officer? @relation(fields: [officerId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+/// Addition beyond the original 9-table DATABASE_SCHEMA.md — satisfies SECURITY.md §1.4
+/// ("Admin có audit log riêng cho mọi thao tác nhạy cảm"). See plan ADR notes.
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  officerId  String   @map("officer_id")
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  officer Officer @relation(fields: [officerId], references: [id])
+
+  @@map("admin_audit_log")
+}
+
+/// v1.1 — registered security cameras. CLAUDE.md non-negotiable #8: this table stores ONLY
+/// location + managing-unit contact info. No video/stream URL column, no recognition-result
+/// column — Báo Tin never connects to, views, downloads, or analyzes camera footage itself.
+model Camera {
+  id                  String   @id @default(uuid())
+  name                String
+  location            Unsupported("geometry(Point,4326)")
+  managingUnitName    String?  @map("managing_unit_name")
+  managingUnitContact String?  @map("managing_unit_contact")
+  districtId          String?  @map("district_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  district           District?                 @relation(fields: [districtId], references: [id])
+  extractionRequests CameraExtractionRequest[]
+
+  @@map("cameras")
+}
+
+/// v1.1 — an administrative *request* to a camera's managing unit, not a result. No column
+/// ever holds returned footage; status only tracks the request's paperwork progress
+/// (pending/sent/fulfilled/rejected), never video content or any recognition outcome.
+model CameraExtractionRequest {
+  id             String                  @id @default(uuid())
+  reportId       String                  @map("report_id")
+  cameraId       String                  @map("camera_id")
+  requestedBy    String                  @map("requested_by")
+  timeRangeStart DateTime                @map("time_range_start")
+  timeRangeEnd   DateTime                @map("time_range_end")
+  note           String?
+  status         ExtractionRequestStatus @default(pending)
+  createdAt      DateTime                @default(now()) @map("created_at")
+
+  report          Report  @relation(fields: [reportId], references: [id])
+  camera          Camera  @relation(fields: [cameraId], references: [id])
+  requestedOfficer Officer @relation(fields: [requestedBy], references: [id])
+
+  @@index([reportId])
+  @@map("camera_extraction_requests")
+}

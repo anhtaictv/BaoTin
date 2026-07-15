@@ -1,0 +1,36 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+backend/keys/*.pem
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# Prisma
+backend/prisma/migrations/dev.db
+
+# Flutter / Dart
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/ios/Pods/
+**/android/.gradle/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# AI coding assistant tooling (local dev config, not part of the shipped project)
+.claude/
+.codex/
+.agents/
+skills-lock.json
