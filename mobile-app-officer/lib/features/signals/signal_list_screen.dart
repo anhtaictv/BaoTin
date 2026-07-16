@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/providers.dart';
+import '../../shared/widgets/heat_badge.dart';
 import '../../shared/widgets/trust_level_badge.dart';
 import 'signal_detail_screen.dart';
 
@@ -107,6 +108,7 @@ class _SignalListScreenState extends ConsumerState<SignalListScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final signal = signals[index];
+                      final heat = signal['heat'] as Map<String, dynamic>?;
                       return Card(
                         child: ListTile(
                           title: Text(
@@ -114,8 +116,19 @@ class _SignalListScreenState extends ConsumerState<SignalListScreen> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: Text(
-                            '${signal['sourceName'] ?? 'Không rõ nguồn'} · ${_formatDate(signal['publishedAt'] as String?)}',
+                          subtitle: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${signal['sourceName'] ?? 'Không rõ nguồn'} · ${_formatDate(signal['publishedAt'] as String?)}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (heat != null && heat['level'] != 'low') ...[
+                                const SizedBox(width: 6),
+                                HeatBadge(level: heat['level'] as String, score: heat['score'] as int),
+                              ],
+                            ],
                           ),
                           trailing: TrustLevelBadge(trustLevel: signal['trustLevel'] as String? ?? 'unverified_social'),
                           onTap: () => Navigator.of(context).push(

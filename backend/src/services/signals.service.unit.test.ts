@@ -66,6 +66,38 @@ describe("signals.service — listSignals", () => {
     const results = await service.listSignals({ id: randomUUID(), role: "admin" }, { trustLevel: "verified_press" });
     expect(results.map((s) => s.id)).toEqual(["press"]);
   });
+
+  it("attaches a heat score computed across ALL signals in the district, not just the filtered ones", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    const districtId = randomUUID();
+    fakePrisma.seedSignal({
+      id: "press", sourceName: null, sourceUrl: null, trustLevel: "verified_press", summary: null,
+      districtId, detectedCategory: null, publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+    // Not returned by this filtered query (trustLevel=verified_press) but should still count
+    // toward the district's heat score.
+    fakePrisma.seedSignal({
+      id: "social", sourceName: null, sourceUrl: null, trustLevel: "unverified_social", summary: null,
+      districtId, detectedCategory: null, publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+
+    const service = buildService(fakePrisma);
+    const results = await service.listSignals({ id: randomUUID(), role: "admin" }, { trustLevel: "verified_press" });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.heat).toEqual({ score: 2, level: "medium" });
+  });
+
+  it("heat is null for a signal with no district", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    fakePrisma.seedSignal({
+      id: "no-district", sourceName: null, sourceUrl: null, trustLevel: "verified_press", summary: null,
+      districtId: null, detectedCategory: null, publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+    const service = buildService(fakePrisma);
+    const results = await service.listSignals({ id: randomUUID(), role: "admin" }, {});
+    expect(results[0]?.heat).toBeNull();
+  });
 });
 
 describe("signals.service — getSignalDetail", () => {
@@ -102,5 +134,44 @@ describe("signals.service — getSignalDetail", () => {
     const detail = await service.getSignalDetail({ id: randomUUID(), role: "senior_officer" }, "s1");
     expect(detail.sourceName).toBe("Báo C");
     expect(detail.summary).toBe("Tóm tắt demo");
+  });
+
+  it("returns null heat and no related reports when the signal has no district", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    fakePrisma.seedSignal({
+      id: "s1", sourceName: null, sourceUrl: null, trustLevel: "unverified_social", summary: null,
+      districtId: null, detectedCategory: null, publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+    const service = buildService(fakePrisma);
+    const detail = await service.getSignalDetail({ id: randomUUID(), role: "admin" }, "s1");
+    expect(detail.heat).toBeNull();
+    expect(detail.relatedReports).toEqual([]);
+  });
+
+  it("finds citizen reports in the same district within the ±3-day window, but not outside it", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    const districtId = randomUUID();
+    const publishedAt = new Date("2026-01-10T00:00:00Z");
+    fakePrisma.seedSignal({
+      id: "s1", sourceName: null, sourceUrl: null, trustLevel: "verified_press", summary: null,
+      districtId, detectedCategory: "trom_cap", publishedAt, crawledAt: publishedAt, duplicateOfId: null,
+    });
+    fakePrisma.seedReport({
+      id: "nearby", source: "citizen", districtId, category: "Trộm cắp", status: "pending", urgency: "normal",
+      createdAt: new Date("2026-01-11T00:00:00Z"), // +1 day, within window
+    });
+    fakePrisma.seedReport({
+      id: "too-far", source: "citizen", districtId, category: "Trộm cắp", status: "pending", urgency: "normal",
+      createdAt: new Date("2026-01-20T00:00:00Z"), // +10 days, outside window
+    });
+    fakePrisma.seedReport({
+      id: "other-district", source: "citizen", districtId: randomUUID(), category: "Trộm cắp", status: "pending", urgency: "normal",
+      createdAt: new Date("2026-01-10T12:00:00Z"),
+    });
+
+    const service = buildService(fakePrisma);
+    const detail = await service.getSignalDetail({ id: randomUUID(), role: "admin" }, "s1");
+
+    expect(detail.relatedReports.map((r: any) => r.id)).toEqual(["nearby"]);
   });
 });

@@ -106,6 +106,7 @@ class SignalListPane extends ConsumerWidget {
                   final signal = signals[index];
                   final id = signal['id'] as String;
                   final isSelected = id == selectedId;
+                  final heat = signal['heat'] as Map<String, dynamic>?;
                   return ListTile(
                     selected: isSelected,
                     selectedTileColor: DashboardTheme.primary.withValues(alpha: 0.06),
@@ -114,8 +115,19 @@ class SignalListPane extends ConsumerWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    subtitle: Text(
-                      '${signal['sourceName'] ?? 'Không rõ nguồn'} · ${_formatDate(signal['publishedAt'] as String?)}',
+                    subtitle: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${signal['sourceName'] ?? 'Không rõ nguồn'} · ${_formatDate(signal['publishedAt'] as String?)}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (heat != null && heat['level'] != 'low') ...[
+                          const SizedBox(width: 6),
+                          _HeatDot(level: heat['level'] as String, score: heat['score'] as int),
+                        ],
+                      ],
                     ),
                     trailing: _TrustLevelDot(trustLevel: signal['trustLevel'] as String? ?? 'unverified_social'),
                     onTap: () => ref.read(selectedSignalIdProvider.notifier).state = id,
@@ -142,6 +154,30 @@ class _TrustLevelDot extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
       child: Text(trustLevelLabel(trustLevel), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+class _HeatDot extends StatelessWidget {
+  const _HeatDot({required this.level, required this.score});
+
+  final String level;
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = heatLevelColor(level);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.local_fire_department, size: 11, color: color),
+          const SizedBox(width: 2),
+          Text('$score', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }

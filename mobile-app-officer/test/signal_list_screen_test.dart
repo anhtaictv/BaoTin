@@ -22,6 +22,7 @@ const _fakeSignals = [
     'trustLevel': 'unverified_social',
     'summary': 'Người dân phản ánh nghi có cháy nhỏ gần chợ.',
     'publishedAt': '2026-01-01T09:00:00Z',
+    'heat': {'score': 6, 'level': 'high'},
   },
 ];
 
@@ -59,6 +60,8 @@ void main() {
     // No verification-status vocabulary ever appears on this screen (CLAUDE.md #1/#2).
     expect(find.text('Đúng sự thật'), findsNothing);
     expect(find.text('Xác nhận trạng thái'), findsNothing);
+    // "low"-heat s1 shows no badge (not worth flagging); "high"-heat s2 does.
+    expect(find.textContaining('Nóng (6)'), findsOneWidget);
 
     await tester.tap(find.text('MXH'));
     await tester.pump();

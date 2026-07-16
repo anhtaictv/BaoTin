@@ -1,5 +1,12 @@
 # Changelog
 
+## backend 1.5.0 · dashboard-web 1.4.0+3 · mobile-app-officer 1.3.0+4 · mobile-app-citizen 1.3.0+5 — Giai đoạn 4: NFC CCCD (mock), độ nóng MXH, đối chiếu chéo, gợi ý VNeID
+- **Quét NFC CCCD (mock UI)** — cả 2 app: `mobile-app-officer` (xác minh danh tính tại hiện trường, nút trong màn chi tiết tin báo) và `mobile-app-citizen` (liên kết CCCD, màn "Hồ sơ" mới). Toàn bộ dữ liệu hiển thị gắn nhãn `[MOCK]` rõ ràng, không có lời gọi NFC/chip thật nào (CLAUDE.md #5) — chưa tích hợp VNeID/SDK thật.
+- **Độ nóng tin MXH** (`signalHeat.ts`) — đếm số tín hiệu theo địa bàn trong 14 ngày gần nhất, phân mức `low`/`medium`/`high`; hiển thị badge 🔥 trên danh sách + chi tiết tín hiệu ở cả `mobile-app-officer` và `dashboard-web`. Công thức tính đúng ngay cả khi ít dữ liệu.
+- **Đối chiếu chéo tin MXH ↔ tin dân báo** — `GET /officer/signals/:id` trả thêm `relatedReports`: tin dân báo cùng địa bàn trong vòng ±3 ngày quanh thời điểm tín hiệu. Chỉ tham khảo, không tự động kết luận cùng vụ việc — hiển thị kèm chú thích rõ ràng ở cả 2 app.
+- **Gợi ý gửi tố cáo chính thức qua VNeID** — banner trên màn trạng thái tin báo (`mobile-app-citizen`) khi tin có `urgency=emergency` hoặc thuộc nhóm loại vụ việc nghiêm trọng (`chay_no`/`tai_nan`/`an_ninh_khan_cap`, cùng danh mục với backend). Chỉ là gợi ý văn bản, không gọi API/link VNeID thật nào.
+- `GET /reports/:id/status` (app công dân) trả thêm `urgency`/`category` để tính được tin có "nghiêm trọng" hay không.
+
 ## backend 1.4.0 · mobile-app-citizen 1.2.0+4 — Giai đoạn 3: Bản đồ cảnh báo + danh bạ khẩn cấp
 - **`GET /area-alerts?lat=&lng=`** — bản đồ cảnh báo khu vực cho người dân, dữ liệu tổng hợp: đếm tin báo 30 ngày gần nhất theo từng xã/phường (`ST_Centroid` cho tọa độ hiển thị), phân mức `low`/`medium`/`high` theo ngưỡng số lượng. Không bao giờ trả về vị trí hay chi tiết của từng tin báo cụ thể.
 - **`GET /emergency-contacts?lat=&lng=`** — danh bạ khẩn cấp tự động theo vị trí: khớp địa bàn qua tọa độ (fallback địa bàn gần nhất nếu điểm nằm ngoài mọi ranh giới), ưu tiên liên hệ riêng của địa bàn đó, những loại (police/medical/fire) chưa có liên hệ riêng thì dùng số quốc gia thật (113/114/115). Liên hệ riêng theo địa bàn hiện là `[DEMO]` vì chưa xác minh được số thật của từng đơn vị.

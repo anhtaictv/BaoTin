@@ -17,18 +17,32 @@ export interface FakeAssignment {
   isActive: boolean;
 }
 
+export interface FakeSignalReport {
+  id: string;
+  source: string;
+  districtId: string | null;
+  category: string | null;
+  status: string;
+  urgency: string;
+  createdAt: Date;
+}
+
 /** Fake Prisma covering signals.service.ts + districtScope.ts's needs. */
 export function createFakeSignalsPrisma() {
   const signals = new Map<string, FakeSignal>();
   const assignments: FakeAssignment[] = [];
+  const reports = new Map<string, FakeSignalReport>();
 
   return {
-    store: { signals, assignments },
+    store: { signals, assignments, reports },
     seedSignal(signal: FakeSignal) {
       signals.set(signal.id, signal);
     },
     seedAssignment(assignment: FakeAssignment) {
       assignments.push(assignment);
+    },
+    seedReport(report: FakeSignalReport) {
+      reports.set(report.id, report);
     },
     officerDistrictAssignment: {
       async findMany({ where }: any) {
@@ -42,6 +56,7 @@ export function createFakeSignalsPrisma() {
         return [...signals.values()]
           .filter((s) => {
             if (where.districtId?.in && !where.districtId.in.includes(s.districtId)) return false;
+            if (where.districtId?.not === null && s.districtId === null) return false;
             if (where.trustLevel && s.trustLevel !== where.trustLevel) return false;
             if (where.detectedCategory && s.detectedCategory !== where.detectedCategory) return false;
             return true;
@@ -51,6 +66,20 @@ export function createFakeSignalsPrisma() {
       },
       async findUnique({ where }: any) {
         return signals.get(where.id) ?? null;
+      },
+    },
+    report: {
+      async findMany({ where, select }: any) {
+        return [...reports.values()]
+          .filter((r) => {
+            if (where.source && r.source !== where.source) return false;
+            if (where.districtId !== undefined && r.districtId !== where.districtId) return false;
+            if (where.createdAt?.gte && r.createdAt < where.createdAt.gte) return false;
+            if (where.createdAt?.lte && r.createdAt > where.createdAt.lte) return false;
+            return true;
+          })
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .map((r) => (select ? pick(r, select) : r));
       },
     },
   };
