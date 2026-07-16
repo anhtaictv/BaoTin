@@ -39,6 +39,7 @@ function buildService(
       notifyCalls.push({ officerId, reportId, urgent });
       return new Date();
     },
+    notifyUserOfStatusChange: async () => new Date(),
   };
 
   const service = createReportLifecycleService({
@@ -189,5 +190,52 @@ describe("reportLifecycle.service — listMyReports / getReportStatus", () => {
 
     const status = await service.getReportStatus(reportId, USER_ID);
     expect(status.status).toBe("pending");
+  });
+
+  it("returns latestNote as null when the report has no status history yet", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    const { service } = buildService(fakePrisma);
+    const { reportId } = await service.createCitizenReport({
+      userId: USER_ID,
+      category: "a",
+      location: { lat: 12.66, lng: 108.05, source: "device_gps" },
+      attachments: [],
+    });
+
+    const status = await service.getReportStatus(reportId, USER_ID);
+    expect(status.latestNote).toBeNull();
+  });
+
+  it("returns the most recent status history note as latestNote", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    const { service } = buildService(fakePrisma);
+    const { reportId } = await service.createCitizenReport({
+      userId: USER_ID,
+      category: "a",
+      location: { lat: 12.66, lng: 108.05, source: "device_gps" },
+      attachments: [],
+    });
+
+    fakePrisma.store.statusHistory.push({
+      id: randomUUID(),
+      reportId,
+      oldStatus: "pending",
+      newStatus: "verifying",
+      changedBy: randomUUID(),
+      note: "Đang xác minh tại hiện trường.",
+      changedAt: new Date(Date.now() - 60_000),
+    });
+    fakePrisma.store.statusHistory.push({
+      id: randomUUID(),
+      reportId,
+      oldStatus: "verifying",
+      newStatus: "confirmed_true",
+      changedBy: randomUUID(),
+      note: "Đã xác nhận đúng sự thật.",
+      changedAt: new Date(),
+    });
+
+    const status = await service.getReportStatus(reportId, USER_ID);
+    expect(status.latestNote).toBe("Đã xác nhận đúng sự thật.");
   });
 });

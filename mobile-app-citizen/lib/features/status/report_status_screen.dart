@@ -47,6 +47,7 @@ class _ReportStatusScreenState extends ConsumerState<ReportStatusScreen> {
           }
           final data = snapshot.data!;
           final status = data['status'] as String? ?? 'pending';
+          final latestNote = data['latestNote'] as String?;
           final isSerious = status != 'confirmed_false' &&
               _isSeriousReport(urgency: data['urgency'] as String?, category: data['category'] as String?);
           return Padding(
@@ -60,6 +61,25 @@ class _ReportStatusScreenState extends ConsumerState<ReportStatusScreen> {
                 if (data['verifiedAt'] != null) ...[
                   const SizedBox(height: 8),
                   Text('Đã xác minh lúc: ${data['verifiedAt']}'),
+                ],
+                if (latestNote != null && latestNote.trim().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ghi chú từ cán bộ phụ trách',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(latestNote),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
                 if (isSerious) ...[
                   const SizedBox(height: 20),

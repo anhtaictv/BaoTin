@@ -52,4 +52,25 @@ void main() {
     await _pump(tester, {'status': 'confirmed_false', 'urgency': 'emergency', 'category': 'khac'});
     expect(find.textContaining('gửi tố cáo chính thức qua ứng dụng VNeID'), findsNothing);
   });
+
+  testWidgets('shows the officer note when latestNote is present', (tester) async {
+    await _pump(tester, {
+      'status': 'verifying',
+      'urgency': 'normal',
+      'category': 'trom_cap',
+      'latestNote': 'Đang xác minh tại hiện trường.',
+    });
+    expect(find.text('Ghi chú từ cán bộ phụ trách'), findsOneWidget);
+    expect(find.text('Đang xác minh tại hiện trường.'), findsOneWidget);
+  });
+
+  testWidgets('does not show the note card when latestNote is null', (tester) async {
+    await _pump(tester, {'status': 'pending', 'urgency': 'normal', 'category': 'trom_cap'});
+    expect(find.text('Ghi chú từ cán bộ phụ trách'), findsNothing);
+  });
+
+  testWidgets('does not show the note card when latestNote is blank', (tester) async {
+    await _pump(tester, {'status': 'pending', 'urgency': 'normal', 'category': 'trom_cap', 'latestNote': '   '});
+    expect(find.text('Ghi chú từ cán bộ phụ trách'), findsNothing);
+  });
 }

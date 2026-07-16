@@ -58,6 +58,14 @@ Module độc lập, không block giai đoạn 1.
 - [x] Gợi ý "gửi tố cáo chính thức qua VNeID" cho tin nghiêm trọng — banner trong `report_status_screen.dart` (app công dân) khi tin có `urgency=emergency` hoặc thuộc nhóm loại vụ việc nghiêm trọng, chỉ là gợi ý văn bản, không có link/API VNeID thật nào được gọi
 - [x] ~~Dashboard KPI: thời gian phản hồi trung bình theo địa bàn/cán bộ~~ — làm sớm ở v1.2 (xem mục v1.2 phía trên)
 
+## v1.6 — Thông báo 2 chiều khi đổi trạng thái tin báo
+Trả lời câu hỏi "phần mềm có thể nâng cấp vai trò truyền tin dân ↔ công an đến đâu": **dừng ở mức thông báo 2 chiều đơn giản**, không xây dựng chat/nhắn tin qua lại — giữ đúng định vị CLAUDE.md "Báo Tin bổ trợ VNeID, không thay thế".
+
+- [x] Cán bộ đổi trạng thái → người dân báo tin nhận thông báo (nếu tin gắn tài khoản người dùng)
+- [x] Ghi chú của cán bộ tại lần đổi trạng thái hiển thị lại cho người dân qua `GET /reports/:id/status` → `latestNote`
+- [x] Sửa bug tồn tại từ Giai đoạn 1: `note` trong request body `PATCH /officer/reports/:id/status` chưa từng được lưu
+- **Chưa làm có chủ đích**: chat/nhắn tin 2 chiều thật (cán bộ và dân trao đổi qua lại nhiều lượt) — ngoài phạm vi quyết định hiện tại, để đánh giá lại sau nếu cần
+
 ## Ưu tiên khi thời gian hạn chế (thi đấu)
 Nếu không đủ thời gian làm hết Giai đoạn 1, thứ tự tối thiểu để demo được câu chuyện trọn vẹn:
 1. Báo tin thường (ảnh + GPS + mô tả) — có thể mock geo-matching bằng dữ liệu cứng nếu chưa kịp tích hợp PostGIS thật

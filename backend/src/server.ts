@@ -82,6 +82,7 @@ async function main() {
     officialCaseLink,
     auditLog,
     storage,
+    notifications,
     piiEncryptionKey: env.PII_ENCRYPTION_KEY,
   });
   const officerReportsController = createOfficerReportsController(officerReportsService);

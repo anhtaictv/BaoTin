@@ -4,6 +4,7 @@ import type { DistrictScopeService, DistrictScopeSubject } from "../middleware/d
 import type { OfficialCaseLinkService } from "./officialCaseLink.service.js";
 import type { AuditLogService } from "./auditLog.service.js";
 import type { StorageClient } from "../storage/minioClient.js";
+import type { NotificationService } from "../notifications/notification.service.js";
 import { decryptField } from "../crypto/aesGcm.js";
 import { isSeriousReport, sortByPriority } from "./priority.service.js";
 import { isSensitiveIdentityView, serializeReportForViewer } from "./reportAnonymity.js";
@@ -25,6 +26,7 @@ export interface OfficerReportsDeps {
   officialCaseLink: OfficialCaseLinkService;
   auditLog: AuditLogService;
   storage: StorageClient;
+  notifications: NotificationService;
   piiEncryptionKey: string;
 }
 
@@ -150,6 +152,7 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
           oldStatus: report.status,
           newStatus: input.status,
           changedBy: subject.id,
+          note: input.note,
         },
       }),
     ]);
@@ -159,6 +162,13 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
     // draws that conclusion automatically (CLAUDE.md non-negotiable #3).
     if (input.status === "confirmed_true" && isSeriousReport({ urgency: report.urgency, category: report.category })) {
       await deps.officialCaseLink.pushToOfficialCase(reportId);
+    }
+
+    // The other direction of the same notification channel that already tells an officer
+    // about a new report — a citizen previously had no way to learn of a status change
+    // except opening the app and checking themselves.
+    if (report.userId) {
+      await deps.notifications.notifyUserOfStatusChange(report.userId, reportId, input.status);
     }
 
     return { reportId, status: input.status, responseTimeSeconds };

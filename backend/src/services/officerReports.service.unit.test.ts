@@ -10,19 +10,28 @@ const PII_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 function buildService(fakePrisma: FakeOfficerPrisma) {
   const officialCaseLinkCalls: string[] = [];
   const auditLogCalls: { officerId: string; action: string }[] = [];
+  const notifyCalls: { userId: string; reportId: string; status: string }[] = [];
   const districtScope = createDistrictScopeService(fakePrisma as any);
   const officialCaseLink = { pushToOfficialCase: async (reportId: string) => { officialCaseLinkCalls.push(reportId); } };
   const auditLog = { record: async (officerId: string, action: string) => { auditLogCalls.push({ officerId, action }); } };
   const storage = { putObject: async () => {}, getPresignedGetUrl: async (key: string) => `https://minio.local/${key}` };
+  const notifications = {
+    notifyOfficerOfNewReport: async () => new Date(),
+    notifyUserOfStatusChange: async (userId: string, reportId: string, status: string) => {
+      notifyCalls.push({ userId, reportId, status });
+      return new Date();
+    },
+  };
   const service = createOfficerReportsService({
     prisma: fakePrisma as any,
     districtScope,
     officialCaseLink,
     auditLog,
     storage,
+    notifications,
     piiEncryptionKey: PII_ENCRYPTION_KEY,
   });
-  return { service, officialCaseLinkCalls, auditLogCalls };
+  return { service, officialCaseLinkCalls, auditLogCalls, notifyCalls };
 }
 
 describe("officerReports.service — listReports", () => {
@@ -299,5 +308,62 @@ describe("officerReports.service — updateStatus", () => {
     await expect(
       service.updateStatus({ id: officerId, role: "officer" }, "r1", { status: "verifying" }),
     ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("persists the officer's note onto the status history row", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "r1", category: "khac", urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null,
+    });
+
+    const { service } = buildService(fakePrisma);
+    await service.updateStatus({ id: officerId, role: "officer" }, "r1", {
+      status: "verifying",
+      note: "Đã liên hệ người báo tin, đang xác minh tại hiện trường.",
+    });
+
+    expect(fakePrisma.store.statusHistory[0]).toMatchObject({
+      reportId: "r1",
+      note: "Đã liên hệ người báo tin, đang xác minh tại hiện trường.",
+    });
+  });
+
+  it("notifies the reporting citizen when their report's status changes", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const userId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "r1", category: "khac", urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null,
+      userId,
+    });
+
+    const { service, notifyCalls } = buildService(fakePrisma);
+    await service.updateStatus({ id: officerId, role: "officer" }, "r1", { status: "confirmed_true" });
+
+    expect(notifyCalls).toEqual([{ userId, reportId: "r1", status: "confirmed_true" }]);
+  });
+
+  it("does not notify when the report has no associated user (e.g. anonymous SOS)", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "r1", category: null, urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null,
+      userId: null,
+    });
+
+    const { service, notifyCalls } = buildService(fakePrisma);
+    await service.updateStatus({ id: officerId, role: "officer" }, "r1", { status: "verifying" });
+
+    expect(notifyCalls).toEqual([]);
   });
 });

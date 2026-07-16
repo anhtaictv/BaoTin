@@ -18,6 +18,7 @@ export interface FakeReport {
   createdAt: Date;
   verifiedAt: Date | null;
   responseTimeSeconds: number | null;
+  userId?: string | null;
   user?: FakeReportUser;
   /** location isn't a real Prisma field (PostGIS Unsupported) — see $queryRaw stub below. */
   lat?: number;

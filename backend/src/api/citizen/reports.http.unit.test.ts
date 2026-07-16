@@ -39,6 +39,7 @@ async function buildTestApp() {
       notifyCalls.push({ o, r, u });
       return new Date();
     },
+    notifyUserOfStatusChange: async () => new Date(),
   };
 
   const reportLifecycle = createReportLifecycleService({

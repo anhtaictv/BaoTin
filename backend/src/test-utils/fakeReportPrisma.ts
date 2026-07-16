@@ -17,6 +17,16 @@ interface FakeReportRow {
   responseTimeSeconds: number | null;
 }
 
+interface FakeStatusHistoryRow {
+  id: string;
+  reportId: string;
+  oldStatus: string | null;
+  newStatus: string;
+  changedBy: string | null;
+  note: string | null;
+  changedAt: Date;
+}
+
 function pick<T extends object>(obj: T, select?: Record<string, boolean>): Partial<T> {
   if (!select) return obj;
   const out: Partial<T> = {};
@@ -35,9 +45,10 @@ function pick<T extends object>(obj: T, select?: Record<string, boolean>): Parti
 export function createFakeReportPrisma() {
   const reports: FakeReportRow[] = [];
   const attachments: any[] = [];
+  const statusHistory: FakeStatusHistoryRow[] = [];
 
   return {
-    store: { reports, attachments },
+    store: { reports, attachments, statusHistory },
     async $executeRaw(_strings: TemplateStringsArray, ...values: unknown[]) {
       const [reportId, userId, category, urgency, description, lng, lat, locationSource, districtId, assignedOfficerId] =
         values as [string, string, string, string, string | null, number, number, string | null, string | null, string | null];
@@ -75,6 +86,15 @@ export function createFakeReportPrisma() {
       },
       async findFirst({ where, select }: any) {
         const row = reports.find((r) => r.id === where.id && r.userId === where.userId);
+        return row ? pick(row, select) : null;
+      },
+    },
+    reportStatusHistory: {
+      async findFirst({ where, select }: any) {
+        const matches = statusHistory
+          .filter((h) => h.reportId === where.reportId)
+          .sort((a, b) => b.changedAt.getTime() - a.changedAt.getTime());
+        const row = matches[0];
         return row ? pick(row, select) : null;
       },
     },
