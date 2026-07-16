@@ -27,12 +27,16 @@ final responseTimeByDistrictProvider = FutureProvider<List<Map<String, dynamic>>
 
 final responseTimeByOfficerProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   final filters = ref.watch(dashboardFiltersProvider);
-  return ref.watch(dashboardRepositoryProvider).getResponseTimeByOfficer(days: filters.days);
+  return ref
+      .watch(dashboardRepositoryProvider)
+      .getResponseTimeByOfficer(districtId: filters.districtId, days: filters.days);
 });
 
 final volumeTrendProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
   final filters = ref.watch(dashboardFiltersProvider);
-  return ref.watch(dashboardRepositoryProvider).getVolumeTrend(days: filters.days);
+  return ref
+      .watch(dashboardRepositoryProvider)
+      .getVolumeTrend(districtId: filters.districtId, days: filters.days);
 });
 
 final cameraQueueProvider = FutureProvider<Map<String, dynamic>>((ref) {

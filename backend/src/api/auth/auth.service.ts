@@ -46,16 +46,25 @@ export function createAuthService(deps: AuthServiceDeps) {
       create: { phoneHash, phoneNumberEnc: encryptField(phoneNumber, deps.piiEncryptionKey) },
     });
 
-    return issueOtpChallenge(user.id, phoneNumber);
+    return issueOtpChallenge({ subjectType: "user", userId: user.id }, phoneNumber);
   }
 
-  async function issueOtpChallenge(userId: string, phoneNumber: string): Promise<{ devOtp?: string }> {
+  async function issueOtpChallenge(
+    subject: { subjectType: "user" | "officer"; userId?: string; officerId?: string },
+    phoneNumber: string,
+  ): Promise<{ devOtp?: string }> {
     const otp = generateOtp();
     const codeHash = hashOtp(otp, deps.otpPepper);
     const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
     await deps.prisma.otpChallenge.create({
-      data: { userId, codeHash, expiresAt },
+      data: {
+        subjectType: subject.subjectType,
+        userId: subject.userId,
+        officerId: subject.officerId,
+        codeHash,
+        expiresAt,
+      },
     });
 
     deliverOtp(phoneNumber, otp);
@@ -70,7 +79,7 @@ export function createAuthService(deps: AuthServiceDeps) {
     if (!user) throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");
 
     const challenge = await deps.prisma.otpChallenge.findFirst({
-      where: { userId: user.id, consumedAt: null, expiresAt: { gt: new Date() } },
+      where: { subjectType: "user", userId: user.id, consumedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
     });
     if (!challenge) throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");
@@ -115,18 +124,11 @@ export function createAuthService(deps: AuthServiceDeps) {
     if (!officer) throw new HttpError(401, "INVALID_CREDENTIALS", "Không thể đăng nhập với số điện thoại này.");
 
     if (!otp) {
-      const otpCode = generateOtp();
-      const codeHash = hashOtp(otpCode, deps.otpPepper);
-      const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
-      await deps.prisma.otpChallenge.create({
-        data: { userId: officer.id, codeHash, expiresAt },
-      });
-      deliverOtp(phoneNumber, otpCode);
-      return { devOtp: process.env.NODE_ENV !== "production" ? otpCode : undefined };
+      return issueOtpChallenge({ subjectType: "officer", officerId: officer.id }, phoneNumber);
     }
 
     const challenge = await deps.prisma.otpChallenge.findFirst({
-      where: { userId: officer.id, consumedAt: null, expiresAt: { gt: new Date() } },
+      where: { subjectType: "officer", officerId: officer.id, consumedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
     });
     if (!challenge) throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");

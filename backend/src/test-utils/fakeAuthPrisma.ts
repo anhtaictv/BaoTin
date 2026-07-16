@@ -49,7 +49,14 @@ export function createFakeAuthPrisma() {
       },
       async findFirst({ where }: any) {
         const candidates = [...otpChallenges.values()]
-          .filter((c) => c.userId === where.userId && c.consumedAt === null && c.expiresAt > new Date())
+          .filter(
+            (c) =>
+              c.subjectType === where.subjectType &&
+              c.userId === where.userId &&
+              c.officerId === where.officerId &&
+              c.consumedAt === null &&
+              c.expiresAt > new Date(),
+          )
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         return candidates[0] ?? null;
       },

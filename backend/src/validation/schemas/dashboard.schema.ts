@@ -6,5 +6,6 @@ export const dashboardOverviewQuerySchema = z.object({
 });
 
 export const dashboardDaysQuerySchema = z.object({
+  district_id: z.string().uuid().optional(),
   days: z.coerce.number().int().min(1).max(365).default(30),
 });

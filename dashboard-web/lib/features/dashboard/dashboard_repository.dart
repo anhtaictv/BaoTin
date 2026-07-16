@@ -18,13 +18,19 @@ class DashboardRepository {
     return List<Map<String, dynamic>>.from(res.data['data'] as List);
   }
 
-  Future<List<Map<String, dynamic>>> getResponseTimeByOfficer({int days = 30}) async {
-    final res = await _apiClient.dio.get('/admin/dashboard/response-time-by-officer', queryParameters: {'days': days});
+  Future<List<Map<String, dynamic>>> getResponseTimeByOfficer({String? districtId, int days = 30}) async {
+    final res = await _apiClient.dio.get('/admin/dashboard/response-time-by-officer', queryParameters: {
+      if (districtId != null) 'district_id': districtId,
+      'days': days,
+    });
     return List<Map<String, dynamic>>.from(res.data['data'] as List);
   }
 
-  Future<List<Map<String, dynamic>>> getVolumeTrend({int days = 30}) async {
-    final res = await _apiClient.dio.get('/admin/dashboard/volume-trend', queryParameters: {'days': days});
+  Future<List<Map<String, dynamic>>> getVolumeTrend({String? districtId, int days = 30}) async {
+    final res = await _apiClient.dio.get('/admin/dashboard/volume-trend', queryParameters: {
+      if (districtId != null) 'district_id': districtId,
+      'days': days,
+    });
     return List<Map<String, dynamic>>.from(res.data['data'] as List);
   }
 

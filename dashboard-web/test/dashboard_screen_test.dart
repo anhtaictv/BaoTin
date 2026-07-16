@@ -76,4 +76,47 @@ void main() {
     // No error placeholders should appear anywhere in the tree.
     expect(find.text('Không tải được dữ liệu.'), findsNothing);
   });
+
+  testWidgets('a failed chart provider renders ChartCardError with a working retry, others unaffected',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    var officerCallCount = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          districtOptionsProvider.overrideWith((ref) async => const []),
+          overviewProvider.overrideWith(
+            (ref) async => {
+              'totalReports': 0,
+              'byStatus': <String, dynamic>{},
+              'byUrgency': <String, dynamic>{},
+              'avgResponseTimeSeconds': null,
+            },
+          ),
+          responseTimeByDistrictProvider.overrideWith((ref) async => []),
+          responseTimeByOfficerProvider.overrideWith((ref) {
+            officerCallCount++;
+            return Future<List<Map<String, dynamic>>>.error(Exception('boom'));
+          }),
+          volumeTrendProvider.overrideWith((ref) async => []),
+          cameraQueueProvider.overrideWith((ref) async => <String, dynamic>{}),
+          reportListProvider.overrideWith((ref) async => []),
+        ],
+        child: const MaterialApp(home: DashboardScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Không tải được dữ liệu.'), findsOneWidget);
+    expect(officerCallCount, 1);
+
+    await tester.tap(find.text('Thử lại'));
+    await tester.pumpAndSettle();
+
+    expect(officerCallCount, 2);
+  });
 }

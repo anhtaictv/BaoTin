@@ -5,11 +5,18 @@ class ReportsFilters {
   final String? urgency;
   final String? districtId;
 
-  ReportsFilters copyWith({String? status, bool clearStatus = false, String? urgency, bool clearUrgency = false}) {
+  ReportsFilters copyWith({
+    String? status,
+    bool clearStatus = false,
+    String? urgency,
+    bool clearUrgency = false,
+    String? districtId,
+    bool clearDistrictId = false,
+  }) {
     return ReportsFilters(
       status: clearStatus ? null : (status ?? this.status),
       urgency: clearUrgency ? null : (urgency ?? this.urgency),
-      districtId: districtId,
+      districtId: clearDistrictId ? null : (districtId ?? this.districtId),
     );
   }
 }

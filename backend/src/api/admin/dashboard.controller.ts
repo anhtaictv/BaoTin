@@ -16,14 +16,14 @@ export function createDashboardController(service: DashboardStatsService) {
     },
 
     async responseTimeByOfficer(req: Request, res: Response) {
-      const { days } = req.query as unknown as { days: number };
-      const data = await service.getResponseTimeByOfficer({ days });
+      const { district_id, days } = req.query as unknown as { district_id?: string; days: number };
+      const data = await service.getResponseTimeByOfficer({ districtId: district_id, days });
       res.status(200).json({ success: true, data, error: null });
     },
 
     async volumeTrend(req: Request, res: Response) {
-      const { days } = req.query as unknown as { days: number };
-      const data = await service.getVolumeTrend(days);
+      const { district_id, days } = req.query as unknown as { district_id?: string; days: number };
+      const data = await service.getVolumeTrend(days, district_id);
       res.status(200).json({ success: true, data, error: null });
     },
 

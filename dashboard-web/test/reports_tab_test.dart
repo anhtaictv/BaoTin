@@ -6,6 +6,7 @@ import 'package:bao_tin_dashboard/core/api_client.dart';
 import 'package:bao_tin_dashboard/core/providers.dart';
 import 'package:bao_tin_dashboard/core/secure_token_store.dart';
 import 'package:bao_tin_dashboard/features/cameras/camera_repository.dart';
+import 'package:bao_tin_dashboard/features/dashboard/dashboard_providers.dart';
 import 'package:bao_tin_dashboard/features/reports/reports_providers.dart';
 import 'package:bao_tin_dashboard/features/reports/reports_tab.dart';
 
@@ -46,6 +47,7 @@ void main() {
         overrides: [
           reportListProvider.overrideWith((ref) async => _fakeReports),
           reportDetailProvider('r1').overrideWith((ref) async => _fakeDetail),
+          districtOptionsProvider.overrideWith((ref) async => const []),
           cameraRepositoryProvider.overrideWithValue(
             _FakeCameraRepository(ApiClient(tokenStore: SecureTokenStore())),
           ),
@@ -68,5 +70,45 @@ void main() {
     expect(find.text('Ẩn danh (được bảo vệ)'), findsOneWidget);
     expect(find.text('Duyệt tin báo'), findsOneWidget);
     expect(find.text('Đúng sự thật'), findsWidgets);
+  });
+
+  testWidgets('below 900px shows the list first, then swaps to detail + a back button on selection',
+      (tester) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          reportListProvider.overrideWith((ref) async => _fakeReports),
+          reportDetailProvider('r1').overrideWith((ref) async => _fakeDetail),
+          districtOptionsProvider.overrideWith((ref) async => const []),
+          cameraRepositoryProvider.overrideWithValue(
+            _FakeCameraRepository(ApiClient(tokenStore: SecureTokenStore())),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: ReportsTab())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Narrow layout: list only, no split detail pane placeholder.
+    expect(find.text('Trộm cắp'), findsOneWidget);
+    expect(find.text('Chọn 1 tin báo bên trái để xem chi tiết.'), findsNothing);
+
+    await tester.tap(find.text('Trộm cắp'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Mất xe máy trước nhà'), findsOneWidget);
+    expect(find.text('Danh sách'), findsOneWidget);
+
+    await tester.tap(find.text('Danh sách'));
+    await tester.pump();
+
+    expect(find.text('Trộm cắp'), findsOneWidget);
+    expect(find.text('Mất xe máy trước nhà'), findsNothing);
   });
 }

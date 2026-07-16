@@ -61,6 +61,38 @@ describe("GET /admin/dashboard/*", () => {
     expect(res.status).toBe(400);
   });
 
+  it("volume-trend accepts an optional district_id filter", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    const districtId = randomUUID();
+    fakePrisma.seedReport({
+      id: "r1",
+      source: "citizen",
+      districtId,
+      assignedOfficerId: null,
+      status: "pending",
+      urgency: "normal",
+      responseTimeSeconds: null,
+      createdAt: new Date(),
+    });
+    fakePrisma.seedReport({
+      id: "r2",
+      source: "citizen",
+      districtId: randomUUID(),
+      assignedOfficerId: null,
+      status: "pending",
+      urgency: "normal",
+      responseTimeSeconds: null,
+      createdAt: new Date(),
+    });
+
+    const res = await request(app)
+      .get(`/admin/dashboard/volume-trend?district_id=${districtId}`)
+      .set("Authorization", `Bearer ${await tokenFor("admin")}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.reduce((sum: number, d: { count: number }) => sum + d.count, 0)).toBe(1);
+  });
+
   it("camera-queue returns an object keyed by status", async () => {
     const { app, fakePrisma, tokenFor } = await buildTestApp();
     fakePrisma.seedExtractionRequest({ id: "e1", status: "pending" });

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme.dart';
+import '../../dashboard/dashboard_providers.dart';
 import '../reports_filters.dart';
 import '../reports_providers.dart';
 
@@ -16,6 +17,7 @@ class ReportListPane extends ConsumerWidget {
     final filters = ref.watch(reportsFiltersProvider);
     final reportsAsync = ref.watch(reportListProvider);
     final selectedId = ref.watch(selectedReportIdProvider);
+    final districtsAsync = ref.watch(districtOptionsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -61,6 +63,28 @@ class ReportListPane extends ConsumerWidget {
                 );
               }),
             ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: districtsAsync.when(
+            data: (districts) => DropdownMenu<String?>(
+              initialSelection: filters.districtId,
+              width: 336,
+              menuHeight: 320,
+              textStyle: Theme.of(context).textTheme.bodySmall,
+              dropdownMenuEntries: [
+                const DropdownMenuEntry(value: null, label: 'Tất cả địa bàn'),
+                for (final d in districts)
+                  DropdownMenuEntry(value: d['id'] as String, label: d['tenXa'] as String),
+              ],
+              onSelected: (value) {
+                ref.read(reportsFiltersProvider.notifier).state =
+                    filters.copyWith(districtId: value, clearDistrictId: value == null);
+              },
+            ),
+            loading: () => const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            error: (_, __) => const Text('Không tải được danh sách địa bàn'),
           ),
         ),
         const Divider(height: 16),

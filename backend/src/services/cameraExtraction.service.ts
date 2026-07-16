@@ -60,7 +60,7 @@ export function createCameraExtractionService(deps: CameraExtractionDeps) {
         c.managing_unit_contact AS "managingUnitContact",
         ST_Distance(c.location::geography, r.location::geography) AS "distanceMeters"
       FROM cameras c, reports r
-      WHERE r.id = ${reportId}::uuid
+      WHERE r.id = ${reportId}
         AND ST_DWithin(c.location::geography, r.location::geography, ${radiusMeters})
       ORDER BY "distanceMeters" ASC
     `;

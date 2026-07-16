@@ -30,6 +30,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _refreshAll() {
+    ref.invalidate(districtOptionsProvider);
     ref.invalidate(overviewProvider);
     ref.invalidate(responseTimeByDistrictProvider);
     ref.invalidate(responseTimeByOfficerProvider);
