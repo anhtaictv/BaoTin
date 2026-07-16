@@ -35,10 +35,13 @@ const EnvSchema = z.object({
   OTP_HASH_PEPPER: z.string().default(""),
 
   /** Giai đoạn 2 crawler — AI tóm tắt 1-2 câu. No key configured => falls back to a plain
-   * truncation, never crashes the crawler pipeline (see crawler/summarizer.ts). */
-  LLM_PROVIDER: z.enum(["openai", "gemini", "none"]).default("none"),
+   * truncation, never crashes the crawler pipeline (see crawler/summarizer.ts). "ollama" runs
+   * a local model (no API key, no data leaving the machine) via Ollama's REST API. */
+  LLM_PROVIDER: z.enum(["openai", "gemini", "ollama", "none"]).default("none"),
   OPENAI_API_KEY: z.string().default(""),
   GEMINI_API_KEY: z.string().default(""),
+  OLLAMA_BASE_URL: z.string().min(1).default("http://localhost:11434"),
+  OLLAMA_MODEL: z.string().min(1).default("qwen2.5:1.5b"),
 })
   /**
    * SECURITY.md §4 (least-privilege DB user) and §5 (no wildcard CORS in production) are easy

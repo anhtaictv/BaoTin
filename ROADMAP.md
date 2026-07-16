@@ -38,7 +38,7 @@ Module độc lập, không block giai đoạn 1.
 - [ ] Crawler MXH (nguồn public hợp lệ) sau — **chưa làm có chủ đích**: scrape Facebook/Zalo không qua API chính thức có rủi ro vi phạm điều khoản dịch vụ; kiến trúc (`RssSourceConfig`, `pressCrawler.service.ts`) đủ tổng quát để cắm thêm nguồn khi có API hợp lệ (vd. Facebook Graph API cho trang do đơn vị quản lý)
 - [x] Cấu hình tần suất riêng theo từng nguồn — mỗi nguồn có `pollIntervalMinutes` riêng (`rssSources.ts`, `runCrawler.ts`)
 - [x] Lọc từ khóa địa danh + loại vụ việc — `keywordFilter.ts`; tin không khớp từ khóa loại vụ việc nào sẽ không được lưu
-- [x] AI tóm tắt 1-2 câu — `summarizer.ts`, chọn qua `LLM_PROVIDER` (openai/gemini/none), mặc định `none` = chỉ cắt ngắn văn bản gốc, không gọi API nào. Đã có chỗ nhét API key (`OPENAI_API_KEY`/`GEMINI_API_KEY`), **chưa có key thật nào được cấu hình**
+- [x] AI tóm tắt 1-2 câu — `summarizer.ts`, chọn qua `LLM_PROVIDER` (openai/gemini/ollama/none), mặc định `none` = chỉ cắt ngắn văn bản gốc, không gọi API nào. `openai`/`gemini` đã có chỗ nhét API key nhưng **chưa có key thật nào được cấu hình**; `ollama` (model chạy local, không cần key) đã kiểm chứng chạy sống thật với `qwen2.5:1.5b` — xem mục "v1.7" bên dưới
 - [x] Gộp tin trùng (dedup theo similarity) — `dedup.ts`, trigram Jaccard, chỉ gắn cờ "có thể trùng", không tự động gộp/xóa
 - [x] UI riêng "Tin nhanh (tham khảo)" — tách biệt rõ khỏi tin đã xác thực (mobile-app-officer + dashboard-web)
 - [x] Seed data mẫu để demo (không crawl live khi thi) — `seed-signals.ts`; crawler thật đã viết xong nhưng **chạy qua script riêng** (`npm run crawl:rss`), không tự khởi động cùng server (CLAUDE.md #4)
@@ -65,6 +65,12 @@ Trả lời câu hỏi "phần mềm có thể nâng cấp vai trò truyền tin
 - [x] Ghi chú của cán bộ tại lần đổi trạng thái hiển thị lại cho người dân qua `GET /reports/:id/status` → `latestNote`
 - [x] Sửa bug tồn tại từ Giai đoạn 1: `note` trong request body `PATCH /officer/reports/:id/status` chưa từng được lưu
 - **Chưa làm có chủ đích**: chat/nhắn tin 2 chiều thật (cán bộ và dân trao đổi qua lại nhiều lượt) — ngoài phạm vi quyết định hiện tại, để đánh giá lại sau nếu cần
+
+## v1.7 — Ollama làm tùy chọn AI tóm tắt (chạy local, không cần API key)
+Kiểm thử khả năng tích hợp model AI chạy local cho crawler Giai đoạn 2: đối chiếu Ollama với `PrismML-Eng/Bonsai-demo` (repo demo model riêng của PrismML, cần HuggingFace token cho bản 27B mặc định + tải hàng chục GB) — chọn Ollama vì nhẹ hơn hẳn cho cùng mục đích tóm tắt ngắn.
+
+- [x] `OllamaSummarizer` — gọi REST API local (`/api/chat`), không cần API key, dữ liệu không rời máy; cùng hợp đồng fallback-về-cắt-ngắn như OpenAI/Gemini khi lỗi
+- [x] Kiểm chứng sống: cài Ollama qua winget, pull `qwen2.5:1.5b`, chạy `npm run crawl:rss` thật với `LLM_PROVIDER=ollama` — xác nhận model paraphrase đúng nghĩa tin thật từ Tuổi Trẻ, không chỉ cắt ngắn văn bản gốc
 
 ## Ưu tiên khi thời gian hạn chế (thi đấu)
 Nếu không đủ thời gian làm hết Giai đoạn 1, thứ tự tối thiểu để demo được câu chuyện trọn vẹn:

@@ -93,15 +93,53 @@ export class GeminiSummarizer implements Summarizer {
   }
 }
 
+/**
+ * Local model via Ollama's REST API (`/api/chat`) — no API key, no data leaving the machine.
+ * Same fallback contract as the hosted providers: any failure (model not pulled, server not
+ * running, slow cold-start load) falls back to truncation rather than blocking the crawler.
+ */
+export class OllamaSummarizer implements Summarizer {
+  constructor(
+    private readonly baseUrl: string = "http://localhost:11434",
+    private readonly model: string = "qwen2.5:1.5b",
+  ) {}
+
+  async summarize(input: SummarizeInput): Promise<string> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: SUMMARIZE_PROMPT },
+            { role: "user", content: `${input.title}\n\n${input.content}` },
+          ],
+          stream: false,
+        }),
+      });
+      if (!res.ok) return truncate(input);
+      const data = (await res.json()) as { message?: { content?: string } };
+      const summary = data.message?.content?.trim();
+      return summary || truncate(input);
+    } catch {
+      return truncate(input);
+    }
+  }
+}
+
 export interface SummarizerEnv {
-  LLM_PROVIDER: "openai" | "gemini" | "none";
+  LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
   OPENAI_API_KEY: string;
   GEMINI_API_KEY: string;
+  OLLAMA_BASE_URL: string;
+  OLLAMA_MODEL: string;
 }
 
 /** "Chỗ nhét API vào" — set LLM_PROVIDER + the matching key in .env, nothing else changes. */
 export function createSummarizer(env: SummarizerEnv): Summarizer {
   if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY) return new OpenAiSummarizer(env.OPENAI_API_KEY);
   if (env.LLM_PROVIDER === "gemini" && env.GEMINI_API_KEY) return new GeminiSummarizer(env.GEMINI_API_KEY);
+  if (env.LLM_PROVIDER === "ollama") return new OllamaSummarizer(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
   return new TruncateSummarizer();
 }
