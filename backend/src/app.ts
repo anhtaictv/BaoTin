@@ -14,12 +14,17 @@ export interface AppRouters {
   dashboardRouter?: Router;
 }
 
+export interface AppConfig {
+  /** Empty/undefined => reflect any origin (dev/test only, never production — see config/env.ts). */
+  corsAllowedOrigins?: string[];
+}
+
 /** Builds the Express app from already-constructed routers — no env/DB access happens here. */
-export function createApp(routers: AppRouters) {
+export function createApp(routers: AppRouters, config: AppConfig = {}) {
   const app = express();
 
   app.use(helmet());
-  app.use(cors());
+  app.use(cors(config.corsAllowedOrigins?.length ? { origin: config.corsAllowedOrigins } : {}));
   app.use(compression());
   app.use(express.json({ limit: "2mb" }));
 
