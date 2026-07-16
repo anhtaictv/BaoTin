@@ -13,7 +13,7 @@ function createFakePrisma(seedSignals: { id: string; sourceUrl: string; summary:
     store: { signals, created },
     district: {
       async findMany() {
-        return [{ id: "d1", tenXa: "Buôn Ma Thuột" }];
+        return [{ id: "d1", tenXa: "Buôn Ma Thuột", parentName: "Tân Tiến, Tự An, Tân Lợi" }];
       },
     },
     socialMediaSignal: {
@@ -37,7 +37,7 @@ const stubSummarizer: Summarizer = { summarize: async ({ title }) => `Tóm tắt
 
 function item(overrides: Partial<RssItem> = {}): RssItem {
   return {
-    title: "Công an bắt giữ nhóm trộm cắp xe máy tại Buôn Ma Thuột",
+    title: "Công an bắt giữ nhóm trộm cắp xe máy tại Buôn Ma Thuột, tỉnh Đắk Lắk",
     link: `https://example.com/bai-${randomUUID()}`,
     content: "Nội dung chi tiết về vụ trộm cắp...",
     pubDate: new Date().toISOString(),
@@ -112,6 +112,32 @@ describe("pressCrawler.service — crawlSource", () => {
     const result = await service.crawlSource(SOURCE);
     expect(result.inserted).toBe(1);
     expect(fakePrisma.store.created[0].duplicateOfId).toBe("earlier");
+  });
+
+  it("detects the district from a pre-2025-merger ward name, not just the current merged name", async () => {
+    const fakePrisma = createFakePrisma();
+    const service = createPressCrawlerService({
+      prisma: fakePrisma as any,
+      summarizer: stubSummarizer,
+      fetchFeed: async () => [
+        item({ title: "Công an bắt giữ nhóm trộm cắp xe máy tại phường Tự An, tỉnh Đắk Lắk" }),
+      ],
+    });
+
+    await service.crawlSource(SOURCE);
+    expect(fakePrisma.store.created[0].districtId).toBe("d1");
+  });
+
+  it("does not attach a district when the province itself is never named", async () => {
+    const fakePrisma = createFakePrisma();
+    const service = createPressCrawlerService({
+      prisma: fakePrisma as any,
+      summarizer: stubSummarizer,
+      fetchFeed: async () => [item({ title: "Công an bắt giữ nhóm trộm cắp xe máy tại Buôn Ma Thuột" })],
+    });
+
+    await service.crawlSource(SOURCE);
+    expect(fakePrisma.store.created[0].districtId).toBeNull();
   });
 
   it("skips items with no link", async () => {

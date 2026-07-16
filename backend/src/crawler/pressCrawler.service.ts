@@ -31,7 +31,7 @@ export function createPressCrawlerService(deps: PressCrawlerDeps) {
     let inserted = 0;
     let skipped = 0;
 
-    const districts = await deps.prisma.district.findMany({ select: { id: true, tenXa: true } });
+    const districts = await deps.prisma.district.findMany({ select: { id: true, tenXa: true, parentName: true } });
 
     for (const item of items) {
       if (!item.link) {
