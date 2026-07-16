@@ -40,8 +40,8 @@ Module độc lập, không block giai đoạn 1.
 - [ ] Lọc từ khóa địa danh + loại vụ việc
 - [ ] AI tóm tắt 1-2 câu
 - [ ] Gộp tin trùng (dedup theo similarity)
-- [ ] UI riêng "Tin nhanh (tham khảo)" — tách biệt rõ khỏi tin đã xác thực
-- [ ] Seed data mẫu để demo (không crawl live khi thi)
+- [x] UI riêng "Tin nhanh (tham khảo)" — tách biệt rõ khỏi tin đã xác thực (mobile-app-officer + dashboard-web)
+- [x] Seed data mẫu để demo (không crawl live khi thi) — `seed-signals.ts`, chưa có crawler thật nào chạy
 
 ## Giai đoạn 3 — Trải nghiệm & liên kết
 - [ ] Bản đồ cảnh báo khu vực cho người dân (tổng hợp, không chi tiết nhạy cảm)

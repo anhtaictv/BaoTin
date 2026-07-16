@@ -4,6 +4,7 @@ import 'secure_token_store.dart';
 import '../features/auth/officer_auth_repository.dart';
 import '../features/reports_list/officer_reports_repository.dart';
 import '../features/cameras/camera_repository.dart';
+import '../features/signals/signals_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -21,4 +22,8 @@ final officerReportsRepositoryProvider = Provider<OfficerReportsRepository>(
 
 final cameraRepositoryProvider = Provider<CameraRepository>(
   (ref) => CameraRepository(ref.watch(apiClientProvider)),
+);
+
+final signalsRepositoryProvider = Provider<SignalsRepository>(
+  (ref) => SignalsRepository(ref.watch(apiClientProvider)),
 );

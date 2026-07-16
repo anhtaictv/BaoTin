@@ -60,3 +60,12 @@ String statusLabel(String status) {
 Color urgencyColor(String urgency) => urgency == 'emergency' ? const Color(0xFFD32F2F) : Colors.grey.shade600;
 
 String urgencyLabel(String urgency) => urgency == 'emergency' ? 'KHẨN CẤP' : 'Bình thường';
+
+/// CLAUDE.md nguyên tắc #1: tín hiệu MXH/báo chí không bao giờ được gắn nhãn giống tin đã
+/// xác thực — dùng bảng màu hoàn toàn khác statusColor/urgencyColor (tím/xám thay vì
+/// xanh/đỏ) để không ai nhầm lẫn hai loại dữ liệu khi lướt nhanh qua UI.
+Color trustLevelColor(String trustLevel) =>
+    trustLevel == 'verified_press' ? const Color(0xFF6A1B9A) : Colors.blueGrey.shade400;
+
+String trustLevelLabel(String trustLevel) =>
+    trustLevel == 'verified_press' ? 'Báo chí' : 'MXH — chưa xác thực';

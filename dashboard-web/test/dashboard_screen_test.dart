@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bao_tin_dashboard/features/dashboard/dashboard_providers.dart';
 import 'package:bao_tin_dashboard/features/dashboard/dashboard_screen.dart';
 import 'package:bao_tin_dashboard/features/reports/reports_providers.dart';
+import 'package:bao_tin_dashboard/features/signals/signals_providers.dart';
 
 /// Renders the real DashboardScreen (KPI cards + all 4 fl_chart widgets + filter bar +
 /// camera queue tiles) against fixed fake data, bypassing auth entirely by overriding the
@@ -12,10 +13,11 @@ import 'package:bao_tin_dashboard/features/reports/reports_providers.dart';
 /// but only an actual widget pump exercises fl_chart's runtime layout — this is the one
 /// thing analyze cannot catch (a chart widget that compiles but throws at render time).
 ///
-/// DashboardScreen's IndexedStack mounts BOTH tabs up front (so switching tabs doesn't
-/// re-fetch), so reportListProvider must be overridden too even though this test only
-/// asserts on the Overview tab — otherwise the hidden Reports tab's real polling
-/// Stream.periodic(20s) keeps scheduling frames forever and pumpAndSettle times out.
+/// DashboardScreen's IndexedStack mounts all 3 tabs up front (so switching tabs doesn't
+/// re-fetch), so reportListProvider/signalListProvider must be overridden too even though
+/// this test only asserts on the Overview tab — otherwise the hidden tabs' real network
+/// calls (and Reports' polling Stream.periodic(20s)) keep scheduling frames forever and
+/// pumpAndSettle times out.
 void main() {
   testWidgets('DashboardScreen renders KPI cards and every chart without throwing', (tester) async {
     await tester.pumpWidget(
@@ -57,6 +59,7 @@ void main() {
             (ref) async => {'pending': 2, 'sent': 1, 'fulfilled': 4, 'rejected': 0},
           ),
           reportListProvider.overrideWith((ref) async => []),
+          signalListProvider.overrideWith((ref) async => []),
         ],
         child: const MaterialApp(home: DashboardScreen()),
       ),
@@ -105,6 +108,7 @@ void main() {
           volumeTrendProvider.overrideWith((ref) async => []),
           cameraQueueProvider.overrideWith((ref) async => <String, dynamic>{}),
           reportListProvider.overrideWith((ref) async => []),
+          signalListProvider.overrideWith((ref) async => []),
         ],
         child: const MaterialApp(home: DashboardScreen()),
       ),

@@ -22,7 +22,9 @@ class _MyReportsScreenState extends ConsumerState<MyReportsScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = ref.read(reportRepositoryProvider).listMine());
+    setState(() {
+      _future = ref.read(reportRepositoryProvider).listMine();
+    });
     await _future;
   }
 

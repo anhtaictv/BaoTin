@@ -8,6 +8,7 @@ import '../features/auth/dashboard_login_screen.dart';
 import '../features/dashboard/dashboard_repository.dart';
 import '../features/reports/reports_repository.dart';
 import '../features/cameras/camera_repository.dart';
+import '../features/signals/signals_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -37,4 +38,8 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
 
 final cameraRepositoryProvider = Provider<CameraRepository>(
   (ref) => CameraRepository(ref.watch(apiClientProvider)),
+);
+
+final signalsRepositoryProvider = Provider<SignalsRepository>(
+  (ref) => SignalsRepository(ref.watch(apiClientProvider)),
 );

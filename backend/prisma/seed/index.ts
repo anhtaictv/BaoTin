@@ -4,6 +4,7 @@ import { loadEnv } from "../../src/config/env.js";
 import { seedDistricts } from "./seed-districts.js";
 import { seedOfficers, seedOfficersForAllDistricts } from "./seed-officers.js";
 import { seedCameras } from "./seed-cameras.js";
+import { seedSignals } from "./seed-signals.js";
 
 async function main() {
   const env = loadEnv();
@@ -29,6 +30,9 @@ async function main() {
 
   console.log("Seeding demo cameras (v1.1) ...");
   await seedCameras(prisma);
+
+  console.log("Seeding demo social-media/press signals (Giai đoạn 2) ...");
+  await seedSignals(prisma);
 
   await prisma.$disconnect();
   console.log("Seed complete.");

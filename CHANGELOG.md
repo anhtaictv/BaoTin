@@ -1,5 +1,11 @@
 # Changelog
 
+## Giai đoạn 2 (bắt đầu) — Kênh tình báo mở
+- **"Tin nhanh (tham khảo)"** — màn hình/tab mới trên cả `mobile-app-officer` và `dashboard-web`, đọc từ bảng `social_media_signals` đã có sẵn từ trước. Tách biệt hoàn toàn khỏi luồng tin dân báo: không có nhãn trạng thái, không có nút xác nhận/duyệt, chỉ có nhãn nguồn (Báo chí / MXH — chưa xác thực) với màu sắc riêng (tím/xám, không trùng statusColor/urgencyColor) — CLAUDE.md nguyên tắc #1/#2.
+- API mới (đọc-only): `GET /officer/signals`, `GET /officer/signals/:id` — cùng cơ chế district-scoping như `/officer/reports` (officer thường chỉ thấy tín hiệu thuộc địa bàn được phân công, senior_officer/admin thấy tất cả).
+- Seed dữ liệu mẫu (`seed-signals.ts`) mô phỏng kết quả crawler báo chí/MXH — **chưa có crawler thật nào chạy**, đúng theo CLAUDE.md nguyên tắc #4 (không crawl live khi demo/thi).
+- Tiện thể sửa 1 bug tiềm ẩn: `setState(() => _future = _load())` — cú pháp arrow-function khiến callback bị coi là "trả về Future", Flutter framework báo lỗi runtime khi bấm filter chip. Có ở cả `mobile-app-officer` (2 màn) và `mobile-app-citizen` (1 màn), sửa thành block-body.
+
 ## 1.2 (đang phát triển)
 - Thêm `dashboard-web/` (Flutter Web) — trang tổng quan cho `admin`/`senior_officer` chạy trên máy tính trung tâm: KPI tổng số tin, thời gian phản hồi TB theo địa bàn/cán bộ, xu hướng theo ngày, hàng đợi yêu cầu trích xuất camera.
 - API mới: `GET /admin/dashboard/overview`, `/response-time-by-district`, `/response-time-by-officer`, `/volume-trend`, `/camera-queue`.

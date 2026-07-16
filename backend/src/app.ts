@@ -12,6 +12,8 @@ export interface AppRouters {
   camerasRouter?: Router;
   /** v1.2 — admin/senior_officer only, mounted at "/admin/dashboard". */
   dashboardRouter?: Router;
+  /** Giai đoạn 2 "kênh tình báo mở" — read-only, mounted at "/officer/signals". */
+  signalsRouter?: Router;
 }
 
 export interface AppConfig {
@@ -44,6 +46,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.dashboardRouter) {
     app.use("/admin/dashboard", routers.dashboardRouter);
+  }
+  if (routers.signalsRouter) {
+    app.use("/officer/signals", routers.signalsRouter);
   }
 
   app.use(notFoundHandler);
