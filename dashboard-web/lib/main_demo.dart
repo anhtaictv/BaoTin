@@ -60,7 +60,7 @@ class _FakeCameraRepository extends CameraRepository {
   @override
   Future<void> createExtractionRequest(
     String reportId, {
-    required String cameraId,
+    required List<String> cameraIds,
     required DateTime timeRangeStart,
     required DateTime timeRangeEnd,
     String? note,

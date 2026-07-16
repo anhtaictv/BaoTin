@@ -6,6 +6,10 @@ import 'extraction_request_dialog.dart';
 /// Ported from mobile-app-officer — auto-suggests cameras near a report's location,
 /// fetched automatically on mount, never behind a manual search action. CLAUDE.md
 /// non-negotiable #8: only name + managing-unit contact, no play/preview/download.
+///
+/// Cameras can be selected in bulk (e.g. several along a route) and submitted as one action,
+/// but that only ever produces N separate administrative paperwork requests, one per
+/// camera's own managing unit — there is no cross-camera recognition/tracking here.
 class NearbyCamerasSection extends ConsumerStatefulWidget {
   const NearbyCamerasSection({super.key, required this.reportId});
 
@@ -18,6 +22,7 @@ class NearbyCamerasSection extends ConsumerStatefulWidget {
 class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
   late Future<List<Map<String, dynamic>>> _future;
   String? _feedback;
+  final Set<String> _selected = {};
 
   @override
   void initState() {
@@ -31,6 +36,7 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
     if (oldWidget.reportId != widget.reportId) {
       setState(() {
         _feedback = null;
+        _selected.clear();
         _future = ref.read(cameraRepositoryProvider).nearbyCameras(widget.reportId);
       });
     }
@@ -43,19 +49,40 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
     });
   }
 
-  Future<void> _requestExtraction(Map<String, dynamic> camera) async {
-    final result = await showExtractionRequestDialog(context, cameraName: camera['name'] as String);
+  void _toggle(String cameraId) {
+    setState(() {
+      if (_selected.contains(cameraId)) {
+        _selected.remove(cameraId);
+      } else {
+        _selected.add(cameraId);
+      }
+    });
+  }
+
+  Future<void> _requestExtraction(List<Map<String, dynamic>> allCameras) async {
+    final selectedCameras = allCameras.where((c) => _selected.contains(c['id'])).toList();
+    if (selectedCameras.isEmpty) return;
+
+    final result = await showExtractionRequestDialog(
+      context,
+      cameraNames: selectedCameras.map((c) => c['name'] as String? ?? 'Camera').toList(),
+    );
     if (result == null) return;
     try {
       await ref.read(cameraRepositoryProvider).createExtractionRequest(
             widget.reportId,
-            cameraId: camera['id'] as String,
+            cameraIds: selectedCameras.map((c) => c['id'] as String).toList(),
             timeRangeStart: result.start,
             timeRangeEnd: result.end,
             note: result.note,
           );
       if (!mounted) return;
-      setState(() => _feedback = 'Đã gửi yêu cầu trích xuất tới đơn vị quản lý camera.');
+      setState(() {
+        _feedback = selectedCameras.length == 1
+            ? 'Đã gửi yêu cầu trích xuất tới đơn vị quản lý camera.'
+            : 'Đã gửi ${selectedCameras.length} yêu cầu trích xuất tới các đơn vị quản lý camera liên quan.';
+        _selected.clear();
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _feedback = 'Gửi yêu cầu thất bại. Vui lòng thử lại.');
@@ -79,8 +106,9 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Tự động gợi ý camera gần vị trí tin báo — không tự xem/tải video, chỉ tạo yêu cầu '
-              'gửi đơn vị quản lý xử lý thủ công.',
+              'Tự động gợi ý camera gần vị trí tin báo — không tự xem/tải video. Chọn 1 hoặc '
+              'nhiều camera (vd. dọc tuyến đường) để tạo yêu cầu gửi từng đơn vị quản lý xử lý '
+              'thủ công — hệ thống không nhận diện hay theo dõi qua các camera.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
@@ -104,22 +132,30 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
                   return const Text('Không có camera nào được ghi nhận gần vị trí này.');
                 }
                 return Column(
-                  children: cameras.map((camera) {
-                    final distance = (camera['distanceMeters'] as num?)?.round();
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(camera['name'] as String? ?? 'Camera'),
-                      subtitle: Text(
-                        '${camera['managingUnitName'] ?? 'Không rõ đơn vị'} — '
-                        '${camera['managingUnitContact'] ?? ''}'
-                        '${distance != null ? ' • cách ${distance}m' : ''}',
+                  children: [
+                    for (final camera in cameras)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: _selected.contains(camera['id']),
+                        onChanged: (_) => _toggle(camera['id'] as String),
+                        title: Text(camera['name'] as String? ?? 'Camera'),
+                        subtitle: Text(
+                          '${camera['managingUnitName'] ?? 'Không rõ đơn vị'} — '
+                          '${camera['managingUnitContact'] ?? ''}'
+                          '${(camera['distanceMeters'] as num?) != null ? ' • cách ${(camera['distanceMeters'] as num).round()}m' : ''}',
+                        ),
                       ),
-                      trailing: TextButton(
-                        onPressed: () => _requestExtraction(camera),
-                        child: const Text('Xin trích xuất'),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: _selected.isEmpty ? null : () => _requestExtraction(cameras),
+                        icon: const Icon(Icons.send_outlined, size: 18),
+                        label: Text(_selected.isEmpty ? 'Xin trích xuất' : 'Xin trích xuất (${_selected.length})'),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  ],
                 );
               },
             ),

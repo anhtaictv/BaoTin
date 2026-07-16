@@ -324,6 +324,14 @@ model Camera {
 /// v1.1 — an administrative *request* to a camera's managing unit, not a result. No column
 /// ever holds returned footage; status only tracks the request's paperwork progress
 /// (pending/sent/fulfilled/rejected), never video content or any recognition outcome.
+///
+/// `groupId` (added later) ties together the rows an officer creates in one action when
+/// selecting several cameras along a route (e.g. tracing a vehicle's likely path after an
+/// accident) — it is still N independent administrative requests, one per camera's managing
+/// unit, each still asking a human there to pull footage for a time window. There is no
+/// cross-camera person/vehicle recognition anywhere in this system: CLAUDE.md non-negotiable
+/// #8 rules that out as a deliberate, procedural limitation (biometric tracking needs its own
+/// legal basis and belongs in a police-specific operational system), not a technical gap.
 model CameraExtractionRequest {
   id             String                  @id @default(uuid())
   reportId       String                  @map("report_id")
@@ -332,6 +340,7 @@ model CameraExtractionRequest {
   timeRangeStart DateTime                @map("time_range_start")
   timeRangeEnd   DateTime                @map("time_range_end")
   note           String?
+  groupId        String?                 @map("group_id")
   status         ExtractionRequestStatus @default(pending)
   createdAt      DateTime                @default(now()) @map("created_at")
 
@@ -340,5 +349,6 @@ model CameraExtractionRequest {
   requestedOfficer Officer @relation(fields: [requestedBy], references: [id])
 
   @@index([reportId])
+  @@index([groupId])
   @@map("camera_extraction_requests")
 }

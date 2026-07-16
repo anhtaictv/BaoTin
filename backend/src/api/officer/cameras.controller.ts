@@ -13,14 +13,14 @@ export function createCamerasController(service: CameraExtractionService) {
 
     async createExtractionRequest(req: Request, res: Response) {
       if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
-      const { cameraId, timeRangeStart, timeRangeEnd, note } = req.body as {
-        cameraId: string;
+      const { cameraIds, timeRangeStart, timeRangeEnd, note } = req.body as {
+        cameraIds: string[];
         timeRangeStart: Date;
         timeRangeEnd: Date;
         note?: string;
       };
       const result = await service.createExtractionRequest(req.user, req.params.id as string, {
-        cameraId,
+        cameraIds,
         timeRangeStart,
         timeRangeEnd,
         note,
