@@ -34,3 +34,13 @@ Thumbs.db
 .codex/
 .agents/
 skills-lock.json
+
+# Internal design/planning docs — kept locally for development, not published to the
+# remote repo. Only README.md and CLAUDE.md stay tracked. See README.md for a summary of
+# what each of these covers.
+/API_SPEC.md
+/CHANGELOG.md
+/CONTEXT.md
+/DATABASE_SCHEMA.md
+/ROADMAP.md
+/docs/

@@ -1,3 +1,0 @@
-# PostGIS geometry columns via Prisma `Unsupported(...)` + parameterized raw SQL
-
-Prisma has no native geometry type, so `districts.boundary` and `reports.location` are declared as `Unsupported("geometry(...)")` and excluded from the generated client entirely. Every read/write of these columns goes through `$queryRaw`/`$executeRaw` using tagged-template (parameterized) SQL — e.g. `ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1,$2),4326))`, never string concatenation. Considered a community `prisma-extension-postgis` package or a separate geo microservice; rejected both to keep dependency surface and deployment topology minimal for a project this size. This is deliberate, not an oversight — do not "fix" it by trying to force geometry into a normal Prisma field.
