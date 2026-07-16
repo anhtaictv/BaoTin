@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "seed": "tsx prisma/seed/index.ts",
+    "crawl:rss": "tsx src/crawler/runCrawler.ts",
     "test": "vitest run",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
     "test:watch": "vitest",
@@ -31,6 +32,7 @@
     "jose": "^5.9.3",
     "minio": "^8.0.1",
     "multer": "^2.2.0",
+    "rss-parser": "^3.13.0",
     "sharp": "^0.33.5",
     "uuid": "^14.0.1",
     "zod": "^3.23.8"
