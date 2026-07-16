@@ -24,12 +24,14 @@ async function buildTestApp() {
   const officialCaseLink = { pushToOfficialCase: async () => {} };
   const auditLog = { record: async () => {} };
   const storage = { putObject: async () => {}, getPresignedGetUrl: async (key: string) => `https://minio.local/${key}` };
+  const notifications = { notifyOfficerOfNewReport: async () => new Date(), notifyUserOfStatusChange: async () => new Date() };
   const service = createOfficerReportsService({
     prisma: fakePrisma as any,
     districtScope,
     officialCaseLink,
     auditLog,
     storage,
+    notifications,
     piiEncryptionKey: randomBytes(32).toString("base64"),
   });
   const controller = createOfficerReportsController(service);

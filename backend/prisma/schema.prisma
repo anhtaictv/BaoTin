@@ -223,6 +223,9 @@ model ReportStatusHistory {
   oldStatus  ReportStatus? @map("old_status")
   newStatus  ReportStatus  @map("new_status")
   changedBy  String?       @map("changed_by")
+  /// Officer's note at this status change — API_SPEC.md's PATCH /officer/reports/:id/status
+  /// already accepted this in the request body, but nothing ever persisted it until now.
+  note       String?
   changedAt  DateTime      @default(now()) @map("changed_at")
 
   report  Report   @relation(fields: [reportId], references: [id])

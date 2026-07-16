@@ -1,5 +1,14 @@
 # Changelog
 
+## backend 1.6.0 · mobile-app-citizen 1.4.0+6 — Thông báo 2 chiều khi cán bộ đổi trạng thái tin báo
+Dừng ở mức noti 2 chiều đơn giản (không xây dựng chat/nhắn tin qua lại) — đúng định vị "Báo Tin bổ trợ VNeID, không thay thế" trong CLAUDE.md, không mở rộng vai trò sản phẩm thành kênh liên lạc đầy đủ giữa dân và công an.
+
+- Cán bộ đổi trạng thái tin báo → người dân báo tin (nếu có `userId`, không áp dụng cho tin ẩn danh/SOS không gắn tài khoản) nhận thông báo qua kênh hiện có (`ConsoleNotificationSender` — chưa nối nhà cung cấp SMS/Zalo OA thật).
+- **Sửa 1 bug tồn tại từ trước**: API `PATCH /officer/reports/:id/status` vốn đã nhận `note` trong request body nhưng chưa từng lưu lại — nay lưu vào cột mới `report_status_history.note`.
+- `GET /reports/:id/status` (app công dân) trả thêm `latestNote` — ghi chú của cán bộ tại lần đổi trạng thái gần nhất (`null` nếu tin chưa từng đổi trạng thái).
+- **App công dân** — màn "Trạng thái tin báo" hiển thị ghi chú của cán bộ (nếu có) ngay dưới thời điểm xác minh.
+- Vẫn tuân thủ human-in-the-loop (CLAUDE.md #3): thông báo chỉ phát sinh từ hành động chọn trạng thái thủ công của cán bộ, không có bước tự động nào kết luận thay.
+
 ## backend 1.5.0 · dashboard-web 1.4.0+3 · mobile-app-officer 1.3.0+4 · mobile-app-citizen 1.3.0+5 — Giai đoạn 4: NFC CCCD (mock), độ nóng MXH, đối chiếu chéo, gợi ý VNeID
 - **Quét NFC CCCD (mock UI)** — cả 2 app: `mobile-app-officer` (xác minh danh tính tại hiện trường, nút trong màn chi tiết tin báo) và `mobile-app-citizen` (liên kết CCCD, màn "Hồ sơ" mới). Toàn bộ dữ liệu hiển thị gắn nhãn `[MOCK]` rõ ràng, không có lời gọi NFC/chip thật nào (CLAUDE.md #5) — chưa tích hợp VNeID/SDK thật.
 - **Độ nóng tin MXH** (`signalHeat.ts`) — đếm số tín hiệu theo địa bàn trong 14 ngày gần nhất, phân mức `low`/`medium`/`high`; hiển thị badge 🔥 trên danh sách + chi tiết tín hiệu ở cả `mobile-app-officer` và `dashboard-web`. Công thức tính đúng ngay cả khi ít dữ liệu.

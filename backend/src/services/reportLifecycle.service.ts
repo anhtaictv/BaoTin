@@ -148,7 +148,17 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
       },
     });
     if (!report) throw new HttpError(404, "REPORT_NOT_FOUND", "Không tìm thấy tin báo.");
-    return report;
+
+    // The officer's note at the most recent status change — the other half of the same
+    // notification the citizen already got when the status changed (see
+    // notifyUserOfStatusChange in officerReports.service.ts's updateStatus).
+    const latestHistory = await deps.prisma.reportStatusHistory.findFirst({
+      where: { reportId },
+      orderBy: { changedAt: "desc" },
+      select: { note: true },
+    });
+
+    return { ...report, latestNote: latestHistory?.note ?? null };
   }
 
   return { createCitizenReport, createEmergencyReport, listMyReports, getReportStatus };
