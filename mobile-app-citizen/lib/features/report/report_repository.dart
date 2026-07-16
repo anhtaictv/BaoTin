@@ -41,4 +41,17 @@ class ReportRepository {
     final res = await _apiClient.dio.get('/reports/$reportId/status');
     return res.data['data'] as Map<String, dynamic>;
   }
+
+  /// Suggestion only — returns null when the AI provider isn't configured/unavailable/uncertain.
+  /// Caller decides what to do with a null suggestion (bao_tin_screen.dart just leaves the
+  /// current dropdown selection untouched).
+  Future<String?> suggestCategory(String description) async {
+    try {
+      final res = await _apiClient.dio.post('/reports/classify-suggestion', data: {'description': description});
+      final data = res.data['data'] as Map<String, dynamic>;
+      return data['category'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }

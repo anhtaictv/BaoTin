@@ -72,6 +72,15 @@ Kiểm thử khả năng tích hợp model AI chạy local cho crawler Giai đo�
 - [x] `OllamaSummarizer` — gọi REST API local (`/api/chat`), không cần API key, dữ liệu không rời máy; cùng hợp đồng fallback-về-cắt-ngắn như OpenAI/Gemini khi lỗi
 - [x] Kiểm chứng sống: cài Ollama qua winget, pull `qwen2.5:1.5b`, chạy `npm run crawl:rss` thật với `LLM_PROVIDER=ollama` — xác nhận model paraphrase đúng nghĩa tin thật từ Tuổi Trẻ, không chỉ cắt ngắn văn bản gốc
 
+## v1.8 — 4 tính năng AI hỗ trợ dùng Ollama (opt-in, chỉ gợi ý)
+Trả lời câu hỏi "dùng sự thông minh của Ollama để nâng cấp phần mềm" — chọn 4 hướng ít rủi ro nhất trong các ý đã đề xuất, tất cả đều **chỉ gợi ý cho người quyết định**, không có bước nào tự động kết luận thay (CLAUDE.md #3), và tất cả **tắt hoàn toàn nếu không cấu hình `LLM_PROVIDER=ollama`**.
+
+- [x] Lọc tín hiệu MXH thông minh hơn — AI xét thêm sau khi khớp từ khóa, chỉ có thể loại bớt tin, không nhận thêm. **Lưu ý trung thực**: model nhỏ (`qwen2.5:1.5b`) đôi khi đánh giá sai khi kiểm thử sống (từ chối nhầm 1 tin cháy nổ thật) — cần model lớn hơn nếu muốn độ chính xác cao hơn trong thực tế
+- [x] Gộp tin trùng theo ngữ nghĩa — AI chỉ được hỏi cho các cặp tin ở vùng biên similarity (0.15–0.5), tiết kiệm chi phí và tránh gọi AI cho cặp rõ ràng không liên quan
+- [x] Diễn giải độ nóng khu vực bằng 1-2 câu — chỉ tính khi độ nóng ở mức medium/high, hiển thị ở cả app cán bộ và dashboard
+- [x] Gợi ý phân loại tin báo cho người dân — pre-fill dropdown, không bao giờ ghi đè lựa chọn thủ công
+- [x] Trợ lý tìm kiếm ngôn ngữ tự nhiên cho dashboard — AI chỉ trích xuất bộ lọc, không tự trả lời; kết quả luôn là dữ liệu thật, tin báo/tín hiệu MXH vẫn tách biệt 2 danh sách
+
 ## Ưu tiên khi thời gian hạn chế (thi đấu)
 Nếu không đủ thời gian làm hết Giai đoạn 1, thứ tự tối thiểu để demo được câu chuyện trọn vẹn:
 1. Báo tin thường (ảnh + GPS + mô tả) — có thể mock geo-matching bằng dữ liệu cứng nếu chưa kịp tích hợp PostGIS thật

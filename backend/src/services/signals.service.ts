@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import { HttpError } from "../middleware/errorHandler.js";
 import type { DistrictScopeService, DistrictScopeSubject } from "../middleware/districtScope.js";
-import { computeHeatByDistrict, type SignalHeat } from "./signalHeat.js";
+import { computeHeatByDistrict, HEAT_LOOKBACK_DAYS, type SignalHeat } from "./signalHeat.js";
+import { NoopHeatNarrator, type HeatNarrator } from "./heatNarrative.js";
 
 export interface ListSignalsFilters {
   districtId?: string;
@@ -12,6 +13,9 @@ export interface ListSignalsFilters {
 export interface SignalsDeps {
   prisma: PrismaClient;
   districtScope: DistrictScopeService;
+  /** Optional AI narrative for the detail view when heat is medium/high. Defaults to
+   * NoopHeatNarrator (heat badge only, no narrative text) when not given. */
+  heatNarrator?: HeatNarrator;
 }
 
 const SIGNAL_LIST_SELECT = {
@@ -48,6 +52,8 @@ const RELATED_REPORT_WINDOW_DAYS = 3;
  * signals in their assigned district(s), senior_officer/admin see everything.
  */
 export function createSignalsService(deps: SignalsDeps) {
+  const heatNarrator = deps.heatNarrator ?? new NoopHeatNarrator();
+
   async function listSignals(subject: DistrictScopeSubject, filters: ListSignalsFilters) {
     const isUnrestricted = subject.role === "senior_officer" || subject.role === "admin";
     let districtIdFilter: string[] | undefined;
@@ -85,11 +91,12 @@ export function createSignalsService(deps: SignalsDeps) {
     await deps.districtScope.assertDistrictAccess(subject, signal.districtId);
 
     if (!signal.districtId) {
-      return { ...signal, heat: null, relatedReports: [] };
+      return { ...signal, heat: null, heatNarrative: null, relatedReports: [] };
     }
 
     const heatByDistrict = await computeHeatForScope([signal.districtId]);
     const heat = heatByDistrict.get(signal.districtId) ?? { score: 0, level: "low" as const };
+    const heatNarrative = heat.level === "low" ? null : await buildHeatNarrative(signal.districtId);
 
     const effectiveDate = signal.publishedAt ?? signal.crawledAt;
     const windowMs = RELATED_REPORT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -106,7 +113,28 @@ export function createSignalsService(deps: SignalsDeps) {
       orderBy: { createdAt: "desc" },
     });
 
-    return { ...signal, heat, relatedReports };
+    return { ...signal, heat, heatNarrative, relatedReports };
+  }
+
+  /** Only called when heat is medium/high — builds the narrative from the same signals that
+   * drove the heat count (district-scoped, 14-day lookback — same effectiveDate rule as
+   * computeHeatByDistrict in signalHeat.ts), so the text describes exactly what the badge is
+   * reacting to, nothing more. Filters in JS rather than via a DB where-clause to reuse the
+   * exact same date logic instead of restating it as a second, possibly-diverging query shape. */
+  async function buildHeatNarrative(districtId: string): Promise<string | null> {
+    const since = new Date(Date.now() - HEAT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+    const districtSignals = await deps.prisma.socialMediaSignal.findMany({
+      where: { districtId },
+      select: { summary: true, detectedCategory: true, publishedAt: true, crawledAt: true },
+      orderBy: { publishedAt: "desc" },
+    });
+    const recentSignals = districtSignals
+      .filter((s) => (s.publishedAt ?? s.crawledAt) >= since)
+      .slice(0, 10)
+      .map((s) => ({ summary: s.summary, detectedCategory: s.detectedCategory }));
+
+    const district = await deps.prisma.district.findUnique({ where: { id: districtId }, select: { tenXa: true } });
+    return heatNarrator.generate({ districtName: district?.tenXa ?? "khu vực này", signals: recentSignals });
   }
 
   /** Heat is computed across every signal in scope (not just the ones matching the caller's

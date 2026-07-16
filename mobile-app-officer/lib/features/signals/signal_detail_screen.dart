@@ -43,6 +43,7 @@ class _SignalDetailScreenState extends ConsumerState<SignalDetailScreen> {
           }
           final signal = snapshot.data!;
           final heat = signal['heat'] as Map<String, dynamic>?;
+          final heatNarrative = signal['heatNarrative'] as String?;
           final relatedReports = List<Map<String, dynamic>>.from(signal['relatedReports'] as List? ?? []);
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -78,6 +79,32 @@ class _SignalDetailScreenState extends ConsumerState<SignalDetailScreen> {
                 Text('Nội dung gốc', style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 8),
                 Text(signal['rawSnippet'] as String),
+              ],
+              if (heatNarrative != null && heatNarrative.trim().isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Card(
+                  color: Colors.orange.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.auto_awesome, size: 16, color: Colors.orange.shade800),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Diễn giải độ nóng (AI, chỉ tham khảo)',
+                              style: TextStyle(color: Colors.orange.shade900, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(heatNarrative, style: TextStyle(color: Colors.orange.shade900)),
+                      ],
+                    ),
+                  ),
+                ),
               ],
               if (relatedReports.isNotEmpty) ...[
                 const SizedBox(height: 24),

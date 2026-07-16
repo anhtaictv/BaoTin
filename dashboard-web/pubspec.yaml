@@ -1,7 +1,7 @@
 name: bao_tin_dashboard
 description: "Báo Tin — dashboard trung tâm điều hành (web, admin/senior_officer)."
 publish_to: "none"
-version: 1.4.0+3
+version: 1.5.0+4
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

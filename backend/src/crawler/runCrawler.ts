@@ -7,6 +7,8 @@
 import { loadEnv } from "../config/env.js";
 import { prisma } from "../db/prisma.js";
 import { createSummarizer } from "./summarizer.js";
+import { createRelevanceClassifier } from "./relevanceClassifier.js";
+import { createSemanticDuplicateChecker } from "./dedup.js";
 import { createPressCrawlerService } from "./pressCrawler.service.js";
 import { fetchRssFeed } from "./rssFetcher.js";
 import { RSS_SOURCES } from "./rssSources.js";
@@ -27,7 +29,15 @@ async function runOnce(service: ReturnType<typeof createPressCrawlerService>) {
 async function main() {
   const env = loadEnv();
   const summarizer = createSummarizer(env);
-  const service = createPressCrawlerService({ prisma, summarizer, fetchFeed: fetchRssFeed });
+  const relevanceClassifier = createRelevanceClassifier(env);
+  const semanticDuplicateChecker = createSemanticDuplicateChecker(env);
+  const service = createPressCrawlerService({
+    prisma,
+    summarizer,
+    relevanceClassifier,
+    semanticDuplicateChecker,
+    fetchFeed: fetchRssFeed,
+  });
 
   // eslint-disable-next-line no-console
   console.log(`[press-crawler] khởi động — ${RSS_SOURCES.length} nguồn, LLM_PROVIDER=${env.LLM_PROVIDER}`);

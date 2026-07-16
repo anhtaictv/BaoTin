@@ -5,7 +5,7 @@ export interface SignalHeat {
   level: HeatLevel;
 }
 
-const HEAT_LOOKBACK_DAYS = 14;
+export const HEAT_LOOKBACK_DAYS = 14;
 /** score = số tín hiệu trong cùng địa bàn, 14 ngày gần nhất. Ngưỡng thấp hơn areaAlerts.service.ts
  * vì tín hiệu MXH/báo chí thưa hơn nhiều so với tin dân báo. */
 const HEAT_THRESHOLD_HIGH = 5;

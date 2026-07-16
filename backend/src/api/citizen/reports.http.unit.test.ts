@@ -15,8 +15,9 @@ import type { GeoMatchService } from "../../geo/geoMatch.service.js";
 import type { AssignOfficerService } from "../../geo/assignOfficer.service.js";
 import type { StorageClient } from "../../storage/minioClient.js";
 import type { NotificationService } from "../../notifications/notification.service.js";
+import type { ReportCategorySuggester } from "../../services/reportClassifier.js";
 
-async function buildTestApp() {
+async function buildTestApp(categorySuggester?: ReportCategorySuggester) {
   const { publicKey: pub, privateKey: priv } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   const { privateKey, publicKey } = await loadJwtKeys(
     await exportPKCS8(priv as never),
@@ -49,7 +50,7 @@ async function buildTestApp() {
     storage,
     notifications,
   });
-  const controller = createReportsController(reportLifecycle);
+  const controller = createReportsController(reportLifecycle, categorySuggester ?? { suggestCategory: async () => null });
   const requireAuth = createAuthMiddleware(publicKey);
   const citizenReportsRouter = createReportsRoutes(controller, requireAuth);
 
@@ -158,5 +159,45 @@ describe("GET /reports/mine and /reports/:id/status", () => {
       .set("Authorization", `Bearer ${citizenToken}`);
     expect(statusRes.status).toBe(200);
     expect(statusRes.body.data.status).toBe("pending");
+  });
+});
+
+describe("POST /reports/classify-suggestion", () => {
+  it("returns the suggester's category", async () => {
+    const { app, citizenToken } = await buildTestApp({ suggestCategory: async () => "chay_no" });
+    const res = await request(app)
+      .post("/reports/classify-suggestion")
+      .set("Authorization", `Bearer ${citizenToken}`)
+      .send({ description: "Có khói và lửa bốc lên từ nhà kho gần đây" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ category: "chay_no" });
+  });
+
+  it("returns category: null when the suggester is uncertain/unavailable", async () => {
+    const { app, citizenToken } = await buildTestApp({ suggestCategory: async () => null });
+    const res = await request(app)
+      .post("/reports/classify-suggestion")
+      .set("Authorization", `Bearer ${citizenToken}`)
+      .send({ description: "..." });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ category: null });
+  });
+
+  it("401s without a bearer token", async () => {
+    const { app } = await buildTestApp();
+    const res = await request(app).post("/reports/classify-suggestion").send({ description: "abc" });
+    expect(res.status).toBe(401);
+  });
+
+  it("400s when description is missing", async () => {
+    const { app, citizenToken } = await buildTestApp();
+    const res = await request(app)
+      .post("/reports/classify-suggestion")
+      .set("Authorization", `Bearer ${citizenToken}`)
+      .send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 });

@@ -18,6 +18,8 @@ export interface AppRouters {
   emergencyContactsRouter?: Router;
   /** Giai đoạn 3 — mounted at "/area-alerts". */
   areaAlertsRouter?: Router;
+  /** Trợ lý tìm kiếm ngôn ngữ tự nhiên (AI cục bộ) — mounted at "/admin/search". */
+  searchRouter?: Router;
 }
 
 export interface AppConfig {
@@ -59,6 +61,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.areaAlertsRouter) {
     app.use("/area-alerts", routers.areaAlertsRouter);
+  }
+  if (routers.searchRouter) {
+    app.use("/admin/search", routers.searchRouter);
   }
 
   app.use(notFoundHandler);

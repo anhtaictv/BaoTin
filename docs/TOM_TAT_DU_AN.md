@@ -66,11 +66,20 @@
 - Sửa 1 bug tồn tại từ Giai đoạn 1: API đã nhận `note` nhưng chưa từng lưu
 - **Quyết định phạm vi rõ ràng:** dừng ở mức thông báo 2 chiều, không xây dựng chat/nhắn tin qua lại nhiều lượt — giữ đúng định vị bổ trợ VNeID
 
-### v1.7.0 — Ollama làm tùy chọn AI tóm tắt cho crawler (mới nhất)
+### v1.7.0 — Ollama làm tùy chọn AI tóm tắt cho crawler
 - Thêm `OllamaSummarizer` — chạy model AI local qua Ollama (không cần API key, dữ liệu không rời máy), cùng hợp đồng fallback-về-cắt-ngắn như OpenAI/Gemini khi lỗi
 - Đã đối chiếu với `PrismML-Eng/Bonsai-demo` (nặng hơn hẳn: cần HuggingFace token cho bản 27B mặc định, tải hàng chục GB) — chọn Ollama vì nhẹ, khớp ngay với kiến trúc `Summarizer` sẵn có
 - Kiểm chứng sống: cài Ollama, pull `qwen2.5:1.5b`, chạy crawler thật — model paraphrase đúng nghĩa tin thật, không chỉ cắt ngắn văn bản
 - Không đổi hành vi mặc định — `LLM_PROVIDER` vẫn mặc định `none`
+
+### v1.8.0 — 4 tính năng AI hỗ trợ dùng Ollama, opt-in, chỉ gợi ý (mới nhất)
+Toàn bộ tắt hoàn toàn nếu không cấu hình `LLM_PROVIDER=ollama`; mọi tính năng chỉ gợi ý/hỗ trợ, không có bước nào tự động kết luận thay con người.
+- Lọc tín hiệu MXH thông minh hơn — AI xét thêm sau khi khớp từ khóa, chỉ có thể loại bớt tin chứ không nhận thêm. **Ghi nhận thật khi kiểm thử sống**: model nhỏ `qwen2.5:1.5b` đôi khi đánh giá sai (từ chối nhầm 1 tin cháy nổ có thật) — độ chính xác phụ thuộc model, cần model lớn hơn nếu muốn dùng nghiêm túc
+- Gộp tin trùng theo ngữ nghĩa — chỉ hỏi AI cho các cặp tin ở vùng biên similarity (0.15–0.5), tiết kiệm chi phí gọi model
+- Diễn giải độ nóng khu vực bằng 1-2 câu — chỉ tính khi độ nóng medium/high, hiển thị ở app cán bộ + dashboard, nhãn rõ "AI, chỉ tham khảo"
+- Gợi ý phân loại tin báo cho người dân — pre-fill dropdown sau khi gõ mô tả, không bao giờ ghi đè lựa chọn thủ công
+- Trợ lý tìm kiếm ngôn ngữ tự nhiên (tab mới trên dashboard-web) — AI chỉ trích xuất bộ lọc (địa bàn/thời gian/từ khóa), không tự trả lời bằng văn bản riêng; kết quả luôn là dữ liệu thật từ database, tin báo/tín hiệu MXH vẫn hiển thị tách biệt 2 danh sách
+- Đã kiểm chứng sống toàn bộ qua Docker + Ollama thật với dữ liệu seed thật
 
 ## 4. Ứng dụng thực tế — luồng sử dụng theo từng vai trò
 
@@ -117,14 +126,15 @@
 - **Số điện thoại khẩn cấp theo địa bàn cụ thể** (công an/y tế phường) hiện là dữ liệu `[DEMO]`, chưa xác minh số thật
 - **NFC CCCD** mới dừng ở mock UI, chưa tích hợp VNeID/SDK chính thức của Bộ Công an
 - **Chat/nhắn tin 2 chiều đầy đủ** giữa dân và cán bộ — cố ý không làm, hiện chỉ dừng ở thông báo 1 chiều mỗi khi đổi trạng thái + ghi chú đi kèm
+- **Độ chính xác của các tính năng AI (Ollama) phụ thuộc vào model** — kiểm thử sống với model nhỏ `qwen2.5:1.5b` cho thấy bộ lọc liên quan tín hiệu MXH đôi khi từ chối nhầm tin thật; cần cân nhắc model lớn hơn nếu muốn dùng nghiêm túc ngoài mục đích minh họa/demo
 
 ## 7. Trạng thái phiên bản hiện tại
 
 | Package | Version |
 |---|---|
-| backend | 1.7.0 |
-| dashboard-web | 1.4.0+3 |
-| mobile-app-officer | 1.3.0+4 |
-| mobile-app-citizen | 1.4.0+6 |
+| backend | 1.8.0 |
+| dashboard-web | 1.5.0+4 |
+| mobile-app-officer | 1.4.0+5 |
+| mobile-app-citizen | 1.5.0+7 |
 
-Toàn bộ đã qua `tsc --noEmit`, `vitest run`, `flutter analyze`, `flutter test` sạch lỗi ở lần release gần nhất (v1.7.0), và được xác minh sống (live) qua Docker Compose (Postgres+PostGIS, MinIO) trước khi release.
+Toàn bộ đã qua `tsc --noEmit`, `vitest run`, `flutter analyze`, `flutter test` sạch lỗi ở lần release gần nhất (v1.8.0), và được xác minh sống (live) qua Docker Compose (Postgres+PostGIS, MinIO) + Ollama thật (`qwen2.5:1.5b`) trước khi release.
