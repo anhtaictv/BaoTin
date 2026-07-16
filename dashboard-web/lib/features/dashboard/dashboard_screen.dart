@@ -4,6 +4,8 @@ import '../../core/providers.dart';
 import '../auth/dashboard_login_screen.dart';
 import '../reports/reports_providers.dart';
 import '../reports/reports_tab.dart';
+import '../signals/signals_providers.dart';
+import '../signals/signals_tab.dart';
 import 'dashboard_overview_tab.dart';
 import 'dashboard_providers.dart';
 
@@ -37,6 +39,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.invalidate(volumeTrendProvider);
     ref.invalidate(cameraQueueProvider);
     ref.invalidate(reportListProvider);
+    ref.invalidate(signalListProvider);
   }
 
   @override
@@ -67,13 +70,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 selectedIcon: Icon(Icons.inbox),
                 label: Text('Tin báo'),
               ),
+              NavigationRailDestination(
+                icon: Icon(Icons.feed_outlined),
+                selectedIcon: Icon(Icons.feed),
+                label: Text('Tin nhanh'),
+              ),
             ],
           ),
           const VerticalDivider(width: 1),
           Expanded(
             child: IndexedStack(
               index: _tabIndex,
-              children: const [DashboardOverviewTab(), ReportsTab()],
+              children: const [DashboardOverviewTab(), ReportsTab(), SignalsTab()],
             ),
           ),
         ],

@@ -26,6 +26,9 @@ import { createCamerasRoutes } from "./api/officer/cameras.routes.js";
 import { createDashboardStatsService } from "./services/dashboardStats.service.js";
 import { createDashboardController } from "./api/admin/dashboard.controller.js";
 import { createDashboardRoutes } from "./api/admin/dashboard.routes.js";
+import { createSignalsService } from "./services/signals.service.js";
+import { createSignalsController } from "./api/officer/signals.controller.js";
+import { createSignalsRoutes } from "./api/officer/signals.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -86,6 +89,10 @@ async function main() {
   const dashboardController = createDashboardController(dashboardStats);
   const dashboardRouter = createDashboardRoutes(dashboardController, requireAuth);
 
+  const signalsService = createSignalsService({ prisma, districtScope });
+  const signalsController = createSignalsController(signalsService);
+  const signalsRouter = createSignalsRoutes(signalsController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -93,6 +100,7 @@ async function main() {
       officerReportsRouter,
       camerasRouter,
       dashboardRouter,
+      signalsRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

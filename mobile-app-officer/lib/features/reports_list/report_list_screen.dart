@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../report_detail/report_detail_screen.dart';
+import '../signals/signal_list_screen.dart';
 
 const _statusFilters = <String, String>{
   'pending': 'Chờ xử lý',
@@ -40,12 +41,25 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
         );
   }
 
-  void _refresh() => setState(() => _future = _load());
+  void _refresh() => setState(() {
+        _future = _load();
+      });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tin báo theo địa bàn')),
+      appBar: AppBar(
+        title: const Text('Tin báo theo địa bàn'),
+        actions: [
+          IconButton(
+            tooltip: 'Tin nhanh (tham khảo)',
+            icon: const Icon(Icons.feed_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SignalListScreen()),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
