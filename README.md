@@ -18,8 +18,7 @@ thông thường.
 
 ## Giới thiệu
 
-**Báo Tin** là phần mềm **độc lập** — không phải module của hệ thống quản lý tin bài hiện
-có, dù có liên kết API hai chiều. Mục đích duy nhất: khi có sự việc xảy ra, người dân báo
+**Báo Tin** là phần mềm được phát triển với mục đích duy nhất: khi có sự việc xảy ra, người dân báo
 tin **kèm định vị GPS thật** (ảnh chụp/quay giữ nguyên EXIF, không qua trung gian Zalo/
 Messenger), hệ thống tự động khoanh vùng địa bàn (PostGIS geo-matching) và đẩy thông báo
 tới đúng cán bộ phụ trách xã/phường đó — không cần chờ quy trình hành chính nhiều bước.
