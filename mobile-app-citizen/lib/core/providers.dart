@@ -5,6 +5,7 @@ import '../features/auth/auth_repository.dart';
 import '../features/report/report_repository.dart';
 import '../features/report/camera_gps_capture.dart';
 import '../features/emergency/emergency_repository.dart';
+import '../features/area_safety/area_safety_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -25,5 +26,9 @@ final emergencyRepositoryProvider = Provider<EmergencyRepository>(
 );
 
 final locationResolverProvider = Provider<LocationResolver>((ref) => LocationResolver());
+
+final areaSafetyRepositoryProvider = Provider<AreaSafetyRepository>(
+  (ref) => AreaSafetyRepository(ref.watch(apiClientProvider)),
+);
 
 final cameraGpsCaptureProvider = Provider<CameraGpsCapture>((ref) => CameraGpsCapture());

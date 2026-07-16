@@ -28,7 +28,7 @@ async function buildTestApp() {
   const officerId = randomUUID();
   const notifyCalls: unknown[] = [];
 
-  const geoMatch: GeoMatchService = { matchDistrict: async () => districtId };
+  const geoMatch: GeoMatchService = { matchDistrict: async () => districtId, matchNearestDistrict: async () => districtId };
   const assignOfficer: AssignOfficerService = { pickOfficerForDistrict: async () => officerId };
   const storage: StorageClient = {
     putObject: async () => {},

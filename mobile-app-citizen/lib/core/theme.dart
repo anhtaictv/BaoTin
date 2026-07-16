@@ -66,6 +66,20 @@ Color statusColor(String status) {
   }
 }
 
+/// Bản đồ cảnh báo khu vực (Giai đoạn 3) — mật độ tin báo theo xã/phường, không phải
+/// trạng thái xác minh, nên dùng bảng màu riêng thay vì statusColor.
+Color alertLevelColor(String level) {
+  switch (level) {
+    case 'high':
+      return const Color(0xFFD32F2F);
+    case 'medium':
+      return const Color(0xFFF9A825);
+    case 'low':
+    default:
+      return const Color(0xFF2E7D32);
+  }
+}
+
 String statusLabel(String status) {
   switch (status) {
     case 'confirmed_true':

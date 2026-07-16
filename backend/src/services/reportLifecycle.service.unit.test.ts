@@ -23,6 +23,7 @@ function buildService(
 
   const geoMatch: GeoMatchService = {
     matchDistrict: async () => opts.districtId,
+    matchNearestDistrict: async () => opts.districtId,
   };
   const assignOfficer: AssignOfficerService = {
     pickOfficerForDistrict: async () => opts.officerId,

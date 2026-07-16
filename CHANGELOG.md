@@ -1,5 +1,12 @@
 # Changelog
 
+## backend 1.4.0 · mobile-app-citizen 1.2.0+4 — Giai đoạn 3: Bản đồ cảnh báo + danh bạ khẩn cấp
+- **`GET /area-alerts?lat=&lng=`** — bản đồ cảnh báo khu vực cho người dân, dữ liệu tổng hợp: đếm tin báo 30 ngày gần nhất theo từng xã/phường (`ST_Centroid` cho tọa độ hiển thị), phân mức `low`/`medium`/`high` theo ngưỡng số lượng. Không bao giờ trả về vị trí hay chi tiết của từng tin báo cụ thể.
+- **`GET /emergency-contacts?lat=&lng=`** — danh bạ khẩn cấp tự động theo vị trí: khớp địa bàn qua tọa độ (fallback địa bàn gần nhất nếu điểm nằm ngoài mọi ranh giới), ưu tiên liên hệ riêng của địa bàn đó, những loại (police/medical/fire) chưa có liên hệ riêng thì dùng số quốc gia thật (113/114/115). Liên hệ riêng theo địa bàn hiện là `[DEMO]` vì chưa xác minh được số thật của từng đơn vị.
+- **App công dân — tab "Khu vực"** mới: bản đồ (OpenStreetMap qua `flutter_map`, không cần API key trả phí) với marker màu theo mức cảnh báo từng xã/phường + danh bạ khẩn cấp bấm gọi trực tiếp (`url_launcher`). Tái dùng nguyên `LocationResolver` đã có sẵn cho báo tin thường.
+- Bảng mới `emergency_contacts` (`districtId` nullable — null = mặc định/toàn quốc).
+- **Chưa làm**: "Đồng bộ danh mục địa bàn giữa 2 hệ thống" — thiếu thông tin API/schema của phần mềm quản lý tin bài chính để thiết kế, cần hỏi thêm trước khi làm.
+
 ## backend 1.3.0 · dashboard-web 1.3.0+2 · mobile-app-officer 1.2.0+3 · mobile-app-citizen 1.1.1+3 — Giai đoạn 2 (bắt đầu): Kênh tình báo mở
 Semantic versioning per package từ đây trở đi (mỗi package versioned độc lập trong package.json/pubspec.yaml riêng — MAJOR.MINOR.PATCH, `+N` là build number của Flutter). backend/dashboard-web/mobile-app-officer đều lên MINOR (tính năng mới, tương thích ngược); mobile-app-citizen chỉ lên PATCH (chỉ có bugfix, không có tính năng người dùng mới).
 

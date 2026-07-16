@@ -5,6 +5,7 @@ import { seedDistricts } from "./seed-districts.js";
 import { seedOfficers, seedOfficersForAllDistricts } from "./seed-officers.js";
 import { seedCameras } from "./seed-cameras.js";
 import { seedSignals } from "./seed-signals.js";
+import { seedEmergencyContacts } from "./seed-emergency-contacts.js";
 
 async function main() {
   const env = loadEnv();
@@ -33,6 +34,9 @@ async function main() {
 
   console.log("Seeding demo social-media/press signals (Giai đoạn 2) ...");
   await seedSignals(prisma);
+
+  console.log("Seeding emergency contacts (Giai đoạn 3) ...");
+  await seedEmergencyContacts(prisma);
 
   await prisma.$disconnect();
   console.log("Seed complete.");

@@ -111,12 +111,30 @@ model District {
   boundary   Unsupported("geometry(MultiPolygon,4326)")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  assignments OfficerDistrictAssignment[]
-  reports     Report[]
-  signals     SocialMediaSignal[]
-  cameras     Camera[]
+  assignments       OfficerDistrictAssignment[]
+  reports           Report[]
+  signals           SocialMediaSignal[]
+  cameras           Camera[]
+  emergencyContacts EmergencyContact[]
 
   @@map("districts")
+}
+
+/// Giai đoạn 3 "Danh bạ khẩn cấp tự động theo vị trí". districtId null = liên hệ mặc định/
+/// toàn quốc (vd. 113/114/115) — dùng khi địa bàn xác định được chưa có liên hệ riêng nào.
+model EmergencyContact {
+  id          String   @id @default(uuid())
+  districtId  String?  @map("district_id")
+  contactType String   @map("contact_type") // 'police' | 'medical' | 'fire'
+  name        String
+  phoneNumber String   @map("phone_number")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  district District? @relation(fields: [districtId], references: [id])
+
+  @@index([districtId, contactType])
+  @@map("emergency_contacts")
 }
 
 model OfficerDistrictAssignment {
