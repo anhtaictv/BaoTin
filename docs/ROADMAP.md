@@ -34,14 +34,14 @@ Trang tổng quan cho `admin`/`senior_officer`, chạy trên máy tính (web), k
 Module độc lập, không block giai đoạn 1.
 
 - [x] Bảng `social_media_signals` (tách biệt hoàn toàn khỏi `reports`)
-- [ ] Crawler nguồn báo chí (RSS) trước
-- [ ] Crawler MXH (nguồn public hợp lệ) sau
-- [ ] Cấu hình tần suất riêng theo từng nguồn
-- [ ] Lọc từ khóa địa danh + loại vụ việc
-- [ ] AI tóm tắt 1-2 câu
-- [ ] Gộp tin trùng (dedup theo similarity)
+- [x] Crawler nguồn báo chí (RSS) trước — `backend/src/crawler/`, nguồn VnExpress + Tuổi Trẻ (mục Pháp luật, đã xác minh URL thật); **chưa có nguồn báo Đắk Lắk** — không tìm thấy feed RSS công khai của baodaklak.vn, cần bổ sung thủ công nếu tìm được URL đúng
+- [ ] Crawler MXH (nguồn public hợp lệ) sau — **chưa làm có chủ đích**: scrape Facebook/Zalo không qua API chính thức có rủi ro vi phạm điều khoản dịch vụ; kiến trúc (`RssSourceConfig`, `pressCrawler.service.ts`) đủ tổng quát để cắm thêm nguồn khi có API hợp lệ (vd. Facebook Graph API cho trang do đơn vị quản lý)
+- [x] Cấu hình tần suất riêng theo từng nguồn — mỗi nguồn có `pollIntervalMinutes` riêng (`rssSources.ts`, `runCrawler.ts`)
+- [x] Lọc từ khóa địa danh + loại vụ việc — `keywordFilter.ts`; tin không khớp từ khóa loại vụ việc nào sẽ không được lưu
+- [x] AI tóm tắt 1-2 câu — `summarizer.ts`, chọn qua `LLM_PROVIDER` (openai/gemini/none), mặc định `none` = chỉ cắt ngắn văn bản gốc, không gọi API nào. Đã có chỗ nhét API key (`OPENAI_API_KEY`/`GEMINI_API_KEY`), **chưa có key thật nào được cấu hình**
+- [x] Gộp tin trùng (dedup theo similarity) — `dedup.ts`, trigram Jaccard, chỉ gắn cờ "có thể trùng", không tự động gộp/xóa
 - [x] UI riêng "Tin nhanh (tham khảo)" — tách biệt rõ khỏi tin đã xác thực (mobile-app-officer + dashboard-web)
-- [x] Seed data mẫu để demo (không crawl live khi thi) — `seed-signals.ts`, chưa có crawler thật nào chạy
+- [x] Seed data mẫu để demo (không crawl live khi thi) — `seed-signals.ts`; crawler thật đã viết xong nhưng **chạy qua script riêng** (`npm run crawl:rss`), không tự khởi động cùng server (CLAUDE.md #4)
 
 ## Giai đoạn 3 — Trải nghiệm & liên kết
 - [ ] Bản đồ cảnh báo khu vực cho người dân (tổng hợp, không chi tiết nhạy cảm)

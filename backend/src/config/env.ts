@@ -33,6 +33,12 @@ const EnvSchema = z.object({
     .string()
     .min(1, "PHONE_BLIND_INDEX_KEY is required (HMAC key, base64)"),
   OTP_HASH_PEPPER: z.string().default(""),
+
+  /** Giai đoạn 2 crawler — AI tóm tắt 1-2 câu. No key configured => falls back to a plain
+   * truncation, never crashes the crawler pipeline (see crawler/summarizer.ts). */
+  LLM_PROVIDER: z.enum(["openai", "gemini", "none"]).default("none"),
+  OPENAI_API_KEY: z.string().default(""),
+  GEMINI_API_KEY: z.string().default(""),
 })
   /**
    * SECURITY.md §4 (least-privilege DB user) and §5 (no wildcard CORS in production) are easy
