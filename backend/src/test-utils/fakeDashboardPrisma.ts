@@ -139,8 +139,14 @@ export function createFakeDashboardPrisma() {
     },
     async $queryRaw(_strings: TemplateStringsArray, ...values: unknown[]) {
       const days = values[0] as number;
+      const districtId = values[1] as string | undefined;
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-      const filtered = reports.filter((r) => r.source === "citizen" && r.createdAt >= since);
+      const filtered = reports.filter(
+        (r) =>
+          r.source === "citizen" &&
+          r.createdAt >= since &&
+          (districtId === undefined || r.districtId === districtId),
+      );
       const byDate = new Map<string, number>();
       for (const row of filtered) {
         const dateStr = row.createdAt.toISOString().slice(0, 10);

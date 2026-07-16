@@ -90,6 +90,7 @@ model Officer {
   assignments        OfficerDistrictAssignment[]
   assignedReports     Report[]                    @relation("AssignedOfficer")
   statusChanges       ReportStatusHistory[]
+  otpChallenges       OtpChallenge[]
   refreshTokens       RefreshToken[]
   auditLogEntries     AdminAuditLog[]
   cameraExtractionRequests CameraExtractionRequest[]
@@ -224,18 +225,25 @@ model OfficialCaseLink {
 }
 
 /// Short-lived OTP challenges. Code stored as HMAC hash only, self-expiring — see src/crypto/otpHash.ts.
+/// subjectType distinguishes citizen vs officer since they're separate tables — same
+/// no-hard-FK-on-either-side pattern as RefreshToken below (an officer's id must never
+/// be forced into a column FK'd to `users`, and vice versa).
 model OtpChallenge {
   id           String    @id @default(uuid())
-  userId       String    @map("user_id")
+  subjectType  String    @map("subject_type") // 'user' | 'officer'
+  userId       String?   @map("user_id")
+  officerId    String?   @map("officer_id")
   codeHash     String    @map("code_hash")
   expiresAt    DateTime  @map("expires_at")
   attemptCount Int       @default(0) @map("attempt_count")
   consumedAt   DateTime? @map("consumed_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+  officer Officer? @relation(fields: [officerId], references: [id])
 
   @@index([userId, expiresAt])
+  @@index([officerId, expiresAt])
   @@map("otp_challenges")
 }
 

@@ -40,6 +40,7 @@ class DashboardOverviewTab extends ConsumerWidget {
                 onRetry: () => ref.invalidate(responseTimeByDistrictProvider),
                 builder: (data) => ResponseTimeBarChart(
                   title: 'Thời gian phản hồi TB theo địa bàn',
+                  subtitle: 'Luôn hiển thị tất cả địa bàn để so sánh',
                   entries: data
                       .map((d) => {
                             'label': d['districtName'],

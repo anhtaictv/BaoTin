@@ -36,6 +36,13 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
     }
   }
 
+  void _retry() {
+    setState(() {
+      _feedback = null;
+      _future = ref.read(cameraRepositoryProvider).nearbyCameras(widget.reportId);
+    });
+  }
+
   Future<void> _requestExtraction(Map<String, dynamic> camera) async {
     final result = await showExtractionRequestDialog(context, cameraName: camera['name'] as String);
     if (result == null) return;
@@ -82,6 +89,15 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
                   return const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator()));
+                }
+                if (snapshot.hasError) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Không tải được camera gần đây.'),
+                      TextButton(onPressed: _retry, child: const Text('Thử lại')),
+                    ],
+                  );
                 }
                 final cameras = snapshot.data ?? const [];
                 if (cameras.isEmpty) {

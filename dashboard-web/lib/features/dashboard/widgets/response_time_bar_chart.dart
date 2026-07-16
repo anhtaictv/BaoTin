@@ -14,11 +14,15 @@ class ResponseTimeBarChart extends StatelessWidget {
     super.key,
     required this.title,
     required this.entries,
+    this.subtitle,
   });
 
   final String title;
   /// {label, avgResponseTimeSeconds, reportCount}
   final List<Map<String, dynamic>> entries;
+  /// Optional small caption under the title — e.g. to clarify a chart intentionally
+  /// ignores a page-level filter (see dashboard_overview_tab.dart).
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +42,11 @@ class ResponseTimeBarChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
+            if (subtitle != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+              ),
             const SizedBox(height: 12),
             SizedBox(
               height: 220,

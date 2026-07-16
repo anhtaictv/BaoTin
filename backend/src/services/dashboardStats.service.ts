@@ -80,11 +80,12 @@ export function createDashboardStatsService(deps: DashboardStatsDeps) {
       .sort((a, b) => (b.avgResponseTimeSeconds ?? 0) - (a.avgResponseTimeSeconds ?? 0));
   }
 
-  async function getResponseTimeByOfficer(filters: { days?: number }) {
+  async function getResponseTimeByOfficer(filters: { days?: number; districtId?: string }) {
     const where = {
       source: "citizen" as const,
       createdAt: { gte: sinceDate(filters.days) },
       assignedOfficerId: { not: null },
+      ...(filters.districtId ? { districtId: filters.districtId } : {}),
     };
     const grouped = await deps.prisma.report.groupBy({
       by: ["assignedOfficerId"],
@@ -116,14 +117,25 @@ export function createDashboardStatsService(deps: DashboardStatsDeps) {
       .sort((a, b) => (b.avgResponseTimeSeconds ?? 0) - (a.avgResponseTimeSeconds ?? 0));
   }
 
-  async function getVolumeTrend(days: number = DEFAULT_DAYS) {
-    const rows = await deps.prisma.$queryRaw<{ date: unknown; count: bigint }[]>`
-      SELECT DATE(created_at) AS date, COUNT(*) AS count
-      FROM reports
-      WHERE source = 'citizen' AND created_at >= now() - make_interval(days => ${days})
-      GROUP BY DATE(created_at)
-      ORDER BY date ASC
-    `;
+  async function getVolumeTrend(days: number = DEFAULT_DAYS, districtId?: string) {
+    // Two separate tagged-template queries (rather than a null-coalescing SQL condition) so
+    // every parameter's type is unambiguous to Postgres — see ADR 0001, parameterized only.
+    const rows = districtId
+      ? await deps.prisma.$queryRaw<{ date: unknown; count: bigint }[]>`
+          SELECT DATE(created_at) AS date, COUNT(*) AS count
+          FROM reports
+          WHERE source = 'citizen' AND created_at >= now() - make_interval(days => ${days}::int)
+            AND district_id = ${districtId}
+          GROUP BY DATE(created_at)
+          ORDER BY date ASC
+        `
+      : await deps.prisma.$queryRaw<{ date: unknown; count: bigint }[]>`
+          SELECT DATE(created_at) AS date, COUNT(*) AS count
+          FROM reports
+          WHERE source = 'citizen' AND created_at >= now() - make_interval(days => ${days}::int)
+          GROUP BY DATE(created_at)
+          ORDER BY date ASC
+        `;
     return rows.map((r) => ({
       date: new Date(r.date as string | Date).toISOString().slice(0, 10),
       count: Number(r.count),

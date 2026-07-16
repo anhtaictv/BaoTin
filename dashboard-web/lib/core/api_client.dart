@@ -10,8 +10,9 @@ const _apiBaseUrl = String.fromEnvironment(
 class SessionExpiredException implements Exception {}
 
 class ApiClient {
-  ApiClient({required SecureTokenStore tokenStore})
+  ApiClient({required SecureTokenStore tokenStore, void Function()? onSessionExpired})
       : _tokenStore = tokenStore,
+        _onSessionExpired = onSessionExpired,
         _dio = Dio(BaseOptions(baseUrl: _apiBaseUrl, connectTimeout: const Duration(seconds: 10))) {
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -34,6 +35,7 @@ class ApiClient {
               return;
             } catch (_) {
               await _tokenStore.clear();
+              _onSessionExpired?.call();
               handler.reject(DioException(requestOptions: error.requestOptions, error: SessionExpiredException()));
               return;
             }
@@ -46,6 +48,7 @@ class ApiClient {
 
   final Dio _dio;
   final SecureTokenStore _tokenStore;
+  final void Function()? _onSessionExpired;
 
   Dio get dio => _dio;
 

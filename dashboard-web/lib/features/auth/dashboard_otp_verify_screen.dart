@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../dashboard/dashboard_screen.dart';
+
+const _resendCooldownSeconds = 30;
 
 class DashboardOtpVerifyScreen extends ConsumerStatefulWidget {
   const DashboardOtpVerifyScreen({super.key, required this.phoneNumber, this.devOtp});
@@ -17,17 +21,56 @@ class _DashboardOtpVerifyScreenState extends ConsumerState<DashboardOtpVerifyScr
   final _otpController = TextEditingController();
   bool _submitting = false;
   String? _error;
+  String? _devOtp;
+  bool _resending = false;
+  int _resendCooldown = _resendCooldownSeconds;
+  Timer? _cooldownTimer;
 
   @override
   void initState() {
     super.initState();
+    _devOtp = widget.devOtp;
     if (widget.devOtp != null) _otpController.text = widget.devOtp!;
+    _startCooldown();
   }
 
   @override
   void dispose() {
     _otpController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    setState(() => _resendCooldown = _resendCooldownSeconds);
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_resendCooldown <= 1) {
+        timer.cancel();
+        setState(() => _resendCooldown = 0);
+        return;
+      }
+      setState(() => _resendCooldown -= 1);
+    });
+  }
+
+  Future<void> _resendOtp() async {
+    setState(() => _resending = true);
+    try {
+      final devOtp = await ref.read(dashboardAuthRepositoryProvider).requestOtp(widget.phoneNumber);
+      if (!mounted) return;
+      setState(() {
+        _devOtp = devOtp;
+        _error = null;
+      });
+      _startCooldown();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Không gửi lại được mã OTP. Vui lòng thử lại.');
+    } finally {
+      if (mounted) setState(() => _resending = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -79,8 +122,8 @@ class _DashboardOtpVerifyScreenState extends ConsumerState<DashboardOtpVerifyScr
                   decoration: const InputDecoration(counterText: ''),
                   onSubmitted: (_) => _submit(),
                 ),
-                if (widget.devOtp != null)
-                  Text('(Chế độ dev: mã là ${widget.devOtp})', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                if (_devOtp != null)
+                  Text('(Chế độ dev: mã là $_devOtp)', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
@@ -91,6 +134,13 @@ class _DashboardOtpVerifyScreenState extends ConsumerState<DashboardOtpVerifyScr
                   child: _submitting
                       ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Text('Xác nhận'),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: (_resendCooldown > 0 || _resending) ? null : _resendOtp,
+                  child: _resending
+                      ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(_resendCooldown > 0 ? 'Gửi lại mã ($_resendCooldown s)' : 'Gửi lại mã'),
                 ),
               ],
             ),
