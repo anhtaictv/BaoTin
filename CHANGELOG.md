@@ -1,5 +1,13 @@
 # Changelog
 
+## backend 1.7.0 — Thêm Ollama làm tùy chọn AI tóm tắt cho crawler (Giai đoạn 2)
+Thử nghiệm khả năng tích hợp model AI chạy local: đối chiếu Ollama với `PrismML-Eng/Bonsai-demo`, chọn Ollama vì nhẹ hơn hẳn (không cần HuggingFace token/repo private, không cần tải hàng chục GB) và có REST API đơn giản khớp ngay với kiến trúc `Summarizer` sẵn có.
+
+- `OllamaSummarizer` (`backend/src/crawler/summarizer.ts`) — gọi `POST /api/chat` của Ollama chạy local, không cần API key, dữ liệu không rời khỏi máy. Cùng hợp đồng fallback như OpenAI/Gemini: lỗi/model chưa pull/server chưa chạy đều rơi về cắt ngắn văn bản, không bao giờ làm crawler crash.
+- `LLM_PROVIDER=ollama` (thêm vào enum có sẵn `openai`/`gemini`/`none`) + `OLLAMA_BASE_URL` (mặc định `http://localhost:11434`) + `OLLAMA_MODEL` (mặc định `qwen2.5:1.5b`).
+- Đã kiểm chứng sống: cài Ollama, pull `qwen2.5:1.5b`, chạy `npm run crawl:rss` thật với `LLM_PROVIDER=ollama` — crawler lấy tin thật từ Tuổi Trẻ và model tóm tắt đúng nghĩa (paraphrase, không chỉ cắt ngắn).
+- Không đổi hành vi mặc định — `LLM_PROVIDER` vẫn mặc định `none` nếu không cấu hình.
+
 ## backend 1.6.0 · mobile-app-citizen 1.4.0+6 — Thông báo 2 chiều khi cán bộ đổi trạng thái tin báo
 Dừng ở mức noti 2 chiều đơn giản (không xây dựng chat/nhắn tin qua lại) — đúng định vị "Báo Tin bổ trợ VNeID, không thay thế" trong CLAUDE.md, không mở rộng vai trò sản phẩm thành kênh liên lạc đầy đủ giữa dân và công an.
 
