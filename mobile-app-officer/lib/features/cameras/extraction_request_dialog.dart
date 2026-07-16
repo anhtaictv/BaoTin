@@ -8,13 +8,18 @@ class ExtractionRequestResult {
   final String? note;
 }
 
-/// Collects only a time range + note — administrative request details. There is
-/// deliberately no way to attach/preview/select video here (CLAUDE.md non-negotiable #8);
-/// the actual footage is handled entirely outside this app by the camera's managing unit.
+/// Collects only a time range + note — administrative request details, shared across every
+/// camera selected. There is deliberately no way to attach/preview/select video here
+/// (CLAUDE.md non-negotiable #8); the actual footage is handled entirely outside this app,
+/// separately by each camera's own managing unit — this dialog just describes what to ask
+/// for, once, for however many cameras were picked.
 Future<ExtractionRequestResult?> showExtractionRequestDialog(
   BuildContext context, {
-  required String cameraName,
+  required List<String> cameraNames,
 }) {
+  final title = cameraNames.length == 1
+      ? 'Yêu cầu trích xuất — ${cameraNames.first}'
+      : 'Yêu cầu trích xuất — ${cameraNames.length} camera';
   DateTime? start;
   DateTime? end;
   final noteController = TextEditingController();
@@ -37,11 +42,19 @@ Future<ExtractionRequestResult?> showExtractionRequestDialog(
           final canSubmit = start != null && end != null && end!.isAfter(start!);
 
           return AlertDialog(
-            title: Text('Yêu cầu trích xuất — $cameraName'),
+            title: Text(title),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (cameraNames.length > 1) ...[
+                  Text(
+                    'Mỗi camera sẽ là 1 yêu cầu riêng gửi đúng đơn vị quản lý camera đó: '
+                    '${cameraNames.join(", ")}.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Từ thời điểm'),

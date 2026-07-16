@@ -9,11 +9,16 @@ class ExtractionRequestResult {
 }
 
 /// Ported from mobile-app-officer — collects only a time range + note (administrative
-/// request), no way to attach/preview video (CLAUDE.md non-negotiable #8).
+/// request), shared across every camera selected. No way to attach/preview video
+/// (CLAUDE.md non-negotiable #8) — each camera still becomes its own independent request to
+/// its own managing unit, nothing here compares/matches footage across cameras.
 Future<ExtractionRequestResult?> showExtractionRequestDialog(
   BuildContext context, {
-  required String cameraName,
+  required List<String> cameraNames,
 }) {
+  final title = cameraNames.length == 1
+      ? 'Yêu cầu trích xuất — ${cameraNames.first}'
+      : 'Yêu cầu trích xuất — ${cameraNames.length} camera';
   DateTime? start;
   DateTime? end;
   final noteController = TextEditingController();
@@ -36,13 +41,21 @@ Future<ExtractionRequestResult?> showExtractionRequestDialog(
           final canSubmit = start != null && end != null && end!.isAfter(start!);
 
           return AlertDialog(
-            title: Text('Yêu cầu trích xuất — $cameraName'),
+            title: Text(title),
             content: SizedBox(
               width: 360,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (cameraNames.length > 1) ...[
+                    Text(
+                      'Mỗi camera sẽ là 1 yêu cầu riêng gửi đúng đơn vị quản lý camera đó: '
+                      '${cameraNames.join(", ")}.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Từ thời điểm'),

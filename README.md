@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.8.0 · dashboard-web 1.5.0+4 · mobile-app-officer 1.4.0+5 · mobile-app-citizen 1.5.0+7`
+`Phiên bản hiện tại: backend 1.9.0 · dashboard-web 1.6.0+5 · mobile-app-officer 1.5.0+6 · mobile-app-citizen 1.5.0+7`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -75,7 +75,7 @@ cp ../infra/.env.example .env   # rồi điền giá trị thật (không commit
 
 ```bash
 npx tsc --noEmit         # kiểm tra type
-npx vitest run           # 275+ test: crypto, validation, geo-matching, auth/report/officer/
+npx vitest run           # 280+ test: crypto, validation, geo-matching, auth/report/officer/
                           # camera/dashboard/signals/search service logic + HTTP wiring
 ```
 
@@ -94,16 +94,20 @@ cd dashboard-web && flutter analyze && flutter test
 Máy giả lập Android hoặc thiết bị thật để `flutter run` 2 app mobile; `dashboard-web` chạy
 trực tiếp trên Chrome (`flutter run -d chrome`), không cần giả lập.
 
-## Đã xây dựng gì (tóm tắt theo giai đoạn)
+## Đã xây dựng gì — theo phiên bản
 
-- **Giai đoạn 1 (lõi):** Auth OTP + JWT RS256/refresh rotation, báo tin thường (giữ EXIF GPS) + báo tin khẩn cấp (SOS), geo-matching PostGIS thật (102 xã/phường Đắk Lắk), app cán bộ xác minh trạng thái + audit log, ẩn danh tính khi cần.
-- **v1.1:** Module camera an ninh — tự động khoanh vùng camera gần hiện trường, cán bộ tạo yêu cầu trích xuất hành chính (không xem/tải video).
-- **v1.2:** `dashboard-web` — KPI, biểu đồ, tab Tin báo xem/duyệt trực tiếp.
-- **Giai đoạn 2:** Kênh tình báo mở — bảng `social_media_signals` tách biệt hoàn toàn khỏi `reports`, crawler RSS thật (VnExpress/Tuổi Trẻ, chạy script riêng, không tự khởi động cùng server), lọc từ khóa địa danh + loại vụ việc, tóm tắt AI tùy chọn, gộp tin trùng.
-- **Giai đoạn 3:** Bản đồ cảnh báo khu vực (tổng hợp, không chi tiết từng tin), danh bạ khẩn cấp tự động theo vị trí, API liên kết ngược sang hệ thống tin bài chính.
-- **Giai đoạn 4:** NFC CCCD (mock UI, chưa tích hợp SDK thật), độ nóng tín hiệu MXH, đối chiếu chéo MXH ↔ tin dân báo, gợi ý gửi tố cáo chính thức qua VNeID cho tin nghiêm trọng.
-- **v1.6:** Thông báo 2 chiều khi cán bộ đổi trạng thái tin báo (dừng ở mức thông báo đơn giản, không phải chat).
-- **v1.7–v1.8:** Tích hợp Ollama (model AI chạy local, không cần API key) — tóm tắt tin crawler, lọc tín hiệu MXH liên quan, gộp trùng theo ngữ nghĩa, diễn giải độ nóng khu vực, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên trên dashboard. Tất cả opt-in, chỉ gợi ý, không tự kết luận.
+| Version | Nội dung |
+|---|---|
+| **v1.0** | Lõi hệ thống — Auth OTP + JWT RS256/refresh rotation, báo tin thường (giữ EXIF GPS) + báo tin khẩn cấp (SOS), geo-matching PostGIS thật (102 xã/phường Đắk Lắk), app cán bộ xác minh trạng thái + audit log, ẩn danh tính khi cần |
+| **v1.1** | Module camera an ninh — tự động khoanh vùng camera gần hiện trường, cán bộ tạo yêu cầu trích xuất hành chính (không xem/tải video) |
+| **v1.2** | `dashboard-web` — KPI, biểu đồ, tab Tin báo xem/duyệt trực tiếp |
+| **v1.3** | Kênh tình báo mở — bảng `social_media_signals` tách biệt hoàn toàn khỏi `reports`, crawler RSS thật (VnExpress/Tuổi Trẻ, chạy script riêng, không tự khởi động cùng server), lọc từ khóa địa danh + loại vụ việc, tóm tắt AI tùy chọn, gộp tin trùng |
+| **v1.4** | Bản đồ cảnh báo khu vực (tổng hợp, không chi tiết từng tin), danh bạ khẩn cấp tự động theo vị trí, API liên kết ngược sang hệ thống tin bài chính |
+| **v1.5** | NFC CCCD (mock UI, chưa tích hợp SDK thật), độ nóng tín hiệu MXH, đối chiếu chéo MXH ↔ tin dân báo, gợi ý gửi tố cáo chính thức qua VNeID cho tin nghiêm trọng |
+| **v1.6** | Thông báo 2 chiều khi cán bộ đổi trạng thái tin báo — dừng ở mức thông báo đơn giản, không phải chat |
+| **v1.7** | Tích hợp Ollama (model AI chạy local, không cần API key) làm tùy chọn tóm tắt tin cho crawler |
+| **v1.8** | 4 tính năng AI hỗ trợ dùng Ollama: lọc tín hiệu MXH liên quan, gộp trùng theo ngữ nghĩa, diễn giải độ nóng khu vực, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên trên dashboard — tất cả opt-in, chỉ gợi ý, không tự kết luận |
+| **v1.9** | Yêu cầu trích xuất nhiều camera theo tuyến đường (chọn nhiều camera, gộp 1 hành động gửi) — vẫn là N yêu cầu hành chính độc lập, không có nhận diện/theo dõi qua camera |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
@@ -114,6 +118,7 @@ trực tiếp trên Chrome (`flutter run -d chrome`), không cần giả lập.
 - NFC CCCD mới dừng ở mock UI, chưa tích hợp VNeID/SDK chính thức.
 - Chat/nhắn tin 2 chiều đầy đủ giữa dân và cán bộ — cố ý không làm.
 - Độ chính xác của các tính năng AI (Ollama) phụ thuộc model — model nhỏ có thể đánh giá sai đôi lúc, cần cân nhắc model lớn hơn nếu dùng nghiêm túc ngoài mục đích demo.
+- **Nhận diện/truy vết đối tượng qua nhiều camera** — cố ý không làm, kể cả khi được yêu cầu, vì là giám sát sinh trắc học cần cơ sở pháp lý riêng (CLAUDE.md #8, xem mục nguyên tắc thiết kế phía trên). Nếu đơn vị nghiệp vụ đã có hệ thống chuyên dụng riêng, có thể tích hợp qua API sau — chưa làm, cần thêm thông tin từ phía đó.
 
 ## Người đóng góp
 

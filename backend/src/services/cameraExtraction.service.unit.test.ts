@@ -85,16 +85,69 @@ describe("cameraExtraction.service — createExtractionRequest", () => {
     const start = new Date("2026-01-01T08:00:00Z");
     const end = new Date("2026-01-01T09:00:00Z");
     const result = await service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
-      cameraId,
+      cameraIds: [cameraId],
       timeRangeStart: start,
       timeRangeEnd: end,
       note: "Xin trích xuất giờ cao điểm",
     });
 
-    expect(result.status).toBe("pending");
-    expect(result).not.toHaveProperty("videoUrl");
+    expect(result.requests).toHaveLength(1);
+    expect(result.requests[0]?.status).toBe("pending");
+    expect(result.requests[0]).not.toHaveProperty("videoUrl");
     expect(fakePrisma.store.extractionRequests).toHaveLength(1);
     expect(fakePrisma.store.extractionRequests[0]).toMatchObject({ reportId, cameraId, requestedBy: officerId });
+  });
+
+  it("a single camera gets a null groupId — grouping is only meaningful for multi-camera requests", async () => {
+    const fakePrisma = createFakeCameraPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const reportId = randomUUID();
+    const cameraId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({ id: reportId, districtId, ...BUON_MA_THUOT });
+    fakePrisma.seedCamera({ id: cameraId, name: "Camera", lat: 12.68, lng: 108.05, managingUnitName: "A", managingUnitContact: "090" });
+
+    const service = buildService(fakePrisma);
+    const result = await service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
+      cameraIds: [cameraId],
+      timeRangeStart: new Date("2026-01-01T08:00:00Z"),
+      timeRangeEnd: new Date("2026-01-01T09:00:00Z"),
+    });
+
+    expect(result.groupId).toBeNull();
+    expect(result.requests[0]?.groupId).toBeNull();
+  });
+
+  it("selecting several cameras in one call creates one independent request row per camera, sharing a groupId", async () => {
+    const fakePrisma = createFakeCameraPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const reportId = randomUUID();
+    const camera1 = randomUUID();
+    const camera2 = randomUUID();
+    const camera3 = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({ id: reportId, districtId, ...BUON_MA_THUOT });
+    fakePrisma.seedCamera({ id: camera1, name: "Camera 1", lat: 12.68, lng: 108.05, managingUnitName: "A", managingUnitContact: "090" });
+    fakePrisma.seedCamera({ id: camera2, name: "Camera 2", lat: 12.681, lng: 108.051, managingUnitName: "B", managingUnitContact: "091" });
+    fakePrisma.seedCamera({ id: camera3, name: "Camera 3", lat: 12.682, lng: 108.052, managingUnitName: "C", managingUnitContact: "092" });
+
+    const service = buildService(fakePrisma);
+    const result = await service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
+      cameraIds: [camera1, camera2, camera3],
+      timeRangeStart: new Date("2026-01-01T17:00:00Z"),
+      timeRangeEnd: new Date("2026-01-01T18:00:00Z"),
+      note: "Truy vết tuyến đường sau tai nạn",
+    });
+
+    expect(result.groupId).not.toBeNull();
+    expect(result.requests).toHaveLength(3);
+    expect(new Set(result.requests.map((r) => r.cameraId))).toEqual(new Set([camera1, camera2, camera3]));
+    expect(result.requests.every((r) => r.groupId === result.groupId)).toBe(true);
+    // Each row is independently requested from that camera's own managing unit — nothing here
+    // merges/compares footage across cameras (CLAUDE.md #8).
+    expect(fakePrisma.store.extractionRequests).toHaveLength(3);
   });
 
   it("rejects an end time before the start time", async () => {
@@ -110,7 +163,7 @@ describe("cameraExtraction.service — createExtractionRequest", () => {
     const service = buildService(fakePrisma);
     await expect(
       service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
-        cameraId,
+        cameraIds: [cameraId],
         timeRangeStart: new Date("2026-01-01T09:00:00Z"),
         timeRangeEnd: new Date("2026-01-01T08:00:00Z"),
       }),
@@ -128,11 +181,32 @@ describe("cameraExtraction.service — createExtractionRequest", () => {
     const service = buildService(fakePrisma);
     await expect(
       service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
-        cameraId: randomUUID(),
+        cameraIds: [randomUUID()],
         timeRangeStart: new Date("2026-01-01T08:00:00Z"),
         timeRangeEnd: new Date("2026-01-01T09:00:00Z"),
       }),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("404s and creates nothing when only one camera in a multi-camera selection doesn't exist", async () => {
+    const fakePrisma = createFakeCameraPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const reportId = randomUUID();
+    const cameraId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({ id: reportId, districtId, ...BUON_MA_THUOT });
+    fakePrisma.seedCamera({ id: cameraId, name: "Camera", lat: 12.68, lng: 108.05, managingUnitName: "A", managingUnitContact: "090" });
+
+    const service = buildService(fakePrisma);
+    await expect(
+      service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
+        cameraIds: [cameraId, randomUUID()],
+        timeRangeStart: new Date("2026-01-01T08:00:00Z"),
+        timeRangeEnd: new Date("2026-01-01T09:00:00Z"),
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(fakePrisma.store.extractionRequests).toHaveLength(0);
   });
 });
 
@@ -149,7 +223,7 @@ describe("cameraExtraction.service — listExtractionRequests", () => {
 
     const service = buildService(fakePrisma);
     await service.createExtractionRequest({ id: officerId, role: "officer" }, reportId, {
-      cameraId,
+      cameraIds: [cameraId],
       timeRangeStart: new Date("2026-01-01T08:00:00Z"),
       timeRangeEnd: new Date("2026-01-01T09:00:00Z"),
     });

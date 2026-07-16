@@ -108,13 +108,15 @@ describe("POST /officer/reports/:id/camera-extraction-requests", () => {
       .post(`/officer/reports/${reportId}/camera-extraction-requests`)
       .set("Authorization", `Bearer ${token}`)
       .send({
-        cameraId,
+        cameraIds: [cameraId],
         timeRangeStart: "2026-01-01T08:00:00Z",
         timeRangeEnd: "2026-01-01T09:00:00Z",
         note: "Xin trích xuất",
       });
     expect(createRes.status).toBe(201);
-    expect(createRes.body.data.status).toBe("pending");
+    expect(createRes.body.data.groupId).toBeNull();
+    expect(createRes.body.data.requests).toHaveLength(1);
+    expect(createRes.body.data.requests[0].status).toBe("pending");
 
     const listRes = await request(app)
       .get(`/officer/reports/${reportId}/camera-extraction-requests`)
@@ -145,9 +147,49 @@ describe("POST /officer/reports/:id/camera-extraction-requests", () => {
       .post(`/officer/reports/${reportId}/camera-extraction-requests`)
       .set("Authorization", `Bearer ${await tokenFor("officer", officerId)}`)
       .send({
-        cameraId,
+        cameraIds: [cameraId],
         timeRangeStart: "2026-01-01T09:00:00Z",
         timeRangeEnd: "2026-01-01T08:00:00Z",
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it("creates one request per camera sharing a groupId when several cameras are selected together", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const reportId = randomUUID();
+    const camera1 = randomUUID();
+    const camera2 = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({ id: reportId, districtId, ...BUON_MA_THUOT });
+    fakePrisma.seedCamera({ id: camera1, name: "Camera 1", lat: 12.68, lng: 108.05, managingUnitName: "A", managingUnitContact: "090" });
+    fakePrisma.seedCamera({ id: camera2, name: "Camera 2", lat: 12.681, lng: 108.051, managingUnitName: "B", managingUnitContact: "091" });
+
+    const res = await request(app)
+      .post(`/officer/reports/${reportId}/camera-extraction-requests`)
+      .set("Authorization", `Bearer ${await tokenFor("officer", officerId)}`)
+      .send({
+        cameraIds: [camera1, camera2],
+        timeRangeStart: "2026-01-01T17:00:00Z",
+        timeRangeEnd: "2026-01-01T18:00:00Z",
+        note: "Truy vết tuyến đường",
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.groupId).not.toBeNull();
+    expect(res.body.data.requests).toHaveLength(2);
+  });
+
+  it("400s when cameraIds is empty", async () => {
+    const { app, tokenFor } = await buildTestApp();
+    const res = await request(app)
+      .post(`/officer/reports/${randomUUID()}/camera-extraction-requests`)
+      .set("Authorization", `Bearer ${await tokenFor("officer")}`)
+      .send({
+        cameraIds: [],
+        timeRangeStart: "2026-01-01T08:00:00Z",
+        timeRangeEnd: "2026-01-01T09:00:00Z",
       });
     expect(res.status).toBe(400);
   });

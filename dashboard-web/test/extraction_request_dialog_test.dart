@@ -13,7 +13,7 @@ void main() {
           body: Builder(
             builder: (context) => ElevatedButton(
               onPressed: () async {
-                result = await showExtractionRequestDialog(context, cameraName: 'Camera ngã tư A');
+                result = await showExtractionRequestDialog(context, cameraNames: ['Camera ngã tư A']);
               },
               child: const Text('open'),
             ),
