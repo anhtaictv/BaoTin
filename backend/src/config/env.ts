@@ -7,6 +7,9 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   APP_DATABASE_URL: z.string().min(1).optional(),
 
+  /** Comma-separated allow-list (mobile apps don't send Origin; dashboard-web does). */
+  CORS_ALLOWED_ORIGINS: z.string().default(""),
+
   MINIO_ENDPOINT: z.string().min(1).default("localhost"),
   MINIO_PORT: z.coerce.number().int().positive().default(9000),
   MINIO_USE_SSL: z
@@ -30,7 +33,30 @@ const EnvSchema = z.object({
     .string()
     .min(1, "PHONE_BLIND_INDEX_KEY is required (HMAC key, base64)"),
   OTP_HASH_PEPPER: z.string().default(""),
-});
+})
+  /**
+   * SECURITY.md §4 (least-privilege DB user) and §5 (no wildcard CORS in production) are easy
+   * to satisfy in dev and silently regress in prod — fail startup loudly instead of falling
+   * back to the migrator/owner DB role or a wide-open CORS policy.
+   */
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV !== "production") return;
+    if (!env.APP_DATABASE_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["APP_DATABASE_URL"],
+        message:
+          "APP_DATABASE_URL is required in production — the least-privilege baotin_app role, not the migrator/owner role (SECURITY.md §4).",
+      });
+    }
+    if (!env.CORS_ALLOWED_ORIGINS.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["CORS_ALLOWED_ORIGINS"],
+        message: "CORS_ALLOWED_ORIGINS is required in production — comma-separated allow-list, no wildcard.",
+      });
+    }
+  });
 
 export type Env = z.infer<typeof EnvSchema>;
 

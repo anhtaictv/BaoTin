@@ -94,5 +94,6 @@
 - [ ] DB user quyền giới hạn, không expose DB ra internet
 - [ ] `.env`/secrets không commit git
 - [ ] Rate limiting cơ bản trên toàn bộ endpoint auth
+- [ ] CORS giới hạn theo allow-list (`CORS_ALLOWED_ORIGINS`), không dùng wildcard `*` ở production
 
 Đây là phần **nên trình bày riêng 1 slide khi thi** — ban giám khảo với đề bài liên quan an ninh trật tự thường đánh giá cao việc đội thi chủ động nói về bảo mật, không cần được hỏi mới nhắc tới.

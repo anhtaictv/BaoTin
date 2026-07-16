@@ -86,13 +86,20 @@ async function main() {
   const dashboardController = createDashboardController(dashboardStats);
   const dashboardRouter = createDashboardRoutes(dashboardController, requireAuth);
 
-  const app = createApp({
-    authRouter,
-    citizenReportsRouter,
-    officerReportsRouter,
-    camerasRouter,
-    dashboardRouter,
-  });
+  const app = createApp(
+    {
+      authRouter,
+      citizenReportsRouter,
+      officerReportsRouter,
+      camerasRouter,
+      dashboardRouter,
+    },
+    {
+      corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    },
+  );
 
   app.listen(env.PORT, () => {
     // eslint-disable-next-line no-console
