@@ -137,7 +137,15 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
   async function getReportStatus(reportId: string, userId: string) {
     const report = await deps.prisma.report.findFirst({
       where: { id: reportId, userId },
-      select: { id: true, status: true, createdAt: true, verifiedAt: true, responseTimeSeconds: true },
+      select: {
+        id: true,
+        status: true,
+        urgency: true,
+        category: true,
+        createdAt: true,
+        verifiedAt: true,
+        responseTimeSeconds: true,
+      },
     });
     if (!report) throw new HttpError(404, "REPORT_NOT_FOUND", "Không tìm thấy tin báo.");
     return report;

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../core/providers.dart';
+import '../../core/theme.dart';
+import '../../shared/widgets/heat_badge.dart';
+import '../../shared/widgets/status_badge.dart';
 import '../../shared/widgets/trust_level_badge.dart';
 
 /// Read-only — no status chips, no "duyệt"/verify action anywhere on this screen
@@ -38,10 +42,20 @@ class _SignalDetailScreenState extends ConsumerState<SignalDetailScreen> {
             return const Center(child: Text('Không tải được chi tiết tín hiệu.'));
           }
           final signal = snapshot.data!;
+          final heat = signal['heat'] as Map<String, dynamic>?;
+          final relatedReports = List<Map<String, dynamic>>.from(signal['relatedReports'] as List? ?? []);
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              TrustLevelBadge(trustLevel: signal['trustLevel'] as String? ?? 'unverified_social'),
+              Row(
+                children: [
+                  TrustLevelBadge(trustLevel: signal['trustLevel'] as String? ?? 'unverified_social'),
+                  if (heat != null) ...[
+                    const SizedBox(width: 8),
+                    HeatBadge(level: heat['level'] as String, score: heat['score'] as int),
+                  ],
+                ],
+              ),
               const SizedBox(height: 12),
               Text(
                 signal['summary'] as String? ?? '(Không có tóm tắt)',
@@ -64,6 +78,27 @@ class _SignalDetailScreenState extends ConsumerState<SignalDetailScreen> {
                 Text('Nội dung gốc', style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 8),
                 Text(signal['rawSnippet'] as String),
+              ],
+              if (relatedReports.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Text('Đối chiếu chéo — tin dân báo cùng địa bàn, gần thời điểm', style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 4),
+                Text(
+                  'Chỉ mang tính tham khảo, không phải kết luận là cùng một vụ việc.',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                for (final report in relatedReports)
+                  Card(
+                    child: ListTile(
+                      leading: report['urgency'] == 'emergency'
+                          ? Icon(Icons.warning_amber_rounded, color: urgencyColor('emergency'))
+                          : null,
+                      title: Text(report['category'] as String? ?? 'Khác'),
+                      subtitle: Text(_formatDate(report['createdAt'] as String?)),
+                      trailing: StatusBadge(status: report['status'] as String? ?? 'pending'),
+                    ),
+                  ),
               ],
             ],
           );
@@ -101,5 +136,14 @@ class _InfoRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String _formatDate(String? iso) {
+  if (iso == null) return '';
+  try {
+    return DateFormat('dd/MM HH:mm').format(DateTime.parse(iso).toLocal());
+  } catch (_) {
+    return iso;
   }
 }

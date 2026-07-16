@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../cameras/nearby_cameras_section.dart';
+import '../identity_verification/nfc_cccd_mock_screen.dart';
 import 'status_update_action.dart';
 
 class ReportDetailScreen extends ConsumerStatefulWidget {
@@ -71,7 +72,7 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                   label: 'Vị trí',
                   value: '${location['lat']}, ${location['lng']}',
                 ),
-              if (user != null)
+              if (user != null) ...[
                 _InfoRow(
                   icon: Icons.person_outline,
                   label: 'Người báo tin',
@@ -79,6 +80,17 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
                       ? 'Ẩn danh (được bảo vệ)'
                       : '${user['fullName'] ?? 'Không rõ tên'} — ${user['phoneNumber'] ?? ''}',
                 ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.nfc, size: 18),
+                    label: const Text('Quét CCCD xác minh danh tính (mô phỏng)'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NfcCccdMockScreen()),
+                    ),
+                  ),
+                ),
+              ],
               if (attachments.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text('Hình ảnh đính kèm', style: Theme.of(context).textTheme.labelLarge),

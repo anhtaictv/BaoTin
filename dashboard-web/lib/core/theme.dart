@@ -159,6 +159,32 @@ Color trustLevelColor(String trustLevel) =>
 String trustLevelLabel(String trustLevel) =>
     trustLevel == 'verified_press' ? 'Báo chí' : 'MXH — chưa xác thực';
 
+/// Giai đoạn 4 "độ nóng tin MXH" — mật độ tín hiệu theo địa bàn, khác khái niệm với
+/// statusColor/trustLevelColor nên dùng bảng màu riêng.
+Color heatLevelColor(String level) {
+  switch (level) {
+    case 'high':
+      return const Color(0xFFD32F2F);
+    case 'medium':
+      return const Color(0xFFF9A825);
+    case 'low':
+    default:
+      return const Color(0xFF94A3B8);
+  }
+}
+
+String heatLevelLabel(String level) {
+  switch (level) {
+    case 'high':
+      return 'Nóng';
+    case 'medium':
+      return 'Đang tăng';
+    case 'low':
+    default:
+      return 'Bình thường';
+  }
+}
+
 String extractionStatusLabel(String status) {
   switch (status) {
     case 'sent':

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
+import '../profile/profile_screen.dart';
 import 'camera_gps_capture.dart';
 
 const _categories = <String, String>{
@@ -102,7 +103,18 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Báo tin')),
+      appBar: AppBar(
+        title: const Text('Báo tin'),
+        actions: [
+          IconButton(
+            tooltip: 'Hồ sơ',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

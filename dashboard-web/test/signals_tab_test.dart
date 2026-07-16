@@ -20,6 +20,7 @@ const _fakeSignals = [
     'trustLevel': 'unverified_social',
     'summary': 'Người dân phản ánh nghi có cháy nhỏ gần chợ.',
     'publishedAt': '2026-01-01T09:00:00Z',
+    'heat': {'score': 6, 'level': 'high'},
   },
 ];
 
@@ -32,6 +33,10 @@ const _fakeDetail = {
   'rawSnippet': 'Theo nguồn tin từ công an địa phương...',
   'detectedCategory': 'trom_cap',
   'duplicateOfId': null,
+  'heat': {'score': 6, 'level': 'high'},
+  'relatedReports': [
+    {'id': 'r1', 'category': 'Trộm cắp tài sản', 'status': 'pending', 'urgency': 'normal', 'createdAt': '2026-01-01T08:30:00Z'},
+  ],
 };
 
 void main() {
@@ -68,5 +73,8 @@ void main() {
 
     expect(find.text('Theo nguồn tin từ công an địa phương...'), findsOneWidget);
     expect(find.text('Báo chí'), findsWidgets);
+    expect(find.textContaining('Nóng (6)'), findsOneWidget);
+    expect(find.textContaining('Đối chiếu chéo'), findsOneWidget);
+    expect(find.text('Trộm cắp tài sản'), findsOneWidget);
   });
 }

@@ -52,10 +52,10 @@ Module độc lập, không block giai đoạn 1.
 - [ ] Đồng bộ danh mục địa bàn giữa 2 hệ thống — **chưa làm được, cần thêm thông tin**: chưa biết API/schema của "phần mềm quản lý tin bài chính" (endpoint, xác thực, định dạng danh mục địa bàn phía đó) để thiết kế đồng bộ hai chiều; `official_case_links` ở trên chỉ mới liên kết 1 tin báo ↔ 1 case, không phải đồng bộ danh mục
 
 ## Giai đoạn 4 — Nâng cao (demo bằng mock nếu chưa kịp làm thật)
-- [ ] Quét NFC CCCD — mock UI trước, tích hợp thật qua VNeID/SDK sau
-- [ ] Tính "độ nóng" tin MXH (cần dữ liệu chạy vài tuần)
-- [ ] Đối chiếu tin MXH với hồ sơ nội bộ đã có (liên kết chéo)
-- [ ] Gợi ý "gửi tố cáo chính thức qua VNeID" cho tin nghiêm trọng
+- [x] Quét NFC CCCD — mock UI trước, tích hợp thật qua VNeID/SDK sau. Đã làm mock UI ở cả 2 app: `mobile-app-officer` (xác minh danh tính tại hiện trường, trong màn chi tiết tin báo) và `mobile-app-citizen` (liên kết CCCD trong màn Hồ sơ). Toàn bộ dữ liệu hiển thị gắn nhãn `[MOCK]` rõ ràng, không có bất kỳ lời gọi NFC/chip thật nào (CLAUDE.md #5) — chưa tích hợp VNeID/SDK thật
+- [x] Tính "độ nóng" tin MXH (cần dữ liệu chạy vài tuần) — `signalHeat.ts`, đếm số tín hiệu theo địa bàn trong 14 ngày gần nhất, phân mức low/medium/high. Công thức chạy đúng ngay cả khi ít dữ liệu; ý nghĩa thật sự cần chờ dữ liệu tích lũy theo thời gian như ghi chú gốc
+- [x] Đối chiếu tin MXH với hồ sơ nội bộ đã có (liên kết chéo) — `getSignalDetail` trả thêm `relatedReports`: tin dân báo cùng địa bàn, trong vòng ±3 ngày quanh thời điểm tín hiệu. Chỉ mang tính tham khảo, không tự động kết luận là cùng vụ việc
+- [x] Gợi ý "gửi tố cáo chính thức qua VNeID" cho tin nghiêm trọng — banner trong `report_status_screen.dart` (app công dân) khi tin có `urgency=emergency` hoặc thuộc nhóm loại vụ việc nghiêm trọng, chỉ là gợi ý văn bản, không có link/API VNeID thật nào được gọi
 - [x] ~~Dashboard KPI: thời gian phản hồi trung bình theo địa bàn/cán bộ~~ — làm sớm ở v1.2 (xem mục v1.2 phía trên)
 
 ## Ưu tiên khi thời gian hạn chế (thi đấu)
