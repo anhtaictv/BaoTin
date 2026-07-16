@@ -93,7 +93,7 @@ export function ReportsPage() {
         ) : reports.data!.length === 0 ? (
           <p style={{ padding: 12 }}>Không có tin báo nào.</p>
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
             {reports.data!.map((report) => (
               <li key={report.id}>
                 <button
