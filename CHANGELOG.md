@@ -2,6 +2,19 @@
 
 ## backend 1.3.0 · dashboard-web 1.3.0+2 · mobile-app-officer 1.2.0+3 · mobile-app-citizen 1.1.1+3 — Giai đoạn 2 (bắt đầu): Kênh tình báo mở
 Semantic versioning per package từ đây trở đi (mỗi package versioned độc lập trong package.json/pubspec.yaml riêng — MAJOR.MINOR.PATCH, `+N` là build number của Flutter). backend/dashboard-web/mobile-app-officer đều lên MINOR (tính năng mới, tương thích ngược); mobile-app-citizen chỉ lên PATCH (chỉ có bugfix, không có tính năng người dùng mới).
+
+**Bảo mật:**
+- CORS giới hạn theo allow-list (`CORS_ALLOWED_ORIGINS`), không còn mở cho mọi origin.
+- `APP_DATABASE_URL` (role least-privilege) bắt buộc phải có ở production — trước đây nếu thiếu sẽ âm thầm chạy bằng role owner/migrator (toàn quyền DDL).
+
+**Hoàn thiện dashboard-web:**
+- Xử lý session hết hạn: tự động đưa về màn đăng nhập thay vì treo ở màn lỗi vĩnh viễn.
+- Bộ lọc địa bàn giờ áp dụng đúng cho chart "theo cán bộ" + "xu hướng số tin" (trước đây 2 chart này bỏ qua bộ lọc); chart "theo địa bàn" cố ý giữ nguyên không lọc (biểu đồ so sánh giữa các địa bàn) kèm chú thích rõ ràng.
+- Phân biệt đúng trạng thái lỗi tải camera gần hiện trường với trạng thái "không có camera nào" (trước đây bị nuốt làm một).
+- Hoàn thiện nốt bộ lọc địa bàn ở tab "Tin báo" (đã có ở backend/repository nhưng chưa có UI).
+- Nút làm mới giờ cũng nạp lại danh sách địa bàn; màn OTP có nút "Gửi lại mã" (cooldown 30s).
+- 3 bug backend phát hiện khi chạy live-test lần đầu (unit test dùng Prisma giả nên không bắt được): `otp_challenges.user_id` bị gán nhầm ID của officer trong khi cột này chỉ FK vào bảng `users` (chặn đứng toàn bộ đăng nhập officer/admin); `make_interval(days => bigint)` thiếu cast `::int`; `nearbyCameras` cast nhầm `reportId` thành `::uuid` trong khi cột thật là `text`.
+
 - **"Tin nhanh (tham khảo)"** — màn hình/tab mới trên cả `mobile-app-officer` và `dashboard-web`, đọc từ bảng `social_media_signals` đã có sẵn từ trước. Tách biệt hoàn toàn khỏi luồng tin dân báo: không có nhãn trạng thái, không có nút xác nhận/duyệt, chỉ có nhãn nguồn (Báo chí / MXH — chưa xác thực) với màu sắc riêng (tím/xám, không trùng statusColor/urgencyColor) — CLAUDE.md nguyên tắc #1/#2.
 - API mới (đọc-only): `GET /officer/signals`, `GET /officer/signals/:id` — cùng cơ chế district-scoping như `/officer/reports` (officer thường chỉ thấy tín hiệu thuộc địa bàn được phân công, senior_officer/admin thấy tất cả).
 - Seed dữ liệu mẫu (`seed-signals.ts`) mô phỏng kết quả crawler báo chí/MXH.
