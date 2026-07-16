@@ -231,6 +231,10 @@ export function createAuthService(deps: AuthServiceDeps) {
     rotateRefreshToken,
     revokeAllSessions,
     decryptPhoneNumber,
+    /** Exposed so webAccountAuth.service.ts's username/password login (dashboard-web-react)
+     * can issue the exact same token shape as OTP login — same subjectType "officer", same
+     * downstream district-scoping/role-gating, zero changes needed there. */
+    issueTokenPair,
   };
 }
 

@@ -47,6 +47,22 @@ export const officerLoginLimiter = rateLimit({
   message: rateLimitedResponse("LOGIN_RATE_LIMITED", "Đăng nhập sai quá nhiều lần, thử lại sau."),
 });
 
+/** dashboard-web-react's username/password login — same IP-based ceiling as officerLoginLimiter;
+ * per-account lockout is handled separately in webAccountAuth.service.ts's login(). */
+function usernameAndIpKey(req: Request): string {
+  const username = typeof req.body?.username === "string" ? req.body.username : "unknown";
+  return `${req.ip}:${username}`;
+}
+
+export const webLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: usernameAndIpKey,
+  message: rateLimitedResponse("LOGIN_RATE_LIMITED", "Đăng nhập sai quá nhiều lần, thử lại sau."),
+});
+
 /**
  * API_SPEC.md explicitly requires /reports/emergency NOT be slowed down by validation.
  * express-rate-limit's default MemoryStore check is an in-process counter increment —

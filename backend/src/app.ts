@@ -20,6 +20,10 @@ export interface AppRouters {
   areaAlertsRouter?: Router;
   /** Trợ lý tìm kiếm ngôn ngữ tự nhiên (AI cục bộ) — mounted at "/admin/search". */
   searchRouter?: Router;
+  /** dashboard-web-react's username/password auth — mounted at "/" (routes spell out their
+   * own full path: "/auth/web/login", "/web-accounts/*", "/admin/web-accounts/*"). Sits
+   * alongside authRouter without touching it — the OTP flow is untouched. */
+  webAccountRouter?: Router;
 }
 
 export interface AppConfig {
@@ -64,6 +68,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.searchRouter) {
     app.use("/admin/search", routers.searchRouter);
+  }
+  if (routers.webAccountRouter) {
+    app.use(routers.webAccountRouter);
   }
 
   app.use(notFoundHandler);
