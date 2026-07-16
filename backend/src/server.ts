@@ -29,6 +29,12 @@ import { createDashboardRoutes } from "./api/admin/dashboard.routes.js";
 import { createSignalsService } from "./services/signals.service.js";
 import { createSignalsController } from "./api/officer/signals.controller.js";
 import { createSignalsRoutes } from "./api/officer/signals.routes.js";
+import { createEmergencyContactsService } from "./services/emergencyContacts.service.js";
+import { createEmergencyContactsController } from "./api/citizen/emergencyContacts.controller.js";
+import { createEmergencyContactsRoutes } from "./api/citizen/emergencyContacts.routes.js";
+import { createAreaAlertsService } from "./services/areaAlerts.service.js";
+import { createAreaAlertsController } from "./api/citizen/areaAlerts.controller.js";
+import { createAreaAlertsRoutes } from "./api/citizen/areaAlerts.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -93,6 +99,14 @@ async function main() {
   const signalsController = createSignalsController(signalsService);
   const signalsRouter = createSignalsRoutes(signalsController, requireAuth);
 
+  const emergencyContactsService = createEmergencyContactsService({ prisma, geoMatch });
+  const emergencyContactsController = createEmergencyContactsController(emergencyContactsService);
+  const emergencyContactsRouter = createEmergencyContactsRoutes(emergencyContactsController, requireAuth);
+
+  const areaAlertsService = createAreaAlertsService({ prisma, geoMatch });
+  const areaAlertsController = createAreaAlertsController(areaAlertsService);
+  const areaAlertsRouter = createAreaAlertsRoutes(areaAlertsController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -101,6 +115,8 @@ async function main() {
       camerasRouter,
       dashboardRouter,
       signalsRouter,
+      emergencyContactsRouter,
+      areaAlertsRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

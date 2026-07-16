@@ -14,6 +14,10 @@ export interface AppRouters {
   dashboardRouter?: Router;
   /** Giai đoạn 2 "kênh tình báo mở" — read-only, mounted at "/officer/signals". */
   signalsRouter?: Router;
+  /** Giai đoạn 3 — mounted at "/emergency-contacts". */
+  emergencyContactsRouter?: Router;
+  /** Giai đoạn 3 — mounted at "/area-alerts". */
+  areaAlertsRouter?: Router;
 }
 
 export interface AppConfig {
@@ -49,6 +53,12 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.signalsRouter) {
     app.use("/officer/signals", routers.signalsRouter);
+  }
+  if (routers.emergencyContactsRouter) {
+    app.use("/emergency-contacts", routers.emergencyContactsRouter);
+  }
+  if (routers.areaAlertsRouter) {
+    app.use("/area-alerts", routers.areaAlertsRouter);
   }
 
   app.use(notFoundHandler);

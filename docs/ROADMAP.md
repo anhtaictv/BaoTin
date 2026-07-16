@@ -44,12 +44,12 @@ Module độc lập, không block giai đoạn 1.
 - [x] Seed data mẫu để demo (không crawl live khi thi) — `seed-signals.ts`; crawler thật đã viết xong nhưng **chạy qua script riêng** (`npm run crawl:rss`), không tự khởi động cùng server (CLAUDE.md #4)
 
 ## Giai đoạn 3 — Trải nghiệm & liên kết
-- [ ] Bản đồ cảnh báo khu vực cho người dân (tổng hợp, không chi tiết nhạy cảm)
-- [ ] Danh bạ khẩn cấp tự động theo vị trí
+- [x] Bản đồ cảnh báo khu vực cho người dân (tổng hợp, không chi tiết nhạy cảm) — `GET /area-alerts`, đếm tin báo 30 ngày gần nhất theo xã/phường + `ST_Centroid` cho tọa độ hiển thị; app công dân vẽ marker màu theo mức cảnh báo qua `flutter_map`/OpenStreetMap (không cần API key trả phí), không có marker cho từng tin báo cụ thể
+- [x] Danh bạ khẩn cấp tự động theo vị trí — `GET /emergency-contacts`, ưu tiên liên hệ theo địa bàn (fallback địa bàn gần nhất qua `ST_Centroid`/`<->` nếu tọa độ ngoài mọi ranh giới), rồi mới đến số quốc gia (113/114/115, số thật) cho loại chưa có liên hệ riêng. Số theo địa bàn cụ thể (công an/y tế phường) hiện là **[DEMO]** — chưa xác minh được số thật của từng đơn vị nên không đưa vào như thật
 - [x] Lịch sử báo tin cá nhân đầy đủ
 - [x] Chính sách ẩn danh với đối tượng vi phạm
 - [x] API liên kết ngược sang phần mềm quản lý tin bài chính (`official_case_links`) — wiring + service thật (`officialCaseLink.service.ts`), nhưng phần gọi ra API bên thứ 3 vẫn là stub vì chưa có hệ thống đích thật để gọi
-- [ ] Đồng bộ danh mục địa bàn giữa 2 hệ thống
+- [ ] Đồng bộ danh mục địa bàn giữa 2 hệ thống — **chưa làm được, cần thêm thông tin**: chưa biết API/schema của "phần mềm quản lý tin bài chính" (endpoint, xác thực, định dạng danh mục địa bàn phía đó) để thiết kế đồng bộ hai chiều; `official_case_links` ở trên chỉ mới liên kết 1 tin báo ↔ 1 case, không phải đồng bộ danh mục
 
 ## Giai đoạn 4 — Nâng cao (demo bằng mock nếu chưa kịp làm thật)
 - [ ] Quét NFC CCCD — mock UI trước, tích hợp thật qua VNeID/SDK sau

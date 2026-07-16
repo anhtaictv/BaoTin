@@ -16,7 +16,18 @@ export function createGeoMatchService(prisma: PrismaClient) {
     return rows[0]?.id ?? null;
   }
 
-  return { matchDistrict };
+  /** Fallback for a point outside every boundary (e.g. GPS drift at a ward edge) — closest
+   * district by centroid distance rather than leaving the caller with nothing at all. */
+  async function matchNearestDistrict(params: { lat: number; lng: number }): Promise<string | null> {
+    const rows = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM districts
+      ORDER BY ST_Centroid(boundary) <-> ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326)
+      LIMIT 1
+    `;
+    return rows[0]?.id ?? null;
+  }
+
+  return { matchDistrict, matchNearestDistrict };
 }
 
 export type GeoMatchService = ReturnType<typeof createGeoMatchService>;
