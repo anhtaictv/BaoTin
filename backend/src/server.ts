@@ -41,6 +41,9 @@ import { createQueryInterpreter } from "./services/searchInterpreter.js";
 import { createSearchAssistantService } from "./services/searchAssistant.service.js";
 import { createSearchController } from "./api/admin/search.controller.js";
 import { createSearchRoutes } from "./api/admin/search.routes.js";
+import { createWebAccountAuthService } from "./services/webAccountAuth.service.js";
+import { createWebAccountController } from "./api/auth/webAccount.controller.js";
+import { createWebAccountRoutes } from "./api/auth/webAccount.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -121,6 +124,14 @@ async function main() {
   const searchController = createSearchController(searchAssistantService);
   const searchRouter = createSearchRoutes(searchController, requireAuth);
 
+  const webAccountAuthService = createWebAccountAuthService({
+    prisma,
+    authService,
+    piiEncryptionKey: env.PII_ENCRYPTION_KEY,
+  });
+  const webAccountController = createWebAccountController(webAccountAuthService);
+  const webAccountRouter = createWebAccountRoutes(webAccountController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -132,6 +143,7 @@ async function main() {
       emergencyContactsRouter,
       areaAlertsRouter,
       searchRouter,
+      webAccountRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

@@ -94,8 +94,36 @@ model Officer {
   refreshTokens       RefreshToken[]
   auditLogEntries     AdminAuditLog[]
   cameraExtractionRequests CameraExtractionRequest[]
+  webAccount          WebAccount?
 
   @@map("officers")
+}
+
+/// dashboard-web-react — username/password login for the 102 xã/phường web management
+/// portal, deliberately a SEPARATE table from `officers` (not a password column bolted onto
+/// it) so a password-hash compromise stays isolated from the table the OTP flow and every
+/// other officer record depends on. Same underlying person as `officers` (1-1 via
+/// officerId) — logging in here still issues the exact same JWT (issueTokenPair with
+/// subjectType "officer"), so district scoping/role gating downstream needs zero changes.
+/// The Flutter officer app's OTP login is completely unaffected by this table's existence.
+model WebAccount {
+  id                 String    @id @default(uuid())
+  officerId          String    @unique @map("officer_id")
+  /// Snapshot of the officer's phone number at account-provisioning time — a login
+  /// identifier, not kept in sync if the officer's real number changes later.
+  username           String    @unique
+  /// scrypt, format "saltHex:hashHex" — see crypto/passwordHash.ts.
+  passwordHash       String    @map("password_hash")
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  failedLoginCount   Int       @default(0) @map("failed_login_count")
+  lockedUntil        DateTime? @map("locked_until")
+  lastLoginAt        DateTime? @map("last_login_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  officer Officer @relation(fields: [officerId], references: [id])
+
+  @@map("web_accounts")
 }
 
 /// Administrative ward/commune (xã/phường, post-2025 merger) — the geo-matching unit.

@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { loadEnv } from "../../src/config/env.js";
 import { seedDistricts } from "./seed-districts.js";
 import { seedOfficers, seedOfficersForAllDistricts } from "./seed-officers.js";
+import { seedWebAccounts } from "./seed-web-accounts.js";
 import { seedCameras } from "./seed-cameras.js";
 import { seedSignals } from "./seed-signals.js";
 import { seedEmergencyContacts } from "./seed-emergency-contacts.js";
@@ -28,6 +29,9 @@ async function main() {
 
   console.log("Auto-covering remaining districts with a demo officer each ...");
   await seedOfficersForAllDistricts(officerSeedDeps);
+
+  console.log("Seeding dashboard-web-react web accounts (username/password, 102 xã) ...");
+  await seedWebAccounts({ prisma, piiEncryptionKey: env.PII_ENCRYPTION_KEY });
 
   console.log("Seeding demo cameras (v1.1) ...");
   await seedCameras(prisma);
