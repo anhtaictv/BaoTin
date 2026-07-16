@@ -66,9 +66,9 @@ export function AdminAccountsPage() {
         </p>
       )}
 
-      <Card style={{ padding: 0, overflowX: 'auto' }}>
+      <Card style={{ padding: 0, overflow: 'auto', maxHeight: 'calc(100vh - 220px)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
+          <thead style={{ position: 'sticky', top: 0, background: 'white' }}>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: 12 }}>Tên đăng nhập</th>
               <th style={{ padding: 12 }}>Họ tên</th>
