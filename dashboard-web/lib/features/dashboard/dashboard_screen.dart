@@ -6,6 +6,7 @@ import '../reports/reports_providers.dart';
 import '../reports/reports_tab.dart';
 import '../signals/signals_providers.dart';
 import '../signals/signals_tab.dart';
+import '../search/search_tab.dart';
 import 'dashboard_overview_tab.dart';
 import 'dashboard_providers.dart';
 
@@ -75,13 +76,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 selectedIcon: Icon(Icons.feed),
                 label: Text('Tin nhanh'),
               ),
+              NavigationRailDestination(
+                icon: Icon(Icons.travel_explore_outlined),
+                selectedIcon: Icon(Icons.travel_explore),
+                label: Text('Tìm kiếm'),
+              ),
             ],
           ),
           const VerticalDivider(width: 1),
           Expanded(
             child: IndexedStack(
               index: _tabIndex,
-              children: const [DashboardOverviewTab(), ReportsTab(), SignalsTab()],
+              children: const [DashboardOverviewTab(), ReportsTab(), SignalsTab(), SearchTab()],
             ),
           ),
         ],

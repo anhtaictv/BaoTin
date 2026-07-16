@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import { detectCategory, detectDistrict } from "./keywordFilter.js";
-import { findDuplicate } from "./dedup.js";
+import { findDuplicateSemantic, NoopSemanticDuplicateChecker, type SemanticDuplicateChecker } from "./dedup.js";
 import type { Summarizer } from "./summarizer.js";
+import { AlwaysRelevantClassifier, type RelevanceClassifier } from "./relevanceClassifier.js";
 import type { RssItem } from "./rssFetcher.js";
 import type { RssSourceConfig } from "./rssSources.js";
 
@@ -13,6 +14,12 @@ export interface PressCrawlerDeps {
   summarizer: Summarizer;
   /** Injectable so tests never hit the real network — see rssFetcher.ts for the real impl. */
   fetchFeed: (feedUrl: string) => Promise<RssItem[]>;
+  /** Optional AI second-pass after the keyword match — narrows further, never widens. Defaults
+   * to AlwaysRelevantClassifier (keyword-only behavior) when not given. */
+  relevanceClassifier?: RelevanceClassifier;
+  /** Optional AI-assisted dedup for borderline trigram scores. Defaults to
+   * NoopSemanticDuplicateChecker (trigram-only behavior) when not given. */
+  semanticDuplicateChecker?: SemanticDuplicateChecker;
 }
 
 export interface CrawlSourceResult {
@@ -26,6 +33,9 @@ export interface CrawlSourceResult {
  * Không bao giờ ghi vào `reports` — chỉ `social_media_signals` (CLAUDE.md #1/#2).
  */
 export function createPressCrawlerService(deps: PressCrawlerDeps) {
+  const relevanceClassifier = deps.relevanceClassifier ?? new AlwaysRelevantClassifier();
+  const semanticDuplicateChecker = deps.semanticDuplicateChecker ?? new NoopSemanticDuplicateChecker();
+
   async function crawlSource(source: RssSourceConfig): Promise<CrawlSourceResult> {
     const items = await deps.fetchFeed(source.feedUrl);
     let inserted = 0;
@@ -52,15 +62,22 @@ export function createPressCrawlerService(deps: PressCrawlerDeps) {
         continue;
       }
 
+      const isRelevant = await relevanceClassifier.isRelevant({ title: item.title, content: item.content, category });
+      if (!isRelevant) {
+        skipped++;
+        continue;
+      }
+
       const districtId = detectDistrict(combinedText, districts);
 
       const recentSignals = await deps.prisma.socialMediaSignal.findMany({
         where: { crawledAt: { gte: new Date(Date.now() - DUPLICATE_LOOKBACK_HOURS * 60 * 60 * 1000) } },
         select: { id: true, summary: true, rawSnippet: true },
       });
-      const duplicateOfId = findDuplicate(
+      const duplicateOfId = await findDuplicateSemantic(
         item.title,
         recentSignals.map((s) => ({ id: s.id, text: s.summary ?? s.rawSnippet ?? "" })),
+        semanticDuplicateChecker,
       );
 
       const summary = await deps.summarizer.summarize({ title: item.title, content: item.content });

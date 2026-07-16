@@ -1,5 +1,15 @@
 # Changelog
 
+## backend 1.8.0 · dashboard-web 1.5.0+4 · mobile-app-officer 1.4.0+5 · mobile-app-citizen 1.5.0+7 — Nâng cấp dùng Ollama cho 4 tính năng AI hỗ trợ (chỉ gợi ý, không tự kết luận)
+Tất cả đều **opt-in qua `LLM_PROVIDER=ollama`** — nếu không cấu hình, hành vi giữ nguyên như trước (không có gì tự động thay đổi). Mọi tính năng dưới đây chỉ hỗ trợ/gợi ý; quyết định cuối cùng luôn thuộc về người (dân hoặc cán bộ), đúng tinh thần CLAUDE.md #1/#2/#3.
+
+- **Lọc tín hiệu MXH thông minh hơn** (`relevanceClassifier.ts`) — sau khi khớp từ khóa (`keywordFilter.ts`), Ollama xét thêm 1 lớp: có phải bài báo thực sự tường thuật 1 vụ việc cụ thể không (loại bỏ bài tổng hợp/xã luận/quảng cáo). Chỉ có thể LOẠI THÊM tin, không bao giờ nhận thêm tin bị từ khóa loại. Fail-open: lỗi/không chắc → vẫn giữ tin. **Ghi nhận thật khi kiểm thử sống**: model nhỏ `qwen2.5:1.5b` đôi khi đánh giá sai (ví dụ từ chối 1 tin cháy nổ thật) — độ chính xác phụ thuộc vào model được chọn, nên xem đây là 1 lớp lọc bổ trợ, không phải tuyệt đối chính xác.
+- **Gộp tin trùng theo ngữ nghĩa** (`dedup.ts` → `findDuplicateSemantic`) — khi trigram similarity ở vùng biên (0.15–0.5), hỏi Ollama có phải cùng 1 sự việc không trước khi gắn cờ trùng. Fail-closed: lỗi → không tính là trùng (giữ nguyên hành vi trigram-only).
+- **Diễn giải độ nóng khu vực** (`heatNarrative.ts`) — khi độ nóng tín hiệu MXH ở mức medium/high, `GET /officer/signals/:id` trả thêm `heatNarrative`: 1-2 câu tóm tắt các tín hiệu gần đây trong địa bàn. Hiển thị ở `mobile-app-officer` + `dashboard-web`, nhãn rõ "AI, chỉ tham khảo". `null` khi độ nóng thấp hoặc Ollama không khả dụng.
+- **Gợi ý phân loại tin báo** (`reportClassifier.ts`, `POST /reports/classify-suggestion`) — khi người dân gõ mô tả ở màn "Báo tin", sau 800ms debounce, AI gợi ý pre-fill loại vụ việc; người dân vẫn có thể chọn lại bất kỳ lúc nào, và lựa chọn thủ công không bao giờ bị AI ghi đè.
+- **Trợ lý tìm kiếm ngôn ngữ tự nhiên** (`searchInterpreter.ts` + `searchAssistant.service.ts`, `POST /admin/search`, admin/senior_officer) — tab "Tìm kiếm" mới trên `dashboard-web`. AI **chỉ** dùng để trích xuất bộ lọc (địa bàn/khoảng ngày/từ khóa) từ câu hỏi tự nhiên — không bao giờ tự trả lời bằng văn bản riêng; kết quả luôn là dữ liệu thật từ database, và tin báo/tín hiệu MXH luôn hiển thị thành 2 danh sách tách biệt, không gộp chung.
+- Đã kiểm chứng sống toàn bộ qua Docker + Ollama thật (`qwen2.5:1.5b`) với dữ liệu seed thật, không chỉ unit test.
+
 ## backend 1.7.0 — Thêm Ollama làm tùy chọn AI tóm tắt cho crawler (Giai đoạn 2)
 Thử nghiệm khả năng tích hợp model AI chạy local: đối chiếu Ollama với `PrismML-Eng/Bonsai-demo`, chọn Ollama vì nhẹ hơn hẳn (không cần HuggingFace token/repo private, không cần tải hàng chục GB) và có REST API đơn giản khớp ngay với kiến trúc `Summarizer` sẵn có.
 

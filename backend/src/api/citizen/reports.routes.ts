@@ -4,7 +4,11 @@ import type { RequireAuth } from "../../middleware/auth.js";
 import { validateRequest } from "../../middleware/validateRequest.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { uploadAttachments } from "./upload.middleware.js";
-import { createEmergencyReportSchema, createReportSchema } from "../../validation/schemas/report.schema.js";
+import {
+  classifyReportSchema,
+  createEmergencyReportSchema,
+  createReportSchema,
+} from "../../validation/schemas/report.schema.js";
 import { emergencyReportLimiter } from "../../middleware/rateLimiters.js";
 
 export function createReportsRoutes(controller: ReportsController, requireAuth: RequireAuth): Router {
@@ -30,6 +34,13 @@ export function createReportsRoutes(controller: ReportsController, requireAuth: 
 
   router.get("/mine", requireAuth(["citizen"]), asyncHandler(controller.listMine));
   router.get("/:id/status", requireAuth(["citizen"]), asyncHandler(controller.getStatus));
+
+  router.post(
+    "/classify-suggestion",
+    requireAuth(["citizen"]),
+    validateRequest(classifyReportSchema),
+    asyncHandler(controller.classifySuggestion),
+  );
 
   return router;
 }

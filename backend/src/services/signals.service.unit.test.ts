@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { createSignalsService } from "./signals.service.js";
 import { createDistrictScopeService } from "../middleware/districtScope.js";
 import { createFakeSignalsPrisma, type FakeSignalsPrisma } from "../test-utils/fakeSignalsPrisma.js";
+import type { HeatNarrator } from "./heatNarrative.js";
 
-function buildService(fakePrisma: FakeSignalsPrisma) {
+function buildService(fakePrisma: FakeSignalsPrisma, heatNarrator?: HeatNarrator) {
   const districtScope = createDistrictScopeService(fakePrisma as any);
-  return createSignalsService({ prisma: fakePrisma as any, districtScope });
+  return createSignalsService({ prisma: fakePrisma as any, districtScope, heatNarrator });
 }
 
 describe("signals.service — listSignals", () => {
@@ -173,5 +174,66 @@ describe("signals.service — getSignalDetail", () => {
     const detail = await service.getSignalDetail({ id: randomUUID(), role: "admin" }, "s1");
 
     expect(detail.relatedReports.map((r: any) => r.id)).toEqual(["nearby"]);
+  });
+
+  it("computes a heat narrative when heat is medium/high, passing the district's recent signals", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    const districtId = randomUUID();
+    fakePrisma.seedDistrict({ id: districtId, tenXa: "Buôn Ma Thuột" });
+    fakePrisma.seedSignal({
+      id: "s1", sourceName: null, sourceUrl: null, trustLevel: "verified_press", summary: "Cháy nhỏ gần chợ",
+      districtId, detectedCategory: "chay_no", publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+    fakePrisma.seedSignal({
+      id: "s2", sourceName: null, sourceUrl: null, trustLevel: "unverified_social", summary: "Có khói gần chợ",
+      districtId, detectedCategory: "chay_no", publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+
+    const heatNarrator: HeatNarrator = {
+      generate: async (input) => {
+        expect(input.districtName).toBe("Buôn Ma Thuột");
+        expect(input.signals).toHaveLength(2);
+        return "Khu vực đang có nhiều tin về cháy nổ gần chợ trung tâm.";
+      },
+    };
+    const service = buildService(fakePrisma, heatNarrator);
+    const detail = await service.getSignalDetail({ id: randomUUID(), role: "admin" }, "s1");
+
+    expect(detail.heat).toEqual({ score: 2, level: "medium" });
+    expect(detail.heatNarrative).toBe("Khu vực đang có nhiều tin về cháy nổ gần chợ trung tâm.");
+  });
+
+  it("does not compute a heat narrative when heat is low", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    const districtId = randomUUID();
+    fakePrisma.seedSignal({
+      id: "s1", sourceName: null, sourceUrl: null, trustLevel: "verified_press", summary: null,
+      districtId, detectedCategory: null, publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+    });
+
+    let called = false;
+    const heatNarrator: HeatNarrator = { generate: async () => { called = true; return "should not happen"; } };
+    const service = buildService(fakePrisma, heatNarrator);
+    const detail = await service.getSignalDetail({ id: randomUUID(), role: "admin" }, "s1");
+
+    expect(detail.heat).toEqual({ score: 1, level: "low" });
+    expect(detail.heatNarrative).toBeNull();
+    expect(called).toBe(false);
+  });
+
+  it("defaults to no narrative (NoopHeatNarrator) when none is injected, even at high heat", async () => {
+    const fakePrisma = createFakeSignalsPrisma();
+    const districtId = randomUUID();
+    for (let i = 0; i < 5; i++) {
+      fakePrisma.seedSignal({
+        id: `s${i}`, sourceName: null, sourceUrl: null, trustLevel: "verified_press", summary: null,
+        districtId, detectedCategory: null, publishedAt: new Date(), crawledAt: new Date(), duplicateOfId: null,
+      });
+    }
+    const service = buildService(fakePrisma);
+    const detail = await service.getSignalDetail({ id: randomUUID(), role: "admin" }, "s0");
+
+    expect(detail.heat).toEqual({ score: 5, level: "high" });
+    expect(detail.heatNarrative).toBeNull();
   });
 });

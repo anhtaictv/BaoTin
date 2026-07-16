@@ -28,3 +28,9 @@ export const createEmergencyReportSchema = z.object({
   emergencyType: z.string().min(1).max(100),
   location: z.preprocess(parseJsonField, z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })),
 });
+
+/** Giai đoạn "nâng cấp AI cục bộ" — gợi ý loại vụ việc, không phải gửi tin báo thật nên
+ * validation lỏng hơn createReportSchema (không cần location/attachments). */
+export const classifyReportSchema = z.object({
+  description: z.string().min(1).max(2000),
+});

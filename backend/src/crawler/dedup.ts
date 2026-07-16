@@ -6,6 +6,10 @@
  */
 export const DUPLICATE_SIMILARITY_THRESHOLD = 0.5;
 
+/** Below this, two texts are different enough that asking an LLM is pointless — saves a
+ * model call per pair for the (common) case of two completely unrelated articles. */
+export const DUPLICATE_BORDERLINE_MIN = 0.15;
+
 function trigrams(text: string): Set<string> {
   const clean = text.toLowerCase().replace(/\s+/g, " ").trim();
   const grams = new Set<string>();
@@ -35,6 +39,102 @@ export interface DedupCandidate {
 export function findDuplicate(candidateText: string, existing: DedupCandidate[]): string | null {
   for (const item of existing) {
     if (similarity(candidateText, item.text) >= DUPLICATE_SIMILARITY_THRESHOLD) return item.id;
+  }
+  return null;
+}
+
+export interface SemanticDuplicateChecker {
+  /** Always resolves — never throws. See NoopSemanticDuplicateChecker for the fail-closed default. */
+  isSameEvent(a: string, b: string): Promise<boolean>;
+}
+
+/** Default when no LLM is configured — matches pre-Ollama behavior exactly (trigram-only).
+ * Also the fail-closed fallback on any classifier error: a broken/slow local model must never
+ * cause *extra* items to get flagged as duplicates beyond what trigram already caught. */
+export class NoopSemanticDuplicateChecker implements SemanticDuplicateChecker {
+  async isSameEvent(_a: string, _b: string): Promise<boolean> {
+    return false;
+  }
+}
+
+const SAME_EVENT_PROMPT =
+  "Hai đoạn tin sau có mô tả CÙNG MỘT vụ việc an ninh trật tự (cùng địa điểm/thời điểm/đối " +
+  "tượng, chỉ diễn đạt khác nhau) hay là hai vụ việc khác nhau? Chỉ trả lời đúng 1 từ duy " +
+  "nhất: CUNG hoặc KHAC.";
+
+function parseSameEventDecision(modelText: string): boolean {
+  const normalized = modelText
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+  return normalized.startsWith("CUNG");
+}
+
+/** Runs on a local model (no API key, no data leaving the machine). Any failure falls back to
+ * "not a duplicate" — see NoopSemanticDuplicateChecker's fail-closed rationale. */
+export class OllamaSemanticDuplicateChecker implements SemanticDuplicateChecker {
+  constructor(
+    private readonly baseUrl: string = "http://localhost:11434",
+    private readonly model: string = "qwen2.5:1.5b",
+  ) {}
+
+  async isSameEvent(a: string, b: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: SAME_EVENT_PROMPT },
+            { role: "user", content: `Tin 1: ${a}\n\nTin 2: ${b}` },
+          ],
+          stream: false,
+        }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { message?: { content?: string } };
+      const text = data.message?.content;
+      return text ? parseSameEventDecision(text) : false;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export interface SemanticDedupEnv {
+  LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
+  OLLAMA_BASE_URL: string;
+  OLLAMA_MODEL: string;
+}
+
+/** Only "ollama" wires in the AI-assisted borderline check — see relevanceClassifier.ts for
+ * why this feature is scoped to the local-model provider specifically. */
+export function createSemanticDuplicateChecker(env: SemanticDedupEnv): SemanticDuplicateChecker {
+  if (env.LLM_PROVIDER === "ollama") return new OllamaSemanticDuplicateChecker(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
+  return new NoopSemanticDuplicateChecker();
+}
+
+/**
+ * Trigram pass first (cheap, exact threshold) — if nothing clears it, only *then* ask the
+ * semantic checker about pairs in the borderline band (too similar to ignore, not similar
+ * enough for the hard trigram threshold). Never calls the checker for near-0 similarity pairs
+ * (obviously unrelated) or for pairs the trigram pass already resolved.
+ */
+export async function findDuplicateSemantic(
+  candidateText: string,
+  existing: DedupCandidate[],
+  checker: SemanticDuplicateChecker = new NoopSemanticDuplicateChecker(),
+): Promise<string | null> {
+  const trigramResult = findDuplicate(candidateText, existing);
+  if (trigramResult) return trigramResult;
+
+  for (const item of existing) {
+    const score = similarity(candidateText, item.text);
+    if (score >= DUPLICATE_BORDERLINE_MIN && score < DUPLICATE_SIMILARITY_THRESHOLD) {
+      if (await checker.isSameEvent(candidateText, item.text)) return item.id;
+    }
   }
   return null;
 }

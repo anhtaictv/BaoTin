@@ -27,14 +27,20 @@ export interface FakeSignalReport {
   createdAt: Date;
 }
 
+export interface FakeSignalDistrict {
+  id: string;
+  tenXa: string;
+}
+
 /** Fake Prisma covering signals.service.ts + districtScope.ts's needs. */
 export function createFakeSignalsPrisma() {
   const signals = new Map<string, FakeSignal>();
   const assignments: FakeAssignment[] = [];
   const reports = new Map<string, FakeSignalReport>();
+  const districts = new Map<string, FakeSignalDistrict>();
 
   return {
-    store: { signals, assignments, reports },
+    store: { signals, assignments, reports, districts },
     seedSignal(signal: FakeSignal) {
       signals.set(signal.id, signal);
     },
@@ -43,6 +49,9 @@ export function createFakeSignalsPrisma() {
     },
     seedReport(report: FakeSignalReport) {
       reports.set(report.id, report);
+    },
+    seedDistrict(district: FakeSignalDistrict) {
+      districts.set(district.id, district);
     },
     officerDistrictAssignment: {
       async findMany({ where }: any) {
@@ -55,6 +64,7 @@ export function createFakeSignalsPrisma() {
       async findMany({ where, select }: any) {
         return [...signals.values()]
           .filter((s) => {
+            if (typeof where.districtId === "string" && s.districtId !== where.districtId) return false;
             if (where.districtId?.in && !where.districtId.in.includes(s.districtId)) return false;
             if (where.districtId?.not === null && s.districtId === null) return false;
             if (where.trustLevel && s.trustLevel !== where.trustLevel) return false;
@@ -80,6 +90,12 @@ export function createFakeSignalsPrisma() {
           })
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
           .map((r) => (select ? pick(r, select) : r));
+      },
+    },
+    district: {
+      async findUnique({ where, select }: any) {
+        const district = districts.get(where.id);
+        return district ? (select ? pick(district, select) : district) : null;
       },
     },
   };

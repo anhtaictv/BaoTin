@@ -24,7 +24,7 @@ const _fakeSignals = [
   },
 ];
 
-const _fakeDetail = {
+Map<String, dynamic> _fakeDetail({String? heatNarrative}) => {
   'id': 's1',
   'sourceName': '[DEMO] Báo Đắk Lắk Online',
   'sourceUrl': 'https://example.com/tin-1',
@@ -34,6 +34,7 @@ const _fakeDetail = {
   'detectedCategory': 'trom_cap',
   'duplicateOfId': null,
   'heat': {'score': 6, 'level': 'high'},
+  'heatNarrative': heatNarrative,
   'relatedReports': [
     {'id': 'r1', 'category': 'Trộm cắp tài sản', 'status': 'pending', 'urgency': 'normal', 'createdAt': '2026-01-01T08:30:00Z'},
   ],
@@ -51,7 +52,7 @@ void main() {
         overrides: [
           districtOptionsProvider.overrideWith((ref) async => const []),
           signalListProvider.overrideWith((ref) async => _fakeSignals),
-          signalDetailProvider('s1').overrideWith((ref) async => _fakeDetail),
+          signalDetailProvider('s1').overrideWith((ref) async => _fakeDetail()),
         ],
         child: const MaterialApp(home: Scaffold(body: SignalsTab())),
       ),
@@ -76,5 +77,34 @@ void main() {
     expect(find.textContaining('Nóng (6)'), findsOneWidget);
     expect(find.textContaining('Đối chiếu chéo'), findsOneWidget);
     expect(find.text('Trộm cắp tài sản'), findsOneWidget);
+    expect(find.textContaining('Diễn giải độ nóng'), findsNothing);
+  });
+
+  testWidgets('shows the AI heat narrative card labeled as AI/reference-only when present', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          districtOptionsProvider.overrideWith((ref) async => const []),
+          signalListProvider.overrideWith((ref) async => _fakeSignals),
+          signalDetailProvider('s1').overrideWith(
+            (ref) async => _fakeDetail(heatNarrative: 'Khu vực đang có nhiều tin về trộm cắp xe máy gần đây.'),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: SignalsTab())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.textContaining('Công an đang xác minh vụ trộm xe máy').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('Diễn giải độ nóng (AI, chỉ tham khảo)'), findsOneWidget);
+    expect(find.text('Khu vực đang có nhiều tin về trộm cắp xe máy gần đây.'), findsOneWidget);
   });
 }

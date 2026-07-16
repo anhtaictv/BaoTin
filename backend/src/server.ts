@@ -12,6 +12,7 @@ import { createStorageClient } from "./storage/minioClient.js";
 import { ConsoleNotificationSender } from "./notifications/ConsoleNotificationSender.js";
 import { createNotificationService } from "./notifications/notification.service.js";
 import { createReportLifecycleService } from "./services/reportLifecycle.service.js";
+import { createReportCategorySuggester } from "./services/reportClassifier.js";
 import { createReportsController } from "./api/citizen/reports.controller.js";
 import { createReportsRoutes } from "./api/citizen/reports.routes.js";
 import { createDistrictScopeService } from "./middleware/districtScope.js";
@@ -27,6 +28,7 @@ import { createDashboardStatsService } from "./services/dashboardStats.service.j
 import { createDashboardController } from "./api/admin/dashboard.controller.js";
 import { createDashboardRoutes } from "./api/admin/dashboard.routes.js";
 import { createSignalsService } from "./services/signals.service.js";
+import { createHeatNarrator } from "./services/heatNarrative.js";
 import { createSignalsController } from "./api/officer/signals.controller.js";
 import { createSignalsRoutes } from "./api/officer/signals.routes.js";
 import { createEmergencyContactsService } from "./services/emergencyContacts.service.js";
@@ -35,6 +37,10 @@ import { createEmergencyContactsRoutes } from "./api/citizen/emergencyContacts.r
 import { createAreaAlertsService } from "./services/areaAlerts.service.js";
 import { createAreaAlertsController } from "./api/citizen/areaAlerts.controller.js";
 import { createAreaAlertsRoutes } from "./api/citizen/areaAlerts.routes.js";
+import { createQueryInterpreter } from "./services/searchInterpreter.js";
+import { createSearchAssistantService } from "./services/searchAssistant.service.js";
+import { createSearchController } from "./api/admin/search.controller.js";
+import { createSearchRoutes } from "./api/admin/search.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -70,7 +76,8 @@ async function main() {
   });
   const notifications = createNotificationService(new ConsoleNotificationSender());
   const reportLifecycle = createReportLifecycleService({ prisma, geoMatch, assignOfficer, storage, notifications });
-  const reportsController = createReportsController(reportLifecycle);
+  const categorySuggester = createReportCategorySuggester(env);
+  const reportsController = createReportsController(reportLifecycle, categorySuggester);
   const citizenReportsRouter = createReportsRoutes(reportsController, requireAuth);
 
   const districtScope = createDistrictScopeService(prisma);
@@ -96,7 +103,8 @@ async function main() {
   const dashboardController = createDashboardController(dashboardStats);
   const dashboardRouter = createDashboardRoutes(dashboardController, requireAuth);
 
-  const signalsService = createSignalsService({ prisma, districtScope });
+  const heatNarrator = createHeatNarrator(env);
+  const signalsService = createSignalsService({ prisma, districtScope, heatNarrator });
   const signalsController = createSignalsController(signalsService);
   const signalsRouter = createSignalsRoutes(signalsController, requireAuth);
 
@@ -108,6 +116,11 @@ async function main() {
   const areaAlertsController = createAreaAlertsController(areaAlertsService);
   const areaAlertsRouter = createAreaAlertsRoutes(areaAlertsController, requireAuth);
 
+  const queryInterpreter = createQueryInterpreter(env);
+  const searchAssistantService = createSearchAssistantService({ prisma, interpreter: queryInterpreter });
+  const searchController = createSearchController(searchAssistantService);
+  const searchRouter = createSearchRoutes(searchController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -118,6 +131,7 @@ async function main() {
       signalsRouter,
       emergencyContactsRouter,
       areaAlertsRouter,
+      searchRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

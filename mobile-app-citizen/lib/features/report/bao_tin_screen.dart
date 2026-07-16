@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../profile/profile_screen.dart';
 import 'camera_gps_capture.dart';
+
+/// How long to wait after the last keystroke before asking for a category suggestion — avoids
+/// firing a request per character while the person is still typing.
+const _classifyDebounce = Duration(milliseconds: 800);
 
 const _categories = <String, String>{
   'trom_cap': 'Trộm cắp',
@@ -29,10 +34,30 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
   bool _submitting = false;
   String? _error;
 
+  Timer? _classifyDebounceTimer;
+  bool _categoryManuallySet = false;
+  bool _categoryJustSuggested = false;
+
   @override
   void dispose() {
+    _classifyDebounceTimer?.cancel();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _onDescriptionChanged(String text) {
+    _classifyDebounceTimer?.cancel();
+    if (_categoryManuallySet || text.trim().length < 8) return;
+    _classifyDebounceTimer = Timer(_classifyDebounce, () => _maybeSuggestCategory(text));
+  }
+
+  Future<void> _maybeSuggestCategory(String text) async {
+    final suggested = await ref.read(reportRepositoryProvider).suggestCategory(text);
+    if (!mounted || _categoryManuallySet || suggested == null || !_categories.containsKey(suggested)) return;
+    setState(() {
+      _category = suggested;
+      _categoryJustSuggested = true;
+    });
   }
 
   Future<void> _takePhoto() async {
@@ -92,6 +117,9 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
         _photoPath = null;
         _location = null;
         _descriptionController.clear();
+        _category = _categories.keys.first;
+        _categoryManuallySet = false;
+        _categoryJustSuggested = false;
       });
     } catch (_) {
       setState(() => _error = 'Gửi tin báo thất bại. Vui lòng thử lại.');
@@ -128,14 +156,34 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
               return ChoiceChip(
                 label: Text(entry.value),
                 selected: selected,
-                onSelected: (_) => setState(() => _category = entry.key),
+                onSelected: (_) => setState(() {
+                  _category = entry.key;
+                  _categoryManuallySet = true;
+                  _categoryJustSuggested = false;
+                }),
               );
             }).toList(),
           ),
+          if (_categoryJustSuggested) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, size: 14, color: Colors.grey.shade600),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Đã gợi ý dựa trên mô tả (AI) — bạn có thể chọn lại loại khác.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 20),
           TextField(
             controller: _descriptionController,
             maxLines: 4,
+            onChanged: _onDescriptionChanged,
             decoration: const InputDecoration(
               labelText: 'Mô tả sự việc',
               alignLabelWithHint: true,
