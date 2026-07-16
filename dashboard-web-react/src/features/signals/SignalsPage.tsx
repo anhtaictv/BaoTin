@@ -62,7 +62,7 @@ export function SignalsPage() {
             ) : signals.data!.length === 0 ? (
               <p style={{ padding: 12 }}>Không có tín hiệu nào.</p>
             ) : (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
                 {signals.data!.map((signal) => (
                   <li key={signal.id}>
                     <button

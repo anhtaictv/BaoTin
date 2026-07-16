@@ -57,3 +57,4 @@ bao-tin/
 - Luôn hỏi lại nếu thiếu dữ liệu ranh giới hành chính (geojson phường/xã) hoặc danh sách cán bộ phụ trách — đây là dữ liệu nền bắt buộc phải có trước khi geo-matching chạy được.
 - Không tự ý gộp bảng dữ liệu tin MXH và tin dân báo trong schema — phải tách bảng hoặc tách rõ cột `source_type` + `trust_level`.
 - Mọi tính năng liên quan cấp cứu (nút SOS) ưu tiên độ ổn định và tốc độ phản hồi hơn là tính năng phong phú.
+- **Cuối mỗi phiên làm việc, ghi nhật ký vào `docs/NHATKY_<YYYY-MM-DD>.md`** (thư mục `docs/` đã gitignore — không commit/push). Nội dung: đã làm gì, quyết định/đánh đổi nào đã chốt, bug thật đã phát hiện + đã sửa (không phải chi tiết code, chỉ phần có giá trị tra cứu lại), việc còn thiếu/gợi ý cho phiên sau. Nếu cùng ngày có nhiều phiên, nối thêm vào file của ngày đó thay vì tạo file mới.
