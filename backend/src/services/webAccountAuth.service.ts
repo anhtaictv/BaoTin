@@ -3,6 +3,7 @@ import { HttpError } from "../middleware/errorHandler.js";
 import { decryptField, encryptField } from "../crypto/aesGcm.js";
 import { generateTempPassword, hashPassword, verifyPassword } from "../crypto/passwordHash.js";
 import type { AuthService } from "../api/auth/auth.service.js";
+import type { AuditLogService } from "./auditLog.service.js";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
@@ -11,6 +12,7 @@ export interface WebAccountAuthDeps {
   prisma: PrismaClient;
   authService: AuthService;
   piiEncryptionKey: string;
+  auditLog: AuditLogService;
 }
 
 /**
@@ -107,8 +109,13 @@ export function createWebAccountAuthService(deps: WebAccountAuthDeps) {
     };
   }
 
-  /** Admin-only — the full 102-xã roster for the account-management screen. */
-  async function listWebAccounts() {
+  /** Admin-only — the full 102-xã roster for the account-management screen.
+   * SECURITY.md §1.4: viewing the full account roster (usernames, lock state, last login
+   * across every officer) is a sensitive admin action in its own right, audited like
+   * officerReports.service.ts's view_identity. */
+  async function listWebAccounts(adminOfficerId: string) {
+    await deps.auditLog.record(adminOfficerId, "view_web_accounts_roster");
+
     const accounts = await deps.prisma.webAccount.findMany({
       include: {
         officer: {
@@ -132,8 +139,10 @@ export function createWebAccountAuthService(deps: WebAccountAuthDeps) {
   }
 
   /** Admin-only — generates a new one-time temp password, returned in the response body
-   * exactly once and never persisted in plaintext (mirrors the seed script's approach). */
-  async function resetPassword(officerId: string): Promise<{ tempPassword: string }> {
+   * exactly once and never persisted in plaintext (mirrors the seed script's approach).
+   * Forcing another officer's credentials is exactly the kind of "thao tác nhạy cảm" SECURITY.md
+   * §1.4 calls out — audited with which admin did it and which account was targeted. */
+  async function resetPassword(adminOfficerId: string, officerId: string): Promise<{ tempPassword: string }> {
     const account = await deps.prisma.webAccount.findUnique({ where: { officerId } });
     if (!account) throw new HttpError(404, "ACCOUNT_NOT_FOUND", "Không tìm thấy tài khoản.");
 
@@ -143,6 +152,8 @@ export function createWebAccountAuthService(deps: WebAccountAuthDeps) {
       where: { id: account.id },
       data: { passwordHash, mustChangePassword: true, failedLoginCount: 0, lockedUntil: null },
     });
+
+    await deps.auditLog.record(adminOfficerId, "reset_web_account_password", { type: "officer", id: officerId });
 
     return { tempPassword };
   }
