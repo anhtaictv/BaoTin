@@ -13,7 +13,6 @@
 5. **Không tự viết code đọc chip NFC CCCD.** Giai đoạn đầu chỉ mock UI; tích hợp thật (nếu làm sau) phải qua VNeID/SDK chính thức của Bộ Công an, không tự parse chip.
 6. **Giữ nguyên vẹn EXIF GPS của ảnh** — người dân phải upload trực tiếp trong app (chụp hoặc chọn từ thư viện), không nhận ảnh qua kênh trung gian (Zalo/Messenger) vì các nền tảng đó thường strip EXIF.
 7. **Bảo mật là yêu cầu từ đầu, không phải làm sau.** Xem `docs/SECURITY.md` trước khi viết bất kỳ endpoint auth/lưu trữ dữ liệu định danh nào. Không tự ý bỏ qua checklist bảo mật tối thiểu dù đang trong giai đoạn demo/thi.
-8. **Module camera chỉ định vị + tạo yêu cầu trích xuất, KHÔNG tự động nhận diện đối tượng.** Không code tính năng nhận diện khuôn mặt/truy tìm đối tượng qua video trong hệ thống này — đây là dữ liệu sinh trắc học nhạy cảm, cần cơ sở pháp lý riêng và nên qua hệ thống nghiệp vụ chuyên dụng của công an. Nếu cần minh họa ý tưởng khi demo, dùng dữ liệu mock, không tích hợp AI nhận diện thật.
 
 ## Tech stack đã chốt
 - **Database:** PostgreSQL + PostGIS (dữ liệu quan hệ + địa lý)

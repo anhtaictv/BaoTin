@@ -1,0 +1,21 @@
+# Single domain, path-based routing — no subdomains/extra DNS records needed, just one A
+# record pointing $DOMAIN at the VPS. Caddy auto-provisions/renews the Let's Encrypt cert for
+# it as long as ports 80/443 are reachable from the internet (see docs/DEPLOY.md).
+{$DOMAIN} {
+	# /api/* -> backend, prefix stripped so the backend sees its normal routes unchanged
+	# (/auth/..., /officer/reports, ...).
+	handle_path /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# /legacy/* -> dashboard-web (Flutter Web), built with --base-href /legacy/ so its own
+	# asset URLs already include the prefix Caddy strips here.
+	handle_path /legacy/* {
+		reverse_proxy dashboard-web:80
+	}
+
+	# Everything else -> dashboard-web-react, the primary dashboard.
+	handle {
+		reverse_proxy dashboard-react:80
+	}
+}

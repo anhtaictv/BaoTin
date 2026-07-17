@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  dashboard-web-react:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard-web-react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dashboard-web-react/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      # Sanity build only — the real production build (with VITE_API_BASE_URL baked in) happens
+      # in deploy.yml's Docker image build, not here.
+      - run: npm run build
+
+  dashboard-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard-web
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned to the same version as dashboard-web/Dockerfile so CI and the deploy build agree.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.6"
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build web --release
+
+  # The active VPS is Windows Server + IIS (deploy-windows.yml, no Docker) — this job just
+  # keeps the secondary Docker/Linux path (deploy-docker-linux.yml, docs/DEPLOY_DOCKER_LINUX.md)
+  # from silently rotting in case a Linux host is ever used instead. Build-only, no push.
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            context: backend
+          # scope names match deploy.yml's image names (dashboard-react/dashboard-web) so the
+          # two workflows share the same GHA layer cache instead of building cold twice.
+          - name: dashboard-react
+            context: dashboard-web-react
+          - name: dashboard-web
+            context: dashboard-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

@@ -1,0 +1,39 @@
+name: VPS Healthcheck
+
+# Ad-hoc diagnostic — runs on the self-hosted VPS runner and reports what's installed, so setup
+# progress (docs/DEPLOY.md Phần 1) can be verified without RDP/copy-paste round-trips.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: [self-hosted, baotin-vps]
+    steps:
+      - name: Report installed tooling
+        shell: powershell
+        run: |
+          function Check($label, $script) {
+            Write-Host "--- $label ---"
+            try {
+              & $script
+            } catch {
+              Write-Host "NOT FOUND / ERROR: $($_.Exception.Message)"
+            }
+            Write-Host ""
+          }
+
+          Check "Node.js" { node -v; npm -v }
+          Check "NSSM" { & "C:\nssm\nssm.exe" --version }
+          Check "PostgreSQL service" { Get-Service postgresql* -ErrorAction Stop | Format-Table Name, Status }
+          Check "MinIO service" { Get-Service BaoTinMinio -ErrorAction Stop | Format-Table Name, Status }
+          Check "IIS sites" { Import-Module WebAdministration; Get-Website | Format-Table Name, State, PhysicalPath }
+          Check "URL Rewrite module" { Get-WebGlobalModule -Name RewriteModule -ErrorAction Stop }
+          Check "ARR proxy enabled" {
+            Import-Module WebAdministration
+            (Get-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "enabled").Value
+          }
+          Check "backend .env present" { Test-Path "C:\baotin\backend\.env" }
+          Check "BaoTinBackend service" { Get-Service BaoTinBackend -ErrorAction Stop | Format-Table Name, Status }

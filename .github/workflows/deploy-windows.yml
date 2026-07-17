@@ -1,0 +1,108 @@
+name: Deploy (Windows Server + IIS)
+
+# Active deploy path for the current VPS (Windows Server 2019, no Docker — see docs/DEPLOY.md).
+# Manual only — a demo/thi deploy should never go out because of a stray push while judges are
+# looking at the live site. Run from the Actions tab when you actually want to ship.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-windows
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No node_modules in the artifact — sharp and friends are native modules built for this
+      # Ubuntu runner and will not run on Windows. The server runs its own `npm ci` (Phần 2 of
+      # docs/DEPLOY.md), which fetches/builds the right binaries for Windows x64 itself.
+      - name: Build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build dashboard-web-react
+        working-directory: dashboard-web-react
+        run: |
+          npm ci
+          npm run build
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.6"
+          channel: stable
+
+      - name: Build dashboard-web (Flutter Web)
+        working-directory: dashboard-web
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /legacy/
+
+      - name: Collect deploy artifact
+        run: |
+          mkdir -p artifact/backend artifact/dashboard-react artifact/dashboard-web artifact/data/raw
+          cp -r backend/dist artifact/backend/dist
+          cp -r backend/prisma artifact/backend/prisma
+          cp backend/package.json backend/package-lock.json artifact/backend/
+          cp -r dashboard-web-react/dist/. artifact/dashboard-react/
+          cp -r dashboard-web/build/web/. artifact/dashboard-web/
+          # Only actually needed once (Phần 2's manual seed step), but the VPS has no inbound
+          # path to fetch it any other way — riding along in the artifact is simplest.
+          cp data/raw/Daklak.geojson artifact/data/raw/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-artifact
+          path: artifact
+          retention-days: 1
+
+  # Runs ON the VPS itself via a GitHub Actions self-hosted runner (docs/DEPLOY.md) — the VPS's
+  # network only ever makes an outbound HTTPS connection to GitHub to poll for jobs, so this
+  # needs no inbound port at all (no SSH, no port-forwarding/NAT rule on the provider's side).
+  deploy:
+    needs: build
+    runs-on: [self-hosted, baotin-vps]
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deploy-artifact
+          path: artifact
+
+      - name: Copy files into place
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          Copy-Item -Path "artifact\backend\*" -Destination "C:\baotin\backend" -Recurse -Force
+          Copy-Item -Path "artifact\dashboard-react\*" -Destination "C:\inetpub\baotin" -Recurse -Force
+          Copy-Item -Path "artifact\dashboard-web\*" -Destination "C:\inetpub\baotin\legacy" -Recurse -Force
+          New-Item -ItemType Directory -Force -Path "C:\baotin\data\raw" | Out-Null
+          Copy-Item -Path "artifact\data\raw\Daklak.geojson" -Destination "C:\baotin\data\raw\Daklak.geojson" -Force
+
+      - name: Install deps, migrate, restart backend service
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location C:\baotin\backend
+          npm ci --omit=dev
+
+          # Run migrations against the new schema *before* restarting the service, so the
+          # new backend code never starts against an un-migrated database.
+          npx prisma migrate deploy
+
+          Restart-Service -Name BaoTinBackend
+          # IIS itself needs no restart for the static file changes — it reads dist/build.web
+          # straight off disk on every request, and this VPS hosts another IIS site we must
+          # not disturb.
