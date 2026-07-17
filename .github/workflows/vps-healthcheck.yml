@@ -34,9 +34,16 @@ jobs:
             Write-Host ""
           }
 
-          Check "whoami (runner's own identity)" { whoami; whoami /groups | Select-String "Administrators|SYSTEM" }
-          Check "Node.js full path + version" { Get-Command node | Format-List Source; node -v }
-          Check "All Node installs on PATH" { where.exe node }
-          Check "NSSM file present" { Test-Path "C:\nssm\nssm.exe"; Get-Item "C:\nssm\nssm.exe" | Format-List Length, LastWriteTime }
-          Check "NSSM help (no version flag, some builds lack --version)" { & "C:\nssm\nssm.exe" help } 10
-          Check "IIS redirection.config ACL" { icacls "C:\Windows\System32\inetsrv\config\redirection.config" }
+          Check "runner identity" { whoami }
+          Check "Node 20 isolated install" { Test-Path "C:\node20\node.exe"; C:\node20\node.exe -v }
+          Check "PostgreSQL service" { Get-Service postgresql* -ErrorAction Stop | Format-Table Name, Status }
+          Check "PostgreSQL listen_addresses" {
+            Select-String -Path "C:\Program Files\PostgreSQL\16\data\postgresql.conf" -Pattern "^listen_addresses"
+          }
+          Check "baotin database + roles" {
+            $env:PGPASSWORD = $null
+            & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -c "\l baotin" -c "\du baotin_migrator baotin_app"
+          } 20
+          Check "postgis extension present" {
+            & "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -d baotin -c "\dx"
+          } 20
