@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './core/AuthContext';
+import { canAccessDashboard, defaultRouteForRole } from './core/theme';
 import { LoginPage } from './features/auth/LoginPage';
 import { ChangePasswordGate } from './features/auth/ChangePasswordGate';
 import { AccountPage } from './features/accounts/AccountPage';
@@ -20,7 +21,16 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
 function AdminOnlyRoute({ children }: { children: ReactNode }) {
   const { account } = useAuth();
-  if (account?.role !== 'admin') return <Navigate to="/" replace />;
+  if (account?.role !== 'admin') return <Navigate to={defaultRouteForRole(account?.role)} replace />;
+  return <>{children}</>;
+}
+
+/** "Tổng quan" (/admin/dashboard/*) and "Tìm kiếm" (/admin/search) 403 for a plain "officer"
+ * account at the backend — redirect away instead of letting the tab render into a dead-end
+ * API error. Mirrors AdminOnlyRoute's pattern, one role tier down. */
+function DashboardOnlyRoute({ children }: { children: ReactNode }) {
+  const { account } = useAuth();
+  if (!canAccessDashboard(account?.role)) return <Navigate to={defaultRouteForRole(account?.role)} replace />;
   return <>{children}</>;
 }
 
@@ -36,10 +46,24 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<OverviewPage />} />
+        <Route
+          index
+          element={
+            <DashboardOnlyRoute>
+              <OverviewPage />
+            </DashboardOnlyRoute>
+          }
+        />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="signals" element={<SignalsPage />} />
-        <Route path="search" element={<SearchPage />} />
+        <Route
+          path="search"
+          element={
+            <DashboardOnlyRoute>
+              <SearchPage />
+            </DashboardOnlyRoute>
+          }
+        />
         <Route path="account" element={<AccountPage />} />
         <Route
           path="admin/accounts"

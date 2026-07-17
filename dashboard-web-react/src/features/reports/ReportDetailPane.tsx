@@ -1,3 +1,5 @@
+import { MapPin, User } from 'lucide-react';
+import { Badge } from '../../components/Badge';
 import { ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
 import { statusColor, statusLabel, urgencyColor, urgencyLabel } from '../../core/theme';
 import { NearbyCamerasSection } from '../cameras/NearbyCamerasSection';
@@ -18,53 +20,39 @@ export function ReportDetailPane({ reportId }: { reportId: string }) {
   const status = (report.status as string) ?? 'pending';
 
   return (
-    <div key={reportId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div key={reportId} className="rise-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', gap: 8 }}>
         {urgency === 'emergency' && (
-          <span
-            style={{
-              padding: '3px 8px',
-              borderRadius: 6,
-              background: urgencyColor('emergency'),
-              color: 'white',
-              fontWeight: 700,
-              fontSize: 11,
-            }}
-          >
+          <Badge color={urgencyColor('emergency')} solid>
             {urgencyLabel('emergency')}
-          </span>
+          </Badge>
         )}
-        <span
-          style={{
-            padding: '4px 10px',
-            borderRadius: 999,
-            background: `${statusColor(status)}1f`,
-            color: statusColor(status),
-            fontWeight: 600,
-            fontSize: 12,
-          }}
-        >
-          {statusLabel(status)}
-        </span>
+        <Badge color={statusColor(status)}>{statusLabel(status)}</Badge>
       </div>
 
-      <p style={{ fontSize: 18, fontWeight: 600 }}>{(report.category as string) ?? 'Khác'}</p>
-      {typeof report.description === 'string' && report.description && <p>{report.description}</p>}
+      <div>
+        <p style={{ fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-display)' }}>{(report.category as string) ?? 'Khác'}</p>
+        {typeof report.description === 'string' && report.description && (
+          <p style={{ marginTop: 6, color: 'var(--ink-muted)', lineHeight: 1.6, maxWidth: '65ch' }}>{report.description}</p>
+        )}
+      </div>
 
-      {location && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          Vị trí: {location.lat}, {location.lng}
-        </p>
-      )}
-      {user && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          Người báo tin:{' '}
-          {user.anonymous ? 'Ẩn danh (được bảo vệ)' : `${user.fullName ?? 'Không rõ tên'} — ${user.phoneNumber ?? ''}`}
-        </p>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {location && (
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-muted)' }}>
+            <MapPin size={13} /> Vị trí: {location.lat}, {location.lng}
+          </p>
+        )}
+        {user && (
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-muted)' }}>
+            <User size={13} /> Người báo tin:{' '}
+            {user.anonymous ? 'Ẩn danh (được bảo vệ)' : `${user.fullName ?? 'Không rõ tên'} — ${user.phoneNumber ?? ''}`}
+          </p>
+        )}
+      </div>
 
       {attachments.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+        <div className="scroll-panel" style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
           {attachments.map((a, i) =>
             a.fileUrl ? (
               <img
@@ -73,7 +61,7 @@ export function ReportDetailPane({ reportId }: { reportId: string }) {
                 alt=""
                 width={140}
                 height={140}
-                style={{ objectFit: 'cover', borderRadius: 10 }}
+                style={{ objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', flexShrink: 0 }}
               />
             ) : null,
           )}

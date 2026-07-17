@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Camera as CameraIcon } from 'lucide-react';
 import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
+import { EmptyState } from '../../components/EmptyState';
 import { createExtractionRequest, getNearbyCameras } from './camerasApi';
 
 /** Ported from mobile-app-officer/dashboard-web's NearbyCamerasSection (v1.9.0) — cameras
@@ -60,64 +62,76 @@ export function NearbyCamerasSection({ reportId }: { reportId: string }) {
 
   return (
     <Card>
-      <p style={{ fontWeight: 600, fontSize: 14 }}>Camera an ninh gần hiện trường</p>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <CameraIcon size={15} style={{ color: 'var(--ink-faint)' }} />
+        <p style={{ fontWeight: 600, fontSize: 14 }}>Camera an ninh gần hiện trường</p>
+      </span>
+      <p style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 4 }}>
         Tự động gợi ý camera gần vị trí tin báo — không tự xem/tải video. Chọn 1 hoặc nhiều camera
         (vd. dọc tuyến đường) để tạo yêu cầu gửi từng đơn vị quản lý xử lý thủ công — hệ thống
         không nhận diện hay theo dõi qua các camera.
       </p>
       {cameras.length === 0 ? (
-        <p>Không có camera nào được ghi nhận gần vị trí này.</p>
+        <EmptyState message="Không có camera nào được ghi nhận gần vị trí này." />
       ) : (
         <>
-          {cameras.map((camera) => (
-            <label key={camera.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-              <input type="checkbox" checked={selected.has(camera.id)} onChange={() => toggle(camera.id)} />
-              <span>
-                {camera.name}
-                <br />
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {camera.managingUnitName ?? 'Không rõ đơn vị'} — {camera.managingUnitContact ?? ''} • cách{' '}
-                  {Math.round(camera.distanceMeters)}m
-                </span>
-              </span>
-            </label>
-          ))}
-          <button disabled={selected.size === 0} onClick={() => setShowForm(true)} style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+            {cameras.map((camera) => {
+              const checked = selected.has(camera.id);
+              return (
+                <label
+                  key={camera.id}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: checked ? 'var(--surface-sunken)' : 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input type="checkbox" checked={checked} onChange={() => toggle(camera.id)} style={{ width: 16, height: 16, flexShrink: 0 }} />
+                  <span style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>
+                      {camera.name}
+                      <br />
+                      <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 400 }}>
+                        {camera.managingUnitName ?? 'Không rõ đơn vị'} — {camera.managingUnitContact ?? ''} • cách{' '}
+                        {Math.round(camera.distanceMeters)}m
+                      </span>
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <button disabled={selected.size === 0} onClick={() => setShowForm(true)} className="btn-primary btn-sm" style={{ marginTop: 10 }}>
             {selected.size === 0 ? 'Xin trích xuất' : `Xin trích xuất (${selected.size})`}
           </button>
           {showForm && (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 320 }}>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 320 }}>
               {selected.size > 1 && (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <p style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
                   Mỗi camera sẽ là 1 yêu cầu riêng gửi đúng đơn vị quản lý camera đó.
                 </p>
               )}
-              <label>
+              <label htmlFor="extraction-start">
                 Từ thời điểm
-                <input
-                  type="datetime-local"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                  style={{ display: 'block', width: '100%' }}
-                />
+                <input id="extraction-start" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
               </label>
-              <label>
+              <label htmlFor="extraction-end">
                 Đến thời điểm
-                <input
-                  type="datetime-local"
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                  style={{ display: 'block', width: '100%' }}
-                />
+                <input id="extraction-end" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
               </label>
-              <label>
+              <label htmlFor="extraction-note">
                 Ghi chú (tuỳ chọn)
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} style={{ display: 'block', width: '100%' }} />
+                <textarea id="extraction-note" value={note} onChange={(e) => setNote(e.target.value)} />
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setShowForm(false)}>Huỷ</button>
-                <button disabled={!start || !end || submitting} onClick={submit}>
+                <button disabled={!start || !end || submitting} onClick={submit} className="btn-primary">
                   {submitting ? 'Đang gửi...' : 'Gửi yêu cầu'}
                 </button>
               </div>
@@ -125,7 +139,7 @@ export function NearbyCamerasSection({ reportId }: { reportId: string }) {
           )}
         </>
       )}
-      {feedback && <p style={{ marginTop: 8 }}>{feedback}</p>}
+      {feedback && <p style={{ marginTop: 10, fontSize: 13, color: 'var(--ink-muted)' }}>{feedback}</p>}
     </Card>
   );
 }
