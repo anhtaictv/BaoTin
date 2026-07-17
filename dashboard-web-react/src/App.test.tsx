@@ -1,19 +1,86 @@
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from './core/AuthContext';
+import { apiClient } from './core/apiClient';
 import App from './App';
 
-describe('App', () => {
-  it('redirects an unauthenticated visitor to the login page', async () => {
-    render(
+vi.mock('./core/apiClient', () => ({
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
+  setOnSessionExpired: vi.fn(),
+}));
+
+const BASE_ACCOUNT = {
+  username: '0900001111',
+  mustChangePassword: false,
+  lastLoginAt: null,
+  fullName: '[DEMO] A',
+  unitName: 'Công an phường Buôn Ma Thuột',
+  districts: [],
+};
+
+function mockLoggedInAs(role: 'officer' | 'senior_officer' | 'admin') {
+  localStorage.setItem('bao_tin_dashboard_access_token', 'access-1');
+  localStorage.setItem('bao_tin_dashboard_refresh_token', 'refresh-1');
+  vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+    if (url === '/web-accounts/me') return { data: { data: { ...BASE_ACCOUNT, role } } };
+    if (url === '/admin/dashboard/districts') return { data: { data: [] } };
+    if (url === '/admin/dashboard/overview') {
+      return { data: { data: { totalReports: 0, byStatus: {}, avgResponseTimeSeconds: null } } };
+    }
+    if (url === '/admin/dashboard/response-time-by-district') return { data: { data: [] } };
+    if (url === '/admin/dashboard/response-time-by-officer') return { data: { data: [] } };
+    if (url === '/admin/dashboard/volume-trend') return { data: { data: [] } };
+    if (url === '/admin/dashboard/camera-queue') return { data: { data: {} } };
+    if (url === '/officer/reports') return { data: { data: [] } };
+    throw new Error(`unexpected GET ${url}`);
+  });
+}
+
+function renderApp() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
           <App />
         </AuthProvider>
-      </BrowserRouter>,
-    );
+      </BrowserRouter>
+    </QueryClientProvider>,
+  );
+}
 
+describe('App', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(apiClient.get).mockReset();
+    window.history.pushState({}, '', '/');
+  });
+
+  it('redirects an unauthenticated visitor to the login page', async () => {
+    renderApp();
     expect(await screen.findByText('Báo Tin — Trung tâm điều hành')).toBeInTheDocument();
+  });
+
+  it('sends a plain "officer" account straight to Tin báo — /admin/dashboard/* and /admin/search 403 for that role', async () => {
+    mockLoggedInAs('officer');
+    renderApp();
+
+    expect(await screen.findByText('Chọn 1 tin báo bên trái để xem chi tiết.')).toBeInTheDocument();
+    // The two dashboard/search-only tabs must not even be offered — clicking either would
+    // hit a route the backend 403s for a plain officer (docs/API_SPEC.md role gates).
+    expect(screen.queryByRole('link', { name: 'Tổng quan' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Tìm kiếm' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tin báo' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tin nhanh' })).toBeInTheDocument();
+  });
+
+  it('lets a senior_officer account land on Tổng quan and see the dashboard/search tabs', async () => {
+    mockLoggedInAs('senior_officer');
+    renderApp();
+
+    expect(await screen.findByRole('link', { name: 'Tổng quan' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tìm kiếm' })).toBeInTheDocument();
   });
 });
