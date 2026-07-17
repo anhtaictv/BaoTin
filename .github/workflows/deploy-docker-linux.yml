@@ -1,0 +1,102 @@
+name: Deploy (Docker/Linux VPS)
+
+# NOT the active deploy path right now — the current VPS runs Windows Server 2019 (no reliable
+# WSL2/nested-Hyper-V), so deploy-windows.yml + docs/DEPLOY.md (native Windows + IIS) is what's
+# actually used. Kept working for whenever a Linux host is available — see
+# docs/DEPLOY_DOCKER_LINUX.md.
+#
+# Manual only — a demo/thi deploy should never go out because of a stray push while judges are
+# looking at the live site. Run from the Actions tab when you actually want to ship.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-docker-linux
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      sha_tag: ${{ steps.vars.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: vars
+        run: echo "sha_tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/baotin-backend:latest
+            ghcr.io/${{ github.repository_owner }}/baotin-backend:${{ steps.vars.outputs.sha_tag }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build & push dashboard-web-react
+        uses: docker/build-push-action@v6
+        with:
+          context: dashboard-web-react
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/baotin-dashboard-react:latest
+            ghcr.io/${{ github.repository_owner }}/baotin-dashboard-react:${{ steps.vars.outputs.sha_tag }}
+          cache-from: type=gha,scope=dashboard-react
+          cache-to: type=gha,mode=max,scope=dashboard-react
+
+      - name: Build & push dashboard-web (Flutter Web)
+        uses: docker/build-push-action@v6
+        with:
+          context: dashboard-web
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/baotin-dashboard-web:latest
+            ghcr.io/${{ github.repository_owner }}/baotin-dashboard-web:${{ steps.vars.outputs.sha_tag }}
+          cache-from: type=gha,scope=dashboard-web
+          cache-to: type=gha,mode=max,scope=dashboard-web
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # docs/DEPLOY.md sets up VPS_HOST/VPS_USER/VPS_SSH_KEY/VPS_PORT as repo secrets, and a
+      # one-time `docker login ghcr.io` on the VPS itself (read:packages PAT) so `compose pull`
+      # below can reach the (private-by-default) GHCR packages built above.
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -euo pipefail
+            cd ~/baotin
+            # Picks up any infra/Caddyfile, infra/docker-compose.prod.yml, or data/ changes —
+            # the VPS never builds from source, but it does need these config/seed files.
+            git pull --ff-only
+            cd infra
+            docker compose -f docker-compose.prod.yml pull
+
+            # Run migrations against the freshly-pulled image *before* swapping the running
+            # containers, so the new backend never starts against an un-migrated schema.
+            docker compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
+
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f

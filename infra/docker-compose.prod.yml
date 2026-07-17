@@ -1,0 +1,117 @@
+# Production compose for a single-VPS demo/thi deploy — see docs/DEPLOY.md.
+# Separate from docker-compose.yml (dev): backend/dashboard-react/dashboard-web here are
+# pre-built images pulled from GHCR (built by .github/workflows/deploy.yml), not built from
+# source on the VPS. Only postgres/minio run official upstream images, same as dev.
+name: baotin
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Loopback only — same rationale as infra/docker-compose.yml (SECURITY.md §4): never
+      # expose Postgres on a public interface. Kept bound (not removed) so an admin can still
+      # `psql` from the VPS itself if needed.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    entrypoint: >
+      sh -c "
+        mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
+        mc mb --ignore-existing local/$$MINIO_BUCKET &&
+        mc anonymous set none local/$$MINIO_BUCKET
+      "
+
+  backend:
+    image: ghcr.io/${GHCR_OWNER}/baotin-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # .env's DATABASE_URL/APP_DATABASE_URL/MINIO_ENDPOINT must point at the "postgres"/"minio"
+    # service names (Docker's internal DNS), not localhost — see infra/.env.prod.example.
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      # JWT RS256 keypair generated once (docs/DEPLOY.md) and persisted here — regenerating on
+      # every deploy would invalidate every live session.
+      - jwt-keys:/app/keys
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dashboard-react:
+    image: ghcr.io/${GHCR_OWNER}/baotin-dashboard-react:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  dashboard-web:
+    image: ghcr.io/${GHCR_OWNER}/baotin-dashboard-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+      - dashboard-react
+      - dashboard-web
+
+volumes:
+  pgdata:
+  miniodata:
+  jwt-keys:
+  caddy-data:
+  caddy-config:
