@@ -64,6 +64,22 @@ export const webLoginLimiter = rateLimit({
 });
 
 /**
+ * SECURITY.md §3 — "mọi endpoint auth", including /auth/refresh. Refresh tokens are
+ * high-entropy opaque values (tokenHash.ts: 256-bit random) so brute-forcing one is
+ * infeasible regardless of this limit; this bounds request volume/DoS rather than guessing.
+ * Generous relative to login (refresh happens automatically, often from multiple tabs/devices
+ * per person) but still caps abuse from a single IP.
+ */
+export const refreshTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  message: rateLimitedResponse("REFRESH_RATE_LIMITED", "Quá nhiều yêu cầu làm mới phiên đăng nhập, thử lại sau."),
+});
+
+/**
  * API_SPEC.md explicitly requires /reports/emergency NOT be slowed down by validation.
  * express-rate-limit's default MemoryStore check is an in-process counter increment —
  * no synchronous DB round-trip — so this adds negligible latency to the SOS path while

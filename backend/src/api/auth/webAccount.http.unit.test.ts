@@ -33,10 +33,12 @@ async function buildTestApp() {
       expiresInMinutes: 20,
     }),
   };
+  const auditLog = { record: async () => {} };
   const service = createWebAccountAuthService({
     prisma: fakePrisma as any,
     authService: authService as any,
     piiEncryptionKey: PII_KEY,
+    auditLog: auditLog as any,
   });
   const controller = createWebAccountController(service);
   const requireAuth = createAuthMiddleware(publicKey);

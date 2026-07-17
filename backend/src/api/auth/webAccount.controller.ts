@@ -30,13 +30,15 @@ export function createWebAccountController(service: WebAccountAuthService) {
       res.status(200).json({ success: true, data: { updated: true }, error: null });
     },
 
-    async listWebAccounts(_req: Request, res: Response) {
-      const accounts = await service.listWebAccounts();
+    async listWebAccounts(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const accounts = await service.listWebAccounts(req.user.id);
       res.status(200).json({ success: true, data: accounts, error: null });
     },
 
     async resetPassword(req: Request, res: Response) {
-      const result = await service.resetPassword(req.params.officerId as string);
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const result = await service.resetPassword(req.user.id, req.params.officerId as string);
       res.status(200).json({ success: true, data: result, error: null });
     },
   };

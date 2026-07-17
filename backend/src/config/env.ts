@@ -65,6 +65,16 @@ const EnvSchema = z.object({
         message: "CORS_ALLOWED_ORIGINS is required in production — comma-separated allow-list, no wildcard.",
       });
     }
+    if (!env.OTP_HASH_PEPPER.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["OTP_HASH_PEPPER"],
+        message:
+          "OTP_HASH_PEPPER is required in production — an empty pepper lets a stolen otp_challenges " +
+          "table be brute-forced offline (SECURITY.md §1.2/§2.2). Generate one with: " +
+          `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`,
+      });
+    }
   });
 
 export type Env = z.infer<typeof EnvSchema>;
