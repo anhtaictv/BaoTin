@@ -11,15 +11,11 @@ permissions:
 jobs:
   check:
     runs-on: [self-hosted, baotin-vps]
-    # Hard backstop — a single hung check (e.g. an IIS cmdlet waiting on a service that isn't
-    # installed yet) must not be able to block this workflow indefinitely.
     timeout-minutes: 5
     steps:
       - name: Report installed tooling
         shell: powershell
         run: |
-          # Each check runs in its own background job with its own timeout, so one hanging
-          # check (this already happened once with an IIS cmdlet) can't stall the rest.
           function Check($label, [scriptblock]$script, [int]$timeoutSec = 15) {
             Write-Host "--- $label ---"
             $job = Start-Job -ScriptBlock $script
@@ -38,15 +34,9 @@ jobs:
             Write-Host ""
           }
 
-          Check "Node.js" { node -v; npm -v }
-          Check "NSSM" { & "C:\nssm\nssm.exe" --version }
-          Check "PostgreSQL service" { Get-Service postgresql* -ErrorAction Stop | Format-Table Name, Status }
-          Check "MinIO service" { Get-Service BaoTinMinio -ErrorAction Stop | Format-Table Name, Status }
-          Check "IIS sites" { Import-Module WebAdministration; Get-Website | Format-Table Name, State, PhysicalPath }
-          Check "URL Rewrite module" { Import-Module WebAdministration; Get-WebGlobalModule -Name RewriteModule -ErrorAction Stop }
-          Check "ARR proxy enabled" {
-            Import-Module WebAdministration
-            (Get-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "enabled").Value
-          }
-          Check "backend .env present" { Test-Path "C:\baotin\backend\.env" }
-          Check "BaoTinBackend service" { Get-Service BaoTinBackend -ErrorAction Stop | Format-Table Name, Status }
+          Check "whoami (runner's own identity)" { whoami; whoami /groups | Select-String "Administrators|SYSTEM" }
+          Check "Node.js full path + version" { Get-Command node | Format-List Source; node -v }
+          Check "All Node installs on PATH" { where.exe node }
+          Check "NSSM file present" { Test-Path "C:\nssm\nssm.exe"; Get-Item "C:\nssm\nssm.exe" | Format-List Length, LastWriteTime }
+          Check "NSSM help (no version flag, some builds lack --version)" { & "C:\nssm\nssm.exe" help } 10
+          Check "IIS redirection.config ACL" { icacls "C:\Windows\System32\inetsrv\config\redirection.config" }
