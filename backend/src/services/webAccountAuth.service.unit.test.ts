@@ -15,12 +15,19 @@ function buildService(fakePrisma: FakeWebAccountPrisma) {
       return { accessToken: "fake-access", refreshToken: "fake-refresh", expiresInMinutes: 20 };
     },
   };
+  const auditLogCalls: { officerId: string; action: string; target?: unknown }[] = [];
+  const auditLog = {
+    record: async (officerId: string, action: string, target?: unknown) => {
+      auditLogCalls.push({ officerId, action, target });
+    },
+  };
   const service = createWebAccountAuthService({
     prisma: fakePrisma as any,
     authService: authService as any,
     piiEncryptionKey: PII_KEY,
+    auditLog: auditLog as any,
   });
-  return { service, issueTokenPairCalls };
+  return { service, issueTokenPairCalls, auditLogCalls };
 }
 
 describe("webAccountAuth.service — login", () => {
@@ -188,12 +195,14 @@ describe("webAccountAuth.service — admin listWebAccounts / resetPassword", () 
       districtId: randomUUID(),
       districtName: "Buôn Hồ",
     });
-    const { service } = buildService(fakePrisma);
+    const { service, auditLogCalls } = buildService(fakePrisma);
+    const adminId = randomUUID();
 
-    const list = await service.listWebAccounts();
+    const list = await service.listWebAccounts(adminId);
     expect(list).toHaveLength(2);
     expect(list.map((a) => a.username)).toEqual(["0900001111", "0900002222"]);
     expect(list[0]?.districts).toEqual(["Buôn Ma Thuột"]);
+    expect(auditLogCalls).toEqual([{ officerId: adminId, action: "view_web_accounts_roster", target: undefined }]);
   });
 
   it("resets a password: returns a one-time temp password and forces mustChangePassword", async () => {
@@ -205,14 +214,19 @@ describe("webAccountAuth.service — admin listWebAccounts / resetPassword", () 
       fullNameEnc: encryptField("A", PII_KEY),
       mustChangePassword: false,
     });
-    const { service } = buildService(fakePrisma);
+    const { service, auditLogCalls } = buildService(fakePrisma);
+    const adminId = randomUUID();
 
-    const { tempPassword } = await service.resetPassword(officerId);
+    const { tempPassword } = await service.resetPassword(adminId, officerId);
     expect(tempPassword).toHaveLength(10);
 
     // Old password no longer works; new temp password does, and login flags mustChangePassword.
     await expect(service.login("0900001111", "Old-Password-1")).rejects.toMatchObject({ status: 401 });
     const result = await service.login("0900001111", tempPassword);
     expect(result.mustChangePassword).toBe(true);
+
+    expect(auditLogCalls).toEqual([
+      { officerId: adminId, action: "reset_web_account_password", target: { type: "officer", id: officerId } },
+    ]);
   });
 });

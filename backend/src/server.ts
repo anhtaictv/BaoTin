@@ -128,6 +128,7 @@ async function main() {
     prisma,
     authService,
     piiEncryptionKey: env.PII_ENCRYPTION_KEY,
+    auditLog,
   });
   const webAccountController = createWebAccountController(webAccountAuthService);
   const webAccountRouter = createWebAccountRoutes(webAccountController, requireAuth);

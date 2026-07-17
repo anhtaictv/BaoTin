@@ -13,6 +13,7 @@ import {
   officerLoginLimiter,
   otpRequestLimiter,
   otpVerifyLimiter,
+  refreshTokenLimiter,
 } from "../../middleware/rateLimiters.js";
 
 export function createAuthRoutes(controller: AuthController, requireAuth: RequireAuth): Router {
@@ -39,7 +40,12 @@ export function createAuthRoutes(controller: AuthController, requireAuth: Requir
     asyncHandler(controller.officerLogin),
   );
 
-  router.post("/refresh", validateRequest(refreshTokenSchema), asyncHandler(controller.refresh));
+  router.post(
+    "/refresh",
+    refreshTokenLimiter,
+    validateRequest(refreshTokenSchema),
+    asyncHandler(controller.refresh),
+  );
 
   router.post("/sessions/revoke-all", requireAuth([]), asyncHandler(controller.revokeAllSessions));
 
