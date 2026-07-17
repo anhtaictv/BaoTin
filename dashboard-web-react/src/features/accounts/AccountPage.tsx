@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { CheckCircle2, IdCard, KeyRound, MapPin } from 'lucide-react';
 import { useAuth } from '../../core/AuthContext';
 import { apiClient } from '../../core/apiClient';
 import { getApiErrorMessage } from '../../core/apiError';
+import { roleLabel } from '../../core/theme';
+import { Card } from '../../components/ChartCard';
+import { PageHeader } from '../../components/PageHeader';
 import { ChangePasswordForm } from '../auth/ChangePasswordForm';
-
-const ROLE_LABELS: Record<string, string> = {
-  officer: 'Cán bộ',
-  senior_officer: 'Cán bộ cấp cao',
-  admin: 'Quản trị viên',
-};
 
 export function AccountPage() {
   const { account, refreshAccount } = useAuth();
@@ -52,65 +50,64 @@ export function AccountPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
-      <h1 style={{ fontSize: 20 }}>Tài khoản của tôi</h1>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 560 }}>
+      <PageHeader title="Tài khoản của tôi" />
 
-      <section>
-        <p>
-          <strong>Tên đăng nhập:</strong> {account.username}
-        </p>
-        <p>
-          <strong>Vai trò:</strong> {ROLE_LABELS[account.role] ?? account.role}
-        </p>
+      <Card style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <InfoLine icon={<IdCard size={14} />} label="Tên đăng nhập" value={account.username} />
+        <InfoLine icon={<KeyRound size={14} />} label="Vai trò" value={roleLabel(account.role)} />
         {account.districts.length > 0 && (
-          <p>
-            <strong>Địa bàn phụ trách:</strong> {account.districts.map((d) => d.tenXa).join(', ')}
-          </p>
+          <InfoLine icon={<MapPin size={14} />} label="Địa bàn phụ trách" value={account.districts.map((d) => d.tenXa).join(', ')} />
         )}
-      </section>
+      </Card>
 
-      <section>
-        <h2 style={{ fontSize: 16 }}>Đổi thông tin cá nhân</h2>
-        <form onSubmit={handleInfoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320 }}>
-          <label>
+      <Card style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <h2>Đổi thông tin cá nhân</h2>
+        <form onSubmit={handleInfoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 340 }}>
+          <label htmlFor="account-fullname">
             Họ tên
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              style={{ display: 'block', width: '100%' }}
-            />
+            <input id="account-fullname" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </label>
-          <label>
+          <label htmlFor="account-unit">
             Đơn vị công tác
-            <input
-              type="text"
-              value={unitName}
-              onChange={(e) => setUnitName(e.target.value)}
-              style={{ display: 'block', width: '100%' }}
-            />
+            <input id="account-unit" type="text" value={unitName} onChange={(e) => setUnitName(e.target.value)} />
           </label>
           {infoError && (
-            <p role="alert" style={{ color: 'var(--destructive)' }}>
+            <p role="alert" style={{ color: 'var(--destructive)', fontSize: 13 }}>
               {infoError}
             </p>
           )}
-          {infoSaved && <p>Đã lưu thông tin.</p>}
-          <button type="submit" disabled={savingInfo}>
+          {infoSaved && (
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--secondary)', fontSize: 13 }}>
+              <CheckCircle2 size={14} /> Đã lưu thông tin.
+            </p>
+          )}
+          <button type="submit" disabled={savingInfo} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
             {savingInfo ? 'Đang lưu...' : 'Lưu thông tin'}
           </button>
         </form>
-      </section>
+      </Card>
 
-      <section>
-        <h2 style={{ fontSize: 16 }}>Đổi mật khẩu</h2>
+      <Card style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <h2>Đổi mật khẩu</h2>
         {passwordChanged ? (
-          <p>Đã đổi mật khẩu thành công.</p>
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--secondary)', fontSize: 13 }}>
+            <CheckCircle2 size={14} /> Đã đổi mật khẩu thành công.
+          </p>
         ) : (
           <ChangePasswordForm onSuccess={() => setPasswordChanged(true)} />
         )}
-      </section>
+      </Card>
     </div>
+  );
+}
+
+function InfoLine({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+      <span style={{ color: 'var(--ink-faint)', display: 'flex' }}>{icon}</span>
+      <span style={{ color: 'var(--ink-muted)' }}>{label}:</span>
+      <strong style={{ fontWeight: 600 }}>{value}</strong>
+    </p>
   );
 }

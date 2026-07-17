@@ -1,5 +1,9 @@
 import { useState } from 'react';
+import { Inbox, Siren } from 'lucide-react';
 import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
+import { Badge } from '../../components/Badge';
+import { EmptyState } from '../../components/EmptyState';
+import { PageHeader } from '../../components/PageHeader';
 import { statusColor, statusLabel, urgencyColor } from '../../core/theme';
 import { useDistrictOptions } from '../dashboard/useDashboard';
 import { ReportDetailPane } from './ReportDetailPane';
@@ -36,108 +40,97 @@ export function ReportsPage() {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      <Card style={{ width: 360, padding: 0 }}>
-        <div style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={{ fontWeight: 600, fontSize: 14 }}>Tin báo mới</p>
-          <button onClick={() => reports.refetch()}>Làm mới</button>
-        </div>
-        <div style={{ padding: '0 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <button
-            onClick={toggleUrgency}
-            style={{
-              padding: '4px 10px',
-              borderRadius: 999,
-              border: '1px solid var(--border)',
-              background: filters.urgency === 'emergency' ? urgencyColor('emergency') : 'white',
-              color: filters.urgency === 'emergency' ? 'white' : 'var(--foreground)',
-            }}
-          >
-            Khẩn cấp
-          </button>
-          {Object.entries(STATUS_FILTERS).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => toggleStatus(value)}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 999,
-                border: '1px solid var(--border)',
-                background: filters.status === value ? 'var(--primary)' : 'white',
-                color: filters.status === value ? 'white' : 'var(--foreground)',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div style={{ padding: '8px 12px' }}>
-          <select
-            value={filters.districtId ?? ''}
-            onChange={(e) => setFilters((f) => ({ ...f, districtId: e.target.value || undefined }))}
-            aria-label="Địa bàn"
-          >
-            <option value="">Tất cả địa bàn</option>
-            {districts.data?.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.tenXa}
-              </option>
-            ))}
-          </select>
-        </div>
-        <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
-        {reports.isLoading ? (
-          <ChartCardSkeleton height={200} />
-        ) : reports.isError ? (
-          <ChartCardError onRetry={() => reports.refetch()} height={200} />
-        ) : reports.data!.length === 0 ? (
-          <p style={{ padding: 12 }}>Không có tin báo nào.</p>
-        ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
-            {reports.data!.map((report) => (
-              <li key={report.id}>
-                <button
-                  onClick={() => setSelectedId(report.id)}
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: 12,
-                    border: 'none',
-                    borderBottom: '1px solid var(--border)',
-                    background: selectedId === report.id ? 'rgba(30,64,175,0.06)' : 'transparent',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span>
-                    {report.urgency === 'emergency' && <span aria-label="khẩn cấp">⚠️ </span>}
-                    {report.category ?? 'Khác'}
-                    <br />
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(report.createdAt)}</span>
-                  </span>
-                  <span
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: 999,
-                      background: `${statusColor(report.status)}1f`,
-                      color: statusColor(report.status),
-                      fontSize: 11,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {statusLabel(report.status)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PageHeader title="Tin báo" subtitle="Tin dân báo — có GPS + định danh, cần cán bộ xác minh trạng thái" />
 
-      <Card style={{ flex: 1 }}>
-        {selectedId ? <ReportDetailPane reportId={selectedId} /> : <p>Chọn 1 tin báo bên trái để xem chi tiết.</p>}
-      </Card>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <Card style={{ width: 380, padding: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontWeight: 600, fontSize: 14 }}>Tin báo mới</p>
+            <button onClick={() => reports.refetch()} className="btn-sm btn-ghost">
+              Làm mới
+            </button>
+          </div>
+          <div style={{ padding: '0 14px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={toggleUrgency} className="chip" data-active={filters.urgency === 'emergency'}
+              style={filters.urgency === 'emergency' ? { background: urgencyColor('emergency'), borderColor: urgencyColor('emergency'), color: 'white' } : undefined}
+            >
+              <Siren size={12} style={{ verticalAlign: -2, marginRight: 4 }} /> Khẩn cấp
+            </button>
+            {Object.entries(STATUS_FILTERS).map(([value, label]) => (
+              <button key={value} onClick={() => toggleStatus(value)} className="chip" data-active={filters.status === value}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: '0 14px 12px' }}>
+            <select
+              value={filters.districtId ?? ''}
+              onChange={(e) => setFilters((f) => ({ ...f, districtId: e.target.value || undefined }))}
+              aria-label="Địa bàn"
+              style={{ width: '100%' }}
+            >
+              <option value="">Tất cả địa bàn</option>
+              {districts.data?.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.tenXa}
+                </option>
+              ))}
+            </select>
+          </div>
+          <hr className="divider" />
+          {reports.isLoading ? (
+            <ChartCardSkeleton height={200} />
+          ) : reports.isError ? (
+            <ChartCardError onRetry={() => reports.refetch()} height={200} />
+          ) : reports.data!.length === 0 ? (
+            <EmptyState icon={<Inbox size={18} />} message="Không có tin báo nào." />
+          ) : (
+            <ul className="scroll-panel" style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: 'calc(100vh - 320px)' }}>
+              {reports.data!.map((report) => {
+                const selected = selectedId === report.id;
+                return (
+                  <li key={report.id}>
+                    <button
+                      onClick={() => setSelectedId(report.id)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '12px 14px',
+                        border: 'none',
+                        borderRadius: 0,
+                        borderBottom: '1px solid var(--border)',
+                        background: selected ? 'var(--surface-sunken)' : 'transparent',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500 }}>
+                          {report.urgency === 'emergency' && <span aria-label="khẩn cấp">⚠️ </span>}
+                          {report.category ?? 'Khác'}
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{formatDate(report.createdAt)}</span>
+                      </span>
+                      <Badge color={statusColor(report.status)}>{statusLabel(report.status)}</Badge>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <Card style={{ flex: 1, minHeight: 420 }}>
+          {selectedId ? (
+            <ReportDetailPane reportId={selectedId} />
+          ) : (
+            <EmptyState icon={<Inbox size={18} />} message="Chọn 1 tin báo bên trái để xem chi tiết." />
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

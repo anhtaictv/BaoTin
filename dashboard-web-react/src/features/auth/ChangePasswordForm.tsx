@@ -38,44 +38,47 @@ export function ChangePasswordForm({ onSuccess }: ChangePasswordFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320 }}>
-      <label>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 320 }}>
+      <label htmlFor="cp-old">
         Mật khẩu hiện tại
         <input
+          id="cp-old"
           type="password"
           value={oldPassword}
           onChange={(e) => setOldPassword(e.target.value)}
           required
-          style={{ display: 'block', width: '100%' }}
+          autoComplete="current-password"
         />
       </label>
-      <label>
+      <label htmlFor="cp-new">
         Mật khẩu mới (tối thiểu 8 ký tự)
         <input
+          id="cp-new"
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           required
           minLength={8}
-          style={{ display: 'block', width: '100%' }}
+          autoComplete="new-password"
         />
       </label>
-      <label>
+      <label htmlFor="cp-confirm">
         Xác nhận mật khẩu mới
         <input
+          id="cp-confirm"
           type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
-          style={{ display: 'block', width: '100%' }}
+          autoComplete="new-password"
         />
       </label>
       {error && (
-        <p role="alert" style={{ color: 'var(--destructive)' }}>
+        <p role="alert" style={{ color: 'var(--destructive)', fontSize: 13, background: 'var(--destructive-surface)', borderRadius: 'var(--radius-sm)', padding: '8px 12px' }}>
           {error}
         </p>
       )}
-      <button type="submit" disabled={submitting}>
+      <button type="submit" disabled={submitting} className="btn-primary">
         {submitting ? 'Đang đổi mật khẩu...' : 'Đổi mật khẩu'}
       </button>
     </form>

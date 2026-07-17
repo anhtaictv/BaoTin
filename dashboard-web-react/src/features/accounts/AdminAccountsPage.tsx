@@ -1,13 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { KeyRound, Lock, ShieldAlert, Users } from 'lucide-react';
 import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
+import { PageHeader } from '../../components/PageHeader';
+import { roleLabel, theme } from '../../core/theme';
 import { listWebAccounts, resetWebAccountPassword } from './accountsAdminApi';
-
-const ROLE_LABELS: Record<string, string> = {
-  officer: 'Cán bộ',
-  senior_officer: 'Cán bộ cấp cao',
-  admin: 'Quản trị viên',
-};
 
 function formatDate(iso: string | null): string {
   if (!iso) return 'Chưa đăng nhập';
@@ -45,64 +42,87 @@ export function AdminAccountsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h1 style={{ fontSize: 18 }}>Quản lý tài khoản — 102 xã/phường</h1>
+      <PageHeader title="Quản lý tài khoản" subtitle="Roster tài khoản đăng nhập web — 102 xã/phường" />
 
       {resetResult && (
-        <Card style={{ background: '#fff3e0' }}>
-          <p>
-            Mật khẩu tạm mới cho <strong>{resetResult.username}</strong>:{' '}
-            <code style={{ fontSize: 16 }}>{resetResult.tempPassword}</code>
+        <Card style={{ background: `${theme.accent}12`, border: `1px solid ${theme.accent}33`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#B45309' }}>
+            <KeyRound size={14} /> Mật khẩu tạm mới cho <strong>{resetResult.username}</strong>
           </p>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <code style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.03em', background: 'var(--surface-raised)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', width: 'fit-content' }}>
+            {resetResult.tempPassword}
+          </code>
+          <p style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
             Chỉ hiển thị 1 lần duy nhất — hãy bàn giao ngay cho cán bộ. Tài khoản sẽ bắt buộc đổi
             mật khẩu ở lần đăng nhập tiếp theo.
           </p>
-          <button onClick={() => setResetResult(null)}>Đóng</button>
+          <button onClick={() => setResetResult(null)} className="btn-sm" style={{ alignSelf: 'flex-start' }}>
+            Đóng
+          </button>
         </Card>
       )}
       {resetError && (
-        <p role="alert" style={{ color: 'var(--destructive)' }}>
+        <p role="alert" style={{ color: 'var(--destructive)', fontSize: 13 }}>
           {resetError}
         </p>
       )}
 
-      <Card style={{ padding: 0, overflow: 'auto', maxHeight: 'calc(100vh - 220px)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ position: 'sticky', top: 0, background: 'white' }}>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: 12 }}>Tên đăng nhập</th>
-              <th style={{ padding: 12 }}>Họ tên</th>
-              <th style={{ padding: 12 }}>Vai trò</th>
-              <th style={{ padding: 12 }}>Địa bàn</th>
-              <th style={{ padding: 12 }}>Đăng nhập gần nhất</th>
-              <th style={{ padding: 12 }}>Trạng thái</th>
-              <th style={{ padding: 12 }} />
-            </tr>
-          </thead>
-          <tbody>
-            {accounts.data!.map((account) => (
-              <tr key={account.officerId} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: 12 }}>{account.username}</td>
-                <td style={{ padding: 12 }}>{account.fullName}</td>
-                <td style={{ padding: 12 }}>{ROLE_LABELS[account.role] ?? account.role}</td>
-                <td style={{ padding: 12 }}>{account.districts.join(', ')}</td>
-                <td style={{ padding: 12 }}>{formatDate(account.lastLoginAt)}</td>
-                <td style={{ padding: 12 }}>
-                  {account.isLocked && <span style={{ color: 'var(--destructive)' }}>Đang khoá · </span>}
-                  {account.mustChangePassword && <span>Chưa đổi mật khẩu</span>}
-                </td>
-                <td style={{ padding: 12 }}>
-                  <button
-                    disabled={resettingId === account.officerId}
-                    onClick={() => handleReset(account.officerId, account.username)}
-                  >
-                    {resettingId === account.officerId ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
-                  </button>
-                </td>
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="scroll-panel" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Tên đăng nhập</th>
+                <th>Họ tên</th>
+                <th>Vai trò</th>
+                <th>Địa bàn</th>
+                <th>Đăng nhập gần nhất</th>
+                <th>Trạng thái</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {accounts.data!.map((account) => (
+                <tr key={account.officerId}>
+                  <td style={{ fontWeight: 500 }}>{account.username}</td>
+                  <td>{account.fullName}</td>
+                  <td>{roleLabel(account.role)}</td>
+                  <td>{account.districts.join(', ')}</td>
+                  <td style={{ color: 'var(--ink-muted)' }}>{formatDate(account.lastLoginAt)}</td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {account.isLocked && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--destructive)', fontSize: 12, fontWeight: 600 }}>
+                          <Lock size={11} /> Đang khoá
+                        </span>
+                      )}
+                      {account.mustChangePassword && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>
+                          <ShieldAlert size={11} /> Chưa đổi mật khẩu
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      disabled={resettingId === account.officerId}
+                      onClick={() => handleReset(account.officerId, account.username)}
+                      className="btn-sm"
+                    >
+                      {resettingId === account.officerId ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {accounts.data!.length === 0 && (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <Users size={20} />
+              <p style={{ fontSize: 13 }}>Chưa có tài khoản nào.</p>
+            </div>
+          )}
+        </div>
       </Card>
     </div>
   );

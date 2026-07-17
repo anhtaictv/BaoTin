@@ -85,6 +85,33 @@ export function heatLevelLabel(level: string): string {
   }
 }
 
+/** Backend role gates (docs/API_SPEC.md — /admin/dashboard/*, /admin/search are 403 for a
+ * plain "officer"): kept here so the frontend route guards/nav in App.tsx and AppLayout.tsx
+ * read from one place instead of drifting out of sync with each other. */
+export const DASHBOARD_ONLY_ROLES = ['admin', 'senior_officer'];
+
+export function canAccessDashboard(role: string | undefined): boolean {
+  return role != null && DASHBOARD_ONLY_ROLES.includes(role);
+}
+
+/** Where to send an account after login/after being bounced from a role-gated route — the
+ * first route every role is guaranteed backend access to. */
+export function defaultRouteForRole(role: string | undefined): string {
+  return canAccessDashboard(role) ? '/' : '/reports';
+}
+
+export function roleLabel(role: string): string {
+  switch (role) {
+    case 'senior_officer':
+      return 'Cán bộ cấp cao';
+    case 'admin':
+      return 'Quản trị viên';
+    case 'officer':
+    default:
+      return 'Cán bộ';
+  }
+}
+
 export function extractionStatusLabel(status: string): string {
   switch (status) {
     case 'sent':

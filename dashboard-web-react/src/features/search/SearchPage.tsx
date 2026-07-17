@@ -1,5 +1,8 @@
 import { useState } from 'react';
+import { Search as SearchIcon, Sparkles } from 'lucide-react';
 import { Card, ChartCardSkeleton } from '../../components/ChartCard';
+import { Badge } from '../../components/Badge';
+import { EmptyState } from '../../components/EmptyState';
 import { statusColor, statusLabel, trustLevelColor, trustLevelLabel, urgencyColor } from '../../core/theme';
 import { search, type SearchResult } from './searchApi';
 
@@ -26,97 +29,104 @@ export function SearchPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
       <div>
-        <h1 style={{ fontSize: 18 }}>Tìm kiếm bằng ngôn ngữ tự nhiên (AI cục bộ)</h1>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+        <h1 style={{ fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Sparkles size={17} style={{ color: 'var(--accent)' }} /> Tìm kiếm bằng ngôn ngữ tự nhiên (AI cục bộ)
+        </h1>
+        <p style={{ fontSize: 12.5, color: 'var(--ink-muted)', marginTop: 6, maxWidth: '70ch' }}>
           Ví dụ: "tin cháy nổ ở Buôn Ma Thuột tháng trước". AI chỉ hiểu câu hỏi thành bộ lọc —
           kết quả luôn là dữ liệu thật, không phải câu trả lời do AI tự tạo ra.
         </p>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-          placeholder="Nhập câu hỏi..."
-          style={{ flex: 1 }}
-        />
-        <button onClick={runSearch} disabled={loading}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <SearchIcon size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-faint)' }} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+            placeholder="Nhập câu hỏi..."
+            style={{ width: '100%', paddingLeft: 36 }}
+          />
+        </div>
+        <button onClick={runSearch} disabled={loading} className="btn-primary">
           {loading ? 'Đang tìm...' : 'Tìm kiếm'}
         </button>
       </div>
 
       {loading && <ChartCardSkeleton height={120} />}
-      {error && <p>Không thực hiện được tìm kiếm. Vui lòng thử lại.</p>}
+      {error && <p style={{ color: 'var(--destructive)', fontSize: 13 }}>Không thực hiện được tìm kiếm. Vui lòng thử lại.</p>}
 
       {!loading && !error && result && !result.available && (
-        <p>
-          Không hiểu được câu hỏi này (hoặc tính năng AI cục bộ chưa được cấu hình — cần
-          LLM_PROVIDER=ollama ở backend). Hãy thử diễn đạt khác hoặc dùng trang "Tin báo"/"Tin
-          nhanh" để lọc thủ công.
-        </p>
+        <Card>
+          <p style={{ fontSize: 13, color: 'var(--ink-muted)' }}>
+            Không hiểu được câu hỏi này (hoặc tính năng AI cục bộ chưa được cấu hình — cần
+            LLM_PROVIDER=ollama ở backend). Hãy thử diễn đạt khác hoặc dùng trang "Tin báo"/"Tin
+            nhanh" để lọc thủ công.
+          </p>
+        </Card>
       )}
 
       {!loading && !error && result?.available && (
         <>
           {result.interpreted && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {result.interpreted.districtName && <Chip>Địa bàn: {result.interpreted.districtName}</Chip>}
-              {result.interpreted.sinceDays != null && <Chip>{result.interpreted.sinceDays} ngày gần đây</Chip>}
-              {result.interpreted.keyword && <Chip>Từ khóa: {result.interpreted.keyword}</Chip>}
+              {result.interpreted.districtName && <span className="chip">Địa bàn: {result.interpreted.districtName}</span>}
+              {result.interpreted.sinceDays != null && <span className="chip">{result.interpreted.sinceDays} ngày gần đây</span>}
+              {result.interpreted.keyword && <span className="chip">Từ khóa: {result.interpreted.keyword}</span>}
             </div>
           )}
 
           <div>
-            <p style={{ fontWeight: 600, fontSize: 14 }}>Tin báo ({result.reports.length})</p>
+            <h2 style={{ fontSize: 14 }}>Tin báo ({result.reports.length})</h2>
             {result.reports.length === 0 ? (
-              <p>Không có tin báo phù hợp.</p>
+              <p style={{ fontSize: 13, color: 'var(--ink-muted)', marginTop: 8 }}>Không có tin báo phù hợp.</p>
             ) : (
-              result.reports.map((report) => (
-                <Card key={report.id} style={{ marginTop: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {result.reports.map((report) => (
+                  <Card key={report.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13.5 }}>
                       {report.urgency === 'emergency' && <span style={{ color: urgencyColor('emergency') }}>⚠️ </span>}
                       {report.category ?? 'Khác'}
                     </span>
-                    <span style={{ color: statusColor(report.status), fontSize: 12, fontWeight: 600 }}>
-                      {statusLabel(report.status)}
-                    </span>
-                  </div>
-                </Card>
-              ))
+                    <Badge color={statusColor(report.status)}>{statusLabel(report.status)}</Badge>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
 
           <div>
-            <p style={{ fontWeight: 600, fontSize: 14 }}>Tín hiệu MXH/báo chí — chưa xác thực ({result.signals.length})</p>
+            <h2 style={{ fontSize: 14 }}>Tín hiệu MXH/báo chí — chưa xác thực ({result.signals.length})</h2>
             {result.signals.length === 0 ? (
-              <p>Không có tín hiệu phù hợp.</p>
+              <p style={{ fontSize: 13, color: 'var(--ink-muted)', marginTop: 8 }}>Không có tín hiệu phù hợp.</p>
             ) : (
-              result.signals.map((signal) => (
-                <Card key={signal.id} style={{ marginTop: 8 }}>
-                  <p>{signal.summary ?? '(Không có tóm tắt)'}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{signal.sourceName ?? 'Không rõ nguồn'}</span>
-                    <span style={{ color: trustLevelColor(signal.trustLevel), fontSize: 12, fontWeight: 600 }}>
-                      {trustLevelLabel(signal.trustLevel)}
-                    </span>
-                  </div>
-                </Card>
-              ))
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {result.signals.map((signal) => (
+                  <Card key={signal.id}>
+                    <p style={{ fontSize: 13.5 }}>{signal.summary ?? '(Không có tóm tắt)'}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{signal.sourceName ?? 'Không rõ nguồn'}</span>
+                      <Badge color={trustLevelColor(signal.trustLevel)}>{trustLevelLabel(signal.trustLevel)}</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
         </>
       )}
-    </div>
-  );
-}
 
-function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{ padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border)', fontSize: 12 }}>{children}</span>
+      {!loading && !error && !result && (
+        <EmptyState
+          icon={<SearchIcon size={18} />}
+          message="Chưa có tìm kiếm nào."
+          hint='Nhập một câu hỏi tự nhiên phía trên, ví dụ "tin trộm cắp tuần này ở Buôn Hồ".'
+        />
+      )}
+    </div>
   );
 }
