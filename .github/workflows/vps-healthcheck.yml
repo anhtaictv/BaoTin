@@ -11,17 +11,30 @@ permissions:
 jobs:
   check:
     runs-on: [self-hosted, baotin-vps]
+    # Hard backstop — a single hung check (e.g. an IIS cmdlet waiting on a service that isn't
+    # installed yet) must not be able to block this workflow indefinitely.
+    timeout-minutes: 5
     steps:
       - name: Report installed tooling
         shell: powershell
         run: |
-          function Check($label, $script) {
+          # Each check runs in its own background job with its own timeout, so one hanging
+          # check (this already happened once with an IIS cmdlet) can't stall the rest.
+          function Check($label, [scriptblock]$script, [int]$timeoutSec = 15) {
             Write-Host "--- $label ---"
-            try {
-              & $script
-            } catch {
-              Write-Host "NOT FOUND / ERROR: $($_.Exception.Message)"
+            $job = Start-Job -ScriptBlock $script
+            $done = Wait-Job -Job $job -Timeout $timeoutSec
+            if (-not $done) {
+              Write-Host "TIMED OUT after ${timeoutSec}s"
+              Stop-Job -Job $job | Out-Null
+            } else {
+              try {
+                Receive-Job -Job $job -ErrorAction Stop
+              } catch {
+                Write-Host "NOT FOUND / ERROR: $($_.Exception.Message)"
+              }
             }
+            Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
             Write-Host ""
           }
 
@@ -30,7 +43,7 @@ jobs:
           Check "PostgreSQL service" { Get-Service postgresql* -ErrorAction Stop | Format-Table Name, Status }
           Check "MinIO service" { Get-Service BaoTinMinio -ErrorAction Stop | Format-Table Name, Status }
           Check "IIS sites" { Import-Module WebAdministration; Get-Website | Format-Table Name, State, PhysicalPath }
-          Check "URL Rewrite module" { Get-WebGlobalModule -Name RewriteModule -ErrorAction Stop }
+          Check "URL Rewrite module" { Import-Module WebAdministration; Get-WebGlobalModule -Name RewriteModule -ErrorAction Stop }
           Check "ARR proxy enabled" {
             Import-Module WebAdministration
             (Get-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "enabled").Value
