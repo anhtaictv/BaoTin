@@ -95,6 +95,11 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
+          # Prepend the isolated Node 20 install (docs/DEPLOY.md) to *this process's* PATH only
+          # — other software on the VPS already depends on the system-wide Node install, which
+          # this never touches (no [Environment]::SetEnvironmentVariable, no uninstall).
+          $env:Path = "C:\node20;$env:Path"
+
           Set-Location C:\baotin\backend
           npm ci --omit=dev
 
