@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'exif_reader.dart';
@@ -26,8 +27,8 @@ class CameraGpsCapture {
 class LocationResolver {
   /// Tries EXIF GPS from the photo first; falls back to live device GPS if the photo has
   /// none (many phones disable geotagging by default in their camera settings).
-  Future<ResolvedLocation?> resolveFromPhoto(String filePath) async {
-    final exifGps = await readExifGps(filePath);
+  Future<ResolvedLocation?> resolveFromPhoto(Uint8List bytes) async {
+    final exifGps = await readExifGpsFromBytes(bytes);
     if (exifGps.hasGps) {
       return ResolvedLocation(lat: exifGps.lat!, lng: exifGps.lng!, source: 'exif');
     }
