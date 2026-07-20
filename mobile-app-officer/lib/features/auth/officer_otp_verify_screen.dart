@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
-import '../reports_list/report_list_screen.dart';
+import '../../home_shell.dart';
 
 class OfficerOtpVerifyScreen extends ConsumerStatefulWidget {
   const OfficerOtpVerifyScreen({super.key, required this.phoneNumber, this.devOtp});
@@ -44,7 +44,7 @@ class _OfficerOtpVerifyScreenState extends ConsumerState<OfficerOtpVerifyScreen>
       await ref.read(officerAuthRepositoryProvider).verifyOtp(phoneNumber: widget.phoneNumber, otp: otp);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const ReportListScreen()),
+        MaterialPageRoute(builder: (_) => const HomeShell()),
         (route) => false,
       );
     } catch (_) {
