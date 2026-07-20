@@ -35,6 +35,8 @@ jobs:
 
       - name: Build dashboard-web-react
         working-directory: dashboard-web-react
+        env:
+          VITE_API_BASE_URL: /api
         run: |
           npm ci
           npm run build
@@ -44,20 +46,35 @@ jobs:
           flutter-version: "3.44.6"
           channel: stable
 
-      - name: Build dashboard-web (Flutter Web)
+      - name: Build dashboard-web (Flutter Web, legacy)
         working-directory: dashboard-web
         run: |
           flutter pub get
           flutter build web --release --base-href /legacy/
 
+      - name: Build mobile-app-citizen (Flutter Web)
+        working-directory: mobile-app-citizen
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /citizen/ --dart-define=API_BASE_URL=/api
+
+      - name: Build mobile-app-officer (Flutter Web)
+        working-directory: mobile-app-officer
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /officer/ --dart-define=API_BASE_URL=/api
+
       - name: Collect deploy artifact
         run: |
-          mkdir -p artifact/backend artifact/dashboard-react artifact/dashboard-web artifact/data/raw
+          mkdir -p artifact/backend artifact/landing artifact/admin artifact/dashboard-web artifact/citizen artifact/officer artifact/data/raw
           cp -r backend/dist artifact/backend/dist
           cp -r backend/prisma artifact/backend/prisma
           cp backend/package.json backend/package-lock.json artifact/backend/
-          cp -r dashboard-web-react/dist/. artifact/dashboard-react/
+          cp -r landing/. artifact/landing/
+          cp -r dashboard-web-react/dist/. artifact/admin/
           cp -r dashboard-web/build/web/. artifact/dashboard-web/
+          cp -r mobile-app-citizen/build/web/. artifact/citizen/
+          cp -r mobile-app-officer/build/web/. artifact/officer/
           # Only actually needed once (Phần 2's manual seed step), but the VPS has no inbound
           # path to fetch it any other way — riding along in the artifact is simplest.
           cp data/raw/Daklak.geojson artifact/data/raw/
@@ -86,8 +103,12 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           Copy-Item -Path "artifact\backend\*" -Destination "C:\baotin\backend" -Recurse -Force
-          Copy-Item -Path "artifact\dashboard-react\*" -Destination "C:\inetpub\baotin" -Recurse -Force
+          Copy-Item -Path "artifact\landing\*" -Destination "C:\inetpub\baotin" -Recurse -Force
+          New-Item -ItemType Directory -Force -Path "C:\inetpub\baotin\admin", "C:\inetpub\baotin\citizen", "C:\inetpub\baotin\officer" | Out-Null
+          Copy-Item -Path "artifact\admin\*" -Destination "C:\inetpub\baotin\admin" -Recurse -Force
           Copy-Item -Path "artifact\dashboard-web\*" -Destination "C:\inetpub\baotin\legacy" -Recurse -Force
+          Copy-Item -Path "artifact\citizen\*" -Destination "C:\inetpub\baotin\citizen" -Recurse -Force
+          Copy-Item -Path "artifact\officer\*" -Destination "C:\inetpub\baotin\officer" -Recurse -Force
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\raw" | Out-Null
           Copy-Item -Path "artifact\data\raw\Daklak.geojson" -Destination "C:\baotin\data\raw\Daklak.geojson" -Force
 
