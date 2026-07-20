@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.10.0 · dashboard-web-react 0.1.0 · dashboard-web 1.6.0+5 · mobile-app-officer 1.5.0+6 · mobile-app-citizen 1.5.0+7`
+`Phiên bản hiện tại: backend 1.11.0 · dashboard-web-react 0.2.0 · dashboard-web 1.6.0+5 · mobile-app-officer 1.5.1+7 · mobile-app-citizen 1.6.0+8`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -115,6 +115,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.8** | 4 tính năng AI hỗ trợ dùng Ollama: lọc tín hiệu MXH liên quan, gộp trùng theo ngữ nghĩa, diễn giải độ nóng khu vực, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên trên dashboard — tất cả opt-in, chỉ gợi ý, không tự kết luận |
 | **v1.9** | Yêu cầu trích xuất nhiều camera theo tuyến đường (chọn nhiều camera, gộp 1 hành động gửi) — vẫn là N yêu cầu hành chính độc lập, không có nhận diện/theo dõi qua camera |
 | **v1.10** | `dashboard-web-react` — phiên bản React song song của web quản lý, đăng nhập username/password riêng cho 102 xã (bảng `web_accounts` tách biệt khỏi `officers`), tự đổi thông tin/mật khẩu, admin quản lý/reset tài khoản |
+| **v1.11** | CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux; trang chọn vai trò tĩnh ở site root trỏ `/admin`·`/citizen`·`/officer`; redesign toàn bộ UI `dashboard-web-react` bằng design token thật + role-gated nav; `mobile-app-citizen` build được cho Flutter Web (đổi `native_exif` sang package `exif` thuần Dart); vá 3 lỗ hổng bảo mật (rate-limit `/auth/refresh`, bắt buộc `OTP_HASH_PEPPER` ở production, audit log hành động admin trên tài khoản web) |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
