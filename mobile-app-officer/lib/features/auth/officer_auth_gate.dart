@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
-import '../reports_list/report_list_screen.dart';
+import '../../home_shell.dart';
 import 'officer_login_screen.dart';
 
 class OfficerAuthGate extends ConsumerWidget {
@@ -15,7 +15,7 @@ class OfficerAuthGate extends ConsumerWidget {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        return snapshot.data == true ? const ReportListScreen() : const OfficerLoginScreen();
+        return snapshot.data == true ? const HomeShell() : const OfficerLoginScreen();
       },
     );
   }
