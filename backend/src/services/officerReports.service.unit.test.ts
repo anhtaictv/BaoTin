@@ -109,7 +109,7 @@ describe("officerReports.service — listReports", () => {
 
     const { service } = buildService(fakePrisma);
     const [result] = await service.listReports({ id: officerId, role: "officer" }, {});
-    expect(result.location).toEqual({ lat: 10.77, lng: 106.7 });
+    expect(result!.location).toEqual({ lat: 10.77, lng: 106.7 });
   });
 });
 
