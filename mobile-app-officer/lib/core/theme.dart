@@ -13,10 +13,16 @@ class BaoTinOfficerTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      scaffoldBackgroundColor: colorScheme.surfaceContainerLow,
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: colorScheme.surfaceContainerLow,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        color: colorScheme.surface,
       ),
       listTileTheme: const ListTileThemeData(dense: false),
       inputDecorationTheme: InputDecorationTheme(
@@ -60,6 +66,29 @@ String statusLabel(String status) {
 Color urgencyColor(String urgency) => urgency == 'emergency' ? const Color(0xFFD32F2F) : Colors.grey.shade600;
 
 String urgencyLabel(String urgency) => urgency == 'emergency' ? 'KHẨN CẤP' : 'Bình thường';
+
+const _categoryLabels = <String, String>{
+  'trom_cap': 'Trộm cắp',
+  'tai_nan': 'Tai nạn',
+  'chay_no': 'Cháy nổ',
+  'an_ninh_khan_cap': 'An ninh khẩn cấp',
+  'khac': 'Khác',
+};
+
+const _categoryIcons = <String, IconData>{
+  'trom_cap': Icons.inventory_2_outlined,
+  'tai_nan': Icons.car_crash_outlined,
+  'chay_no': Icons.local_fire_department_outlined,
+  'an_ninh_khan_cap': Icons.emergency_outlined,
+  'khac': Icons.more_horiz_outlined,
+};
+
+/// Reports/signals store the raw category code (`trom_cap`, ...) — same vocabulary as
+/// mobile-app-citizen. Falls back to the raw value itself for any code not in the map yet,
+/// rather than silently showing "Khác", so a backend addition is visible instead of hidden.
+String categoryLabel(String? category) => _categoryLabels[category] ?? category ?? 'Khác';
+
+IconData categoryIcon(String? category) => _categoryIcons[category] ?? Icons.report_outlined;
 
 /// CLAUDE.md nguyên tắc #1: tín hiệu MXH/báo chí không bao giờ được gắn nhãn giống tin đã
 /// xác thực — dùng bảng màu hoàn toàn khác statusColor/urgencyColor (tím/xám thay vì

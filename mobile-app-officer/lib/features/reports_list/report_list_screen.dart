@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../shared/widgets/status_badge.dart';
 import '../report_detail/report_detail_screen.dart';
 import '../signals/signal_list_screen.dart';
 
-const _statusFilters = <String, String>{
+const _activeStatusFilters = <String, String>{
   'pending': 'Chờ xử lý',
   'verifying': 'Đang xác minh',
+  'confirmed_true': 'Đúng sự thật',
+  'confirmed_false': 'Tin sai',
+};
+
+// History only ever shows closed reports — the backend's status filter takes one value at a
+// time (no OR), so "both closed statuses, nothing selected" is handled client-side in _load().
+const _historyStatusFilters = <String, String>{
   'confirmed_true': 'Đúng sự thật',
   'confirmed_false': 'Tin sai',
 };
@@ -17,7 +25,12 @@ const _statusFilters = <String, String>{
 /// see backend priority.service.ts) — this screen never re-sorts client-side, so it can
 /// never disagree with what the officer app is supposed to triage first.
 class ReportListScreen extends ConsumerStatefulWidget {
-  const ReportListScreen({super.key});
+  const ReportListScreen({super.key, this.historyMode = false});
+
+  /// Same screen, same list rendering — only the title, status-filter set, and default
+  /// query differ. "Lịch sử" is what an officer already resolved; "Tin báo" is the active
+  /// queue. Splitting into a separate file would just duplicate the list/empty-state code.
+  final bool historyMode;
 
   @override
   ConsumerState<ReportListScreen> createState() => _ReportListScreenState();
@@ -34,11 +47,19 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
     _future = _load();
   }
 
-  Future<List<Map<String, dynamic>>> _load() {
-    return ref.read(officerReportsRepositoryProvider).listReports(
-          status: _statusFilter,
-          urgency: _emergencyOnly ? 'emergency' : null,
-        );
+  Future<List<Map<String, dynamic>>> _load() async {
+    final repo = ref.read(officerReportsRepositoryProvider);
+    final urgency = _emergencyOnly ? 'emergency' : null;
+    if (widget.historyMode && _statusFilter == null) {
+      final results = await Future.wait([
+        repo.listReports(status: 'confirmed_true', urgency: urgency),
+        repo.listReports(status: 'confirmed_false', urgency: urgency),
+      ]);
+      final merged = [...results[0], ...results[1]];
+      merged.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
+      return merged;
+    }
+    return repo.listReports(status: _statusFilter, urgency: urgency);
   }
 
   void _refresh() => setState(() {
@@ -47,18 +68,21 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final statusFilters = widget.historyMode ? _historyStatusFilters : _activeStatusFilters;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tin báo theo địa bàn'),
-        actions: [
-          IconButton(
-            tooltip: 'Tin nhanh (tham khảo)',
-            icon: const Icon(Icons.feed_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SignalListScreen()),
-            ),
-          ),
-        ],
+        title: Text(widget.historyMode ? 'Lịch sử tin báo' : 'Tin báo theo địa bàn'),
+        actions: widget.historyMode
+            ? null
+            : [
+                IconButton(
+                  tooltip: 'Tin nhanh (tham khảo)',
+                  icon: const Icon(Icons.feed_outlined),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SignalListScreen()),
+                  ),
+                ),
+              ],
       ),
       body: Column(
         children: [
@@ -76,7 +100,7 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
                     _refresh();
                   },
                 ),
-                ..._statusFilters.entries.map((entry) {
+                ...statusFilters.entries.map((entry) {
                   final selected = _statusFilter == entry.key;
                   return ChoiceChip(
                     label: Text(entry.value),
@@ -104,8 +128,23 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
                   }
                   final reports = snapshot.data ?? const [];
                   if (reports.isEmpty) {
+                    final colors = Theme.of(context).colorScheme;
                     return ListView(
-                      children: const [SizedBox(height: 120), Center(child: Text('Không có tin báo nào.'))],
+                      children: [
+                        const SizedBox(height: 100),
+                        Icon(Icons.inbox_outlined, size: 40, color: colors.onSurfaceVariant),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Text(
+                            _statusFilter != null || _emergencyOnly
+                                ? 'Không có tin báo nào khớp bộ lọc hiện tại.'
+                                : widget.historyMode
+                                    ? 'Chưa có tin báo nào được xác minh xong.'
+                                    : 'Chưa có tin báo nào trong địa bàn của bạn.',
+                            style: TextStyle(color: colors.onSurfaceVariant),
+                          ),
+                        ),
+                      ],
                     );
                   }
                   return ListView.separated(
@@ -114,10 +153,21 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final report = reports[index];
+                      final category = report['category'] as String?;
+                      final colors = Theme.of(context).colorScheme;
                       return Card(
                         child: ListTile(
-                          leading: UrgencyBadge(urgency: report['urgency'] as String? ?? 'normal'),
-                          title: Text(report['category'] as String? ?? 'Khác'),
+                          leading: CircleAvatar(
+                            backgroundColor: colors.primaryContainer,
+                            child: Icon(categoryIcon(category), color: colors.onPrimaryContainer, size: 20),
+                          ),
+                          title: Row(
+                            children: [
+                              UrgencyBadge(urgency: report['urgency'] as String? ?? 'normal'),
+                              if ((report['urgency'] as String?) == 'emergency') const SizedBox(width: 8),
+                              Expanded(child: Text(categoryLabel(category))),
+                            ],
+                          ),
                           subtitle: Text(_formatDate(report['createdAt'] as String?)),
                           trailing: StatusBadge(status: report['status'] as String? ?? 'pending'),
                           onTap: () async {
