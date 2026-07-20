@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../shared/widgets/status_badge.dart';
 import 'report_status_screen.dart';
 
@@ -42,10 +43,18 @@ class _MyReportsScreenState extends ConsumerState<MyReportsScreen> {
             }
             final reports = snapshot.data ?? const [];
             if (reports.isEmpty) {
+              final colors = Theme.of(context).colorScheme;
               return ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('Bạn chưa gửi tin báo nào.')),
+                children: [
+                  const SizedBox(height: 100),
+                  Icon(Icons.inbox_outlined, size: 40, color: colors.onSurfaceVariant),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text(
+                      'Bạn chưa gửi tin báo nào.',
+                      style: TextStyle(color: colors.onSurfaceVariant),
+                    ),
+                  ),
                 ],
               );
             }
@@ -55,9 +64,15 @@ class _MyReportsScreenState extends ConsumerState<MyReportsScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final report = reports[index];
+                final colors = Theme.of(context).colorScheme;
+                final category = report['category'] as String?;
                 return Card(
                   child: ListTile(
-                    title: Text(report['category'] as String? ?? 'Khác'),
+                    leading: CircleAvatar(
+                      backgroundColor: colors.primaryContainer,
+                      child: Icon(categoryIcon(category), color: colors.onPrimaryContainer, size: 20),
+                    ),
+                    title: Text(categoryLabel(category)),
                     subtitle: Text(_formatDate(report['createdAt'] as String?)),
                     trailing: StatusBadge(status: report['status'] as String? ?? 'pending'),
                     onTap: () => Navigator.of(context).push(
