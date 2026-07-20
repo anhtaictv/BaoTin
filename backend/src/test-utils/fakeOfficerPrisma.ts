@@ -114,11 +114,20 @@ export function createFakeOfficerPrisma() {
     async $transaction(ops: Promise<unknown>[]) {
       return Promise.all(ops);
     },
-    // Mimics the ST_Y/ST_X-by-id raw query in officerReports.service.ts's getReportDetail —
-    // the report's id is the only interpolated value in that template.
+    // Mimics the ST_Y/ST_X raw queries in officerReports.service.ts: getReportDetail passes
+    // one report id, listReports passes an array of ids (id = ANY(...)) and wants `id` back
+    // on each row so the service can merge by key.
     async $queryRaw(_strings: TemplateStringsArray, ...values: unknown[]) {
-      const reportId = values[0] as string;
-      const report = reports.get(reportId);
+      const arg = values[0];
+      if (Array.isArray(arg)) {
+        return arg
+          .filter((id) => reports.has(id as string))
+          .map((id) => {
+            const report = reports.get(id as string)!;
+            return { id, lat: report.lat ?? 12.66, lng: report.lng ?? 108.05 };
+          });
+      }
+      const report = reports.get(arg as string);
       if (!report) return [];
       return [{ lat: report.lat ?? 12.66, lng: report.lng ?? 108.05 }];
     },

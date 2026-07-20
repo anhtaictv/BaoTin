@@ -95,6 +95,22 @@ describe("officerReports.service — listReports", () => {
     const results = await service.listReports({ id: randomUUID(), role: "admin" }, {});
     expect(results).toHaveLength(1);
   });
+
+  it("includes each report's lat/lng so the officer app's map tab can plot pins", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "with-coords", category: null, urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null,
+      lat: 10.77, lng: 106.7,
+    });
+
+    const { service } = buildService(fakePrisma);
+    const [result] = await service.listReports({ id: officerId, role: "officer" }, {});
+    expect(result.location).toEqual({ lat: 10.77, lng: 106.7 });
+  });
 });
 
 describe("officerReports.service — getReportDetail", () => {
