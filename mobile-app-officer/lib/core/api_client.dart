@@ -26,7 +26,15 @@ class ApiClient {
           final alreadyRetried = error.requestOptions.extra['retried'] == true;
           if (isUnauthorized && !alreadyRetried) {
             try {
-              await _refreshAccessToken();
+              // The refresh token rotates server-side (single-use — old one invalidated the
+              // instant a new one is issued, see backend auth.service.ts rotateRefreshToken).
+              // HomeShell's IndexedStack mounts every tab at once, so on an expired access
+              // token, all of them 401 in the same frame — without sharing one in-flight
+              // refresh, each would race to rotate the same token, only the first would
+              // succeed, and the rest would hit the catch below and clear() the tokens the
+              // winner just saved, logging the officer out roughly every access-token TTL.
+              _refreshing ??= _refreshAccessToken();
+              await _refreshing;
               final retryOptions = error.requestOptions..extra['retried'] = true;
               final response = await _dio.fetch(retryOptions);
               handler.resolve(response);
@@ -35,6 +43,8 @@ class ApiClient {
               await _tokenStore.clear();
               handler.reject(DioException(requestOptions: error.requestOptions, error: SessionExpiredException()));
               return;
+            } finally {
+              _refreshing = null;
             }
           }
           handler.next(error);
@@ -45,6 +55,7 @@ class ApiClient {
 
   final Dio _dio;
   final SecureTokenStore _tokenStore;
+  Future<void>? _refreshing;
 
   Dio get dio => _dio;
 
