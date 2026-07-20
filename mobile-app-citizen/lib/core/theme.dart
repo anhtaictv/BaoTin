@@ -8,7 +8,6 @@ class BaoTinTheme {
 
   static const Color primary = Color(0xFF1B5FA8);
   static const Color emergency = Color(0xFFD32F2F);
-  static const Color surfaceMuted = Color(0xFFF4F6F9);
 
   static ThemeData light() {
     final colorScheme = ColorScheme.fromSeed(
@@ -18,9 +17,11 @@ class BaoTinTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: surfaceMuted,
+      // Tonal elevation (M3): scaffold sits one tone below card surfaces instead of a
+      // hand-picked hex, so the background stays tied to the seed color in dark mode too.
+      scaffoldBackgroundColor: colorScheme.surfaceContainerLow,
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: colorScheme.surfaceContainerLow,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
         centerTitle: false,
@@ -36,6 +37,12 @@ class BaoTinTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: colorScheme.surface,
+      ),
+      chipTheme: ChipThemeData(
+        shape: StadiumBorder(side: BorderSide(color: colorScheme.outlineVariant)),
+        selectedColor: colorScheme.primaryContainer,
+        backgroundColor: colorScheme.surface,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -93,3 +100,30 @@ String statusLabel(String status) {
       return 'Chờ xử lý';
   }
 }
+
+/// Ordered so the "Loại vụ việc" chip selector in bao_tin_screen.dart has a stable layout —
+/// shared here (not private to that file) so any other screen showing a report's category
+/// (my_reports_screen.dart, report_status_screen.dart) uses the same Vietnamese labels
+/// instead of falling back to the raw backend code like "trom_cap".
+const categoryOptions = <String, String>{
+  'trom_cap': 'Trộm cắp',
+  'tai_nan': 'Tai nạn',
+  'chay_no': 'Cháy nổ',
+  'an_ninh_khan_cap': 'An ninh khẩn cấp',
+  'khac': 'Khác',
+};
+
+const _categoryIcons = <String, IconData>{
+  'trom_cap': Icons.inventory_2_outlined,
+  'tai_nan': Icons.car_crash_outlined,
+  'chay_no': Icons.local_fire_department_outlined,
+  'an_ninh_khan_cap': Icons.emergency_outlined,
+  'khac': Icons.more_horiz_outlined,
+};
+
+/// Falls back to the raw code itself for anything not in the map yet, rather than silently
+/// showing "Khác" — a backend addition stays visible instead of hidden (same convention as
+/// mobile-app-officer's core/theme.dart categoryLabel).
+String categoryLabel(String? category) => categoryOptions[category] ?? category ?? 'Khác';
+
+IconData categoryIcon(String? category) => _categoryIcons[category] ?? Icons.report_outlined;
