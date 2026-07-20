@@ -70,7 +70,17 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
       select: REPORT_LIST_SELECT,
     });
 
-    return sortByPriority(reports);
+    // Same PostGIS-omission workaround as getReportDetail below, batched: one extra query
+    // for the whole page's coordinates (map tab needs them) instead of N+1 per report.
+    const ids = reports.map((r) => r.id);
+    const locations = ids.length
+      ? await deps.prisma.$queryRaw<{ id: string; lat: number; lng: number }[]>`
+          SELECT id, ST_Y(location) AS lat, ST_X(location) AS lng FROM reports WHERE id = ANY(${ids})
+        `
+      : [];
+    const locationById = new Map(locations.map((l) => [l.id, { lat: l.lat, lng: l.lng }]));
+
+    return sortByPriority(reports).map((r) => ({ ...r, location: locationById.get(r.id) ?? null }));
   }
 
   async function getReportDetail(subject: DistrictScopeSubject, reportId: string) {
