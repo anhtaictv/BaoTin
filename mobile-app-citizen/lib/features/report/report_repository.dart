@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import '../../core/api_client.dart';
 
@@ -13,7 +14,7 @@ class ReportRepository {
     required double lat,
     required double lng,
     required String locationSource,
-    List<String> attachmentPaths = const [],
+    List<({Uint8List bytes, String filename})> attachments = const [],
   }) async {
     final formData = FormData();
     formData.fields.add(MapEntry('category', category));
@@ -23,8 +24,10 @@ class ReportRepository {
     formData.fields.add(
       MapEntry('location', jsonEncode({'lat': lat, 'lng': lng, 'source': locationSource})),
     );
-    for (final path in attachmentPaths) {
-      formData.files.add(MapEntry('attachments', await MultipartFile.fromFile(path)));
+    for (final attachment in attachments) {
+      formData.files.add(
+        MapEntry('attachments', MultipartFile.fromBytes(attachment.bytes, filename: attachment.filename)),
+      );
     }
 
     final res = await _apiClient.dio.post('/reports', data: formData);

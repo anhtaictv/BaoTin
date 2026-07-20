@@ -1,11 +1,11 @@
 {
-    "name": "bao_tin_officer",
-    "short_name": "bao_tin_officer",
+    "name": "Báo Tin - Cán bộ",
+    "short_name": "BT Cán bộ",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#334155",
+    "theme_color": "#334155",
+    "description": "Xác minh tin báo an ninh trật tự theo địa bàn phụ trách.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

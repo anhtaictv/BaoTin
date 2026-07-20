@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -28,7 +28,8 @@ class BaoTinScreen extends ConsumerStatefulWidget {
 class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
   final _descriptionController = TextEditingController();
   String _category = _categories.keys.first;
-  String? _photoPath;
+  Uint8List? _photoBytes;
+  String? _photoFilename;
   ResolvedLocation? _location;
   bool _resolvingLocation = false;
   bool _submitting = false;
@@ -63,12 +64,14 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
   Future<void> _takePhoto() async {
     final photo = await ref.read(cameraGpsCaptureProvider).captureFromCamera();
     if (photo == null) return;
+    final bytes = await photo.readAsBytes();
     setState(() {
-      _photoPath = photo.path;
+      _photoBytes = bytes;
+      _photoFilename = photo.name;
       _resolvingLocation = true;
       _error = null;
     });
-    final resolved = await ref.read(locationResolverProvider).resolveFromPhoto(photo.path);
+    final resolved = await ref.read(locationResolverProvider).resolveFromPhoto(bytes);
     if (!mounted) return;
     setState(() {
       _location = resolved;
@@ -107,14 +110,17 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
             lat: location.lat,
             lng: location.lng,
             locationSource: location.source,
-            attachmentPaths: _photoPath != null ? [_photoPath!] : const [],
+            attachments: _photoBytes != null
+                ? [(bytes: _photoBytes!, filename: _photoFilename ?? 'photo.jpg')]
+                : const [],
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã gửi tin báo. Cảm ơn bạn!')),
       );
       setState(() {
-        _photoPath = null;
+        _photoBytes = null;
+        _photoFilename = null;
         _location = null;
         _descriptionController.clear();
         _category = _categories.keys.first;
@@ -198,16 +204,16 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
                 children: [
                   Text('Hình ảnh & vị trí', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 12),
-                  if (_photoPath != null)
+                  if (_photoBytes != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(_photoPath!), height: 160, fit: BoxFit.cover),
+                      child: Image.memory(_photoBytes!, height: 160, fit: BoxFit.cover),
                     ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: _takePhoto,
                     icon: const Icon(Icons.camera_alt_outlined),
-                    label: Text(_photoPath == null ? 'Chụp ảnh hiện trường' : 'Chụp lại'),
+                    label: Text(_photoBytes == null ? 'Chụp ảnh hiện trường' : 'Chụp lại'),
                   ),
                   const SizedBox(height: 8),
                   if (_resolvingLocation)
