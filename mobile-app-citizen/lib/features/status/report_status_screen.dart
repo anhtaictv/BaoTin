@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../shared/widgets/status_badge.dart';
 
 /// Cùng danh mục với backend/src/services/priority.service.ts HIGH_PRIORITY_CATEGORIES —
@@ -48,19 +50,28 @@ class _ReportStatusScreenState extends ConsumerState<ReportStatusScreen> {
           final data = snapshot.data!;
           final status = data['status'] as String? ?? 'pending';
           final latestNote = data['latestNote'] as String?;
+          final category = data['category'] as String?;
           final isSerious = status != 'confirmed_false' &&
-              _isSeriousReport(urgency: data['urgency'] as String?, category: data['category'] as String?);
+              _isSeriousReport(urgency: data['urgency'] as String?, category: category);
           return Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Icon(categoryIcon(category), size: 20, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(categoryLabel(category), style: Theme.of(context).textTheme.titleMedium),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 StatusBadge(status: status),
                 const SizedBox(height: 16),
                 Text('Mã tin báo: ${widget.reportId}', style: Theme.of(context).textTheme.bodyMedium),
                 if (data['verifiedAt'] != null) ...[
                   const SizedBox(height: 8),
-                  Text('Đã xác minh lúc: ${data['verifiedAt']}'),
+                  Text(_formatVerifiedAt(data['verifiedAt'] as String)),
                 ],
                 if (latestNote != null && latestNote.trim().isNotEmpty) ...[
                   const SizedBox(height: 16),
@@ -111,5 +122,13 @@ class _ReportStatusScreenState extends ConsumerState<ReportStatusScreen> {
         },
       ),
     );
+  }
+}
+
+String _formatVerifiedAt(String iso) {
+  try {
+    return 'Đã xác minh lúc: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(iso).toLocal())}';
+  } catch (_) {
+    return 'Đã xác minh lúc: $iso';
   }
 }
