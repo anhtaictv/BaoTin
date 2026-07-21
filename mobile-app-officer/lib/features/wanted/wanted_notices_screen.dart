@@ -6,10 +6,10 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 
 /// "Lệnh truy nã" — any officer account can view (backend requireAuth([])); posting is
-/// senior_officer/admin only. No client-side role check exists elsewhere in this app (every
-/// screen just calls the endpoint and lets a 403 fail, see overview_screen.dart) — same here:
-/// the FAB is always shown, and a plain "officer" tapping it gets a clear message from the
-/// 403 instead of the backend's generic one.
+/// admin only. No client-side role check exists elsewhere in this app (every screen just
+/// calls the endpoint and lets a 403 fail, see overview_screen.dart) — same here: the FAB is
+/// always shown, and a non-admin tapping it gets a clear message from the 403 instead of the
+/// backend's generic one.
 class WantedNoticesScreen extends ConsumerStatefulWidget {
   const WantedNoticesScreen({super.key});
 
@@ -44,7 +44,7 @@ class _WantedNoticesScreenState extends ConsumerState<WantedNoticesScreen> {
     } on DioException catch (e) {
       if (!mounted) return;
       final message = e.response?.statusCode == 403
-          ? 'Chỉ cán bộ quản lý mới được đăng lệnh truy nã.'
+          ? 'Chỉ quản trị viên mới được đăng lệnh truy nã.'
           : 'Đăng lệnh truy nã thất bại, thử lại sau.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } finally {
