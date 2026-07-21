@@ -4,6 +4,7 @@ import 'features/report/bao_tin_screen.dart';
 import 'features/emergency/sos_screen.dart';
 import 'features/status/my_reports_screen.dart';
 import 'features/area_safety/area_safety_screen.dart';
+import 'features/wanted/wanted_notices_screen.dart';
 
 /// Bottom-nav shell for the 3 Giai đoạn 1 citizen screens. SOS is visually distinct
 /// (red icon) even in the nav bar — CLAUDE.md: SOS must never blend in with routine UI.
@@ -22,6 +23,7 @@ class _HomeShellState extends State<HomeShell> {
     SosScreen(),
     MyReportsScreen(),
     AreaSafetyScreen(),
+    WantedNoticesScreen(),
   ];
 
   @override
@@ -39,6 +41,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
           NavigationDestination(icon: Icon(Icons.history), label: 'Tin của tôi'),
           NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Khu vực'),
+          NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Truy nã'),
         ],
       ),
     );

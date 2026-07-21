@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'features/locations/report_map_screen.dart';
 import 'features/overview/overview_screen.dart';
 import 'features/reports_list/report_list_screen.dart';
+import 'features/wanted/wanted_notices_screen.dart';
 
 /// Bottom-nav shell tying the officer app's 4 top-level views together — mirrors
 /// mobile-app-citizen's home_shell.dart. "Tin nhanh (tham khảo)" deliberately stays out of
@@ -23,6 +24,7 @@ class _HomeShellState extends State<HomeShell> {
     ReportListScreen(),
     ReportMapScreen(),
     ReportListScreen(historyMode: true),
+    WantedNoticesScreen(),
   ];
 
   @override
@@ -37,6 +39,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.assignment_outlined), label: 'Tin báo'),
           NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Địa điểm'),
           NavigationDestination(icon: Icon(Icons.history), label: 'Lịch sử'),
+          NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Truy nã'),
         ],
       ),
     );

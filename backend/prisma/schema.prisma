@@ -95,8 +95,27 @@ model Officer {
   auditLogEntries     AdminAuditLog[]
   cameraExtractionRequests CameraExtractionRequest[]
   webAccount          WebAccount?
+  wantedNotices       WantedNotice[]
 
   @@map("officers")
+}
+
+/// Official wanted notices ("lệnh truy nã") — posted only by senior_officer/admin (see
+/// role gating in api/wanted/wantedNotices.routes.ts), visible to any authenticated account
+/// (citizen or officer), system-wide (no district scoping — a wanted subject isn't confined
+/// to one xã/phường). The photo itself carries all identifying info by product decision, so
+/// there's deliberately no name/crime/etc. column here.
+model WantedNotice {
+  id         String   @id @default(uuid())
+  /// MinIO object key, not a URL — resolved to a presigned GET URL at read time, same
+  /// pattern as ReportAttachment.fileUrl.
+  photoUrl   String   @map("photo_url")
+  postedById String   @map("posted_by_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  postedBy Officer @relation(fields: [postedById], references: [id])
+
+  @@map("wanted_notices")
 }
 
 /// dashboard-web-react — username/password login for the 102 xã/phường web management
