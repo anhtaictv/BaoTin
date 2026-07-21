@@ -154,6 +154,15 @@ jobs:
           $env:Path = "C:\node20;$env:Path"
 
           Set-Location C:\baotin\backend
+
+          # Stop the service *before* npm ci — while it's running, node.exe holds
+          # node_modules\.prisma\client\query_engine-windows.dll.node open, and npm ci's
+          # unlink of the old file fails with EPERM. A half-finished node_modules then makes
+          # `npx prisma` fall back to fetching the latest prisma from the registry instead of
+          # the project's pinned version, which is its own way of breaking migrate deploy.
+          # -ErrorAction SilentlyContinue covers the first deploy, before the service exists.
+          Stop-Service -Name BaoTinBackend -ErrorAction SilentlyContinue
+
           npm ci --omit=dev
 
           # Run migrations against the new schema *before* restarting the service, so the
