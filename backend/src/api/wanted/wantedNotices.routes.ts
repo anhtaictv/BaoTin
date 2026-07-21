@@ -4,7 +4,7 @@ import type { RequireAuth } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { uploadWantedNoticePhoto } from "./uploadPhoto.middleware.js";
 
-const POST_ROLES = ["senior_officer", "admin"] as const;
+const POST_ROLES = ["admin"] as const;
 
 /** "Lệnh truy nã" — mounted at root "/wanted-notices". */
 export function createWantedNoticesRoutes(controller: WantedNoticesController, requireAuth: RequireAuth): Router {
