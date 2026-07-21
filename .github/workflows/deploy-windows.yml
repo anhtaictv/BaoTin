@@ -64,9 +64,20 @@ jobs:
           flutter pub get
           flutter build web --release --base-href /officer/ --dart-define=API_BASE_URL=/api
 
+      # Signed with the debug keystore (android/app/build.gradle.kts — no release signing config
+      # yet, fine for demo/thi sideloading, not for Play Store). Points at the real domain since
+      # 10.0.2.2 (emulator-only loopback alias) doesn't mean anything on a physical phone.
+      - name: Build mobile-app-citizen (Android APK)
+        working-directory: mobile-app-citizen
+        run: flutter build apk --release --dart-define=API_BASE_URL=https://baotin.work.gd/api
+
+      - name: Build mobile-app-officer (Android APK)
+        working-directory: mobile-app-officer
+        run: flutter build apk --release --dart-define=API_BASE_URL=https://baotin.work.gd/api
+
       - name: Collect deploy artifact
         run: |
-          mkdir -p artifact/backend artifact/landing artifact/admin artifact/dashboard-web artifact/citizen artifact/officer artifact/data/raw
+          mkdir -p artifact/backend artifact/landing artifact/admin artifact/dashboard-web artifact/citizen artifact/officer artifact/data/raw artifact/downloads
           cp -r backend/dist artifact/backend/dist
           cp -r backend/prisma artifact/backend/prisma
           cp backend/package.json backend/package-lock.json artifact/backend/
@@ -75,6 +86,8 @@ jobs:
           cp -r dashboard-web/build/web/. artifact/dashboard-web/
           cp -r mobile-app-citizen/build/web/. artifact/citizen/
           cp -r mobile-app-officer/build/web/. artifact/officer/
+          cp mobile-app-citizen/build/app/outputs/flutter-apk/app-release.apk artifact/downloads/citizen.apk
+          cp mobile-app-officer/build/app/outputs/flutter-apk/app-release.apk artifact/downloads/officer.apk
           # Only actually needed once (Phần 2's manual seed step), but the VPS has no inbound
           # path to fetch it any other way — riding along in the artifact is simplest.
           cp data/raw/Daklak.geojson artifact/data/raw/
@@ -126,6 +139,7 @@ jobs:
           Sync-Dir "artifact\dashboard-web" "C:\inetpub\baotin\legacy"
           Sync-Dir "artifact\citizen" "C:\inetpub\baotin\citizen"
           Sync-Dir "artifact\officer" "C:\inetpub\baotin\officer"
+          Sync-Dir "artifact\downloads" "C:\inetpub\baotin\downloads"
 
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\raw" | Out-Null
           Copy-Item -Path "artifact\data\raw\Daklak.geojson" -Destination "C:\baotin\data\raw\Daklak.geojson" -Force
