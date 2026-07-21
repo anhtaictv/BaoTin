@@ -22,7 +22,7 @@ export interface CreateWantedNoticeInput {
 }
 
 /**
- * "Lệnh truy nã" — posted only by senior_officer/admin (role gating happens at the route
+ * "Lệnh truy nã" — posted only by admin (role gating happens at the route
  * layer, api/wanted/wantedNotices.routes.ts), visible to any authenticated account. The photo
  * carries all identifying info by product decision, so there's nothing to store beyond it.
  */
