@@ -44,6 +44,9 @@ import { createSearchRoutes } from "./api/admin/search.routes.js";
 import { createWebAccountAuthService } from "./services/webAccountAuth.service.js";
 import { createWebAccountController } from "./api/auth/webAccount.controller.js";
 import { createWebAccountRoutes } from "./api/auth/webAccount.routes.js";
+import { createWantedNoticesService } from "./services/wantedNotices.service.js";
+import { createWantedNoticesController } from "./api/wanted/wantedNotices.controller.js";
+import { createWantedNoticesRoutes } from "./api/wanted/wantedNotices.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -133,6 +136,10 @@ async function main() {
   const webAccountController = createWebAccountController(webAccountAuthService);
   const webAccountRouter = createWebAccountRoutes(webAccountController, requireAuth);
 
+  const wantedNoticesService = createWantedNoticesService({ prisma, storage });
+  const wantedNoticesController = createWantedNoticesController(wantedNoticesService);
+  const wantedNoticesRouter = createWantedNoticesRoutes(wantedNoticesController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -145,6 +152,7 @@ async function main() {
       areaAlertsRouter,
       searchRouter,
       webAccountRouter,
+      wantedNoticesRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

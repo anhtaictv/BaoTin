@@ -24,6 +24,9 @@ export interface AppRouters {
    * own full path: "/auth/web/login", "/web-accounts/*", "/admin/web-accounts/*"). Sits
    * alongside authRouter without touching it — the OTP flow is untouched. */
   webAccountRouter?: Router;
+  /** "Lệnh truy nã" — mounted at "/wanted-notices". GET is any authenticated account
+   * (citizen or officer); POST is senior_officer/admin only. */
+  wantedNoticesRouter?: Router;
 }
 
 export interface AppConfig {
@@ -71,6 +74,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.webAccountRouter) {
     app.use(routers.webAccountRouter);
+  }
+  if (routers.wantedNoticesRouter) {
+    app.use("/wanted-notices", routers.wantedNoticesRouter);
   }
 
   app.use(notFoundHandler);
