@@ -59,6 +59,15 @@ class _OfficerPasswordLoginScreenState
         (route) => false,
       );
     } on DioException catch (e) {
+      // No response at all (timeout/DNS/offline) and 429 (rate-limited) both used to fall
+      // through to the generic "sai mật khẩu" branch below — indistinguishable from an actual
+      // wrong password, which is exactly what made a real network/rate-limit issue look like a
+      // credentials problem when tested against production.
+      if (e.response == null) {
+        setState(() => _error =
+            'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.');
+        return;
+      }
       final code = (e.response?.data is Map)
           ? (e.response?.data['error']?['code'] as String?)
           : null;
@@ -67,6 +76,8 @@ class _OfficerPasswordLoginScreenState
           'APPROVAL_PENDING' => 'Tài khoản đang chờ quản trị viên duyệt.',
           'APPROVAL_REJECTED' =>
             'Tài khoản đã bị từ chối. Vui lòng liên hệ quản trị viên.',
+          'LOGIN_RATE_LIMITED' =>
+            'Đăng nhập sai quá nhiều lần, thử lại sau.',
           _ => 'Sai tên đăng nhập hoặc mật khẩu.',
         };
       });
