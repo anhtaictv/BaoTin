@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { generateKeyPairSync } from "node:crypto";
-import { exportPKCS8, exportSPKI, SignJWT } from "jose";
+import { exportPKCS8, exportSPKI } from "jose";
 import request from "supertest";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
