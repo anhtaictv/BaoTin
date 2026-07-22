@@ -1,8 +1,13 @@
 # syntax=docker/dockerfile:1
 
-# Pinned to the exact Flutter version this app was last verified against (see README.md
-# "Trạng thái" — `flutter analyze`/`flutter test` run on 3.44.6).
-FROM ghcr.io/cirruslabs/flutter:3.44.6 AS builder
+# Pinned as close as possible to the Flutter version this app is verified against (README.md
+# "Trạng thái" — `flutter analyze`/`flutter test` run on 3.44.6 via subosito/flutter-action in
+# ci.yml's dashboard-web job). cirruslabs' ghcr.io image only publishes some patch releases —
+# 3.44.6 was never tagged there (confirmed against the registry's tag list), so this pins to
+# the newest 3.44.x tag that actually exists. This Docker path is a dormant backup build only
+# (docs/DEPLOY_DOCKER_LINUX.md) — the real deploy (deploy-windows.yml) installs Flutter
+# directly via subosito/flutter-action at the exact 3.44.6 version, unaffected by this.
+FROM ghcr.io/cirruslabs/flutter:3.44.0 AS builder
 WORKDIR /app
 
 COPY pubspec.yaml pubspec.lock ./

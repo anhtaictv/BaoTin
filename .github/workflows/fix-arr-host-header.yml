@@ -1,0 +1,29 @@
+name: Preserve ARR host header (temporary, one-off)
+
+# MinIO presigned URLs (AWS SigV4) sign the exact Host header. IIS's ARR reverse-proxy
+# rewrites the outbound Host header to the proxy target by default, so MinIO sees
+# "127.0.0.1:9000" instead of "baotin.work.gd" and rejects the request with
+# SignatureDoesNotMatch. This flips the global ARR setting to forward the original Host
+# header unchanged — matches docs/DEPLOY.md's "Enable proxy" step, same mechanism.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-windows
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: [self-hosted, baotin-vps]
+    environment: production
+    steps:
+      - name: Enable preserveHostHeader on the ARR proxy
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          Import-Module WebAdministration
+          Set-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "preserveHostHeader" -value "True"
+          Get-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "preserveHostHeader"
