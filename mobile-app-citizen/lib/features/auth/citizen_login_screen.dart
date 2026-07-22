@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/bao_tin_badge.dart';
@@ -55,6 +56,22 @@ class _CitizenLoginScreenState extends ConsumerState<CitizenLoginScreen> {
         MaterialPageRoute(builder: (_) => const HomeShell()),
         (route) => false,
       );
+    } on DioException catch (e) {
+      // No response (offline/timeout/DNS) and 429 (rate-limited) both used to collapse into
+      // "sai mật khẩu" below — indistinguishable from an actual wrong password.
+      if (e.response == null) {
+        setState(() => _error =
+            'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.');
+        return;
+      }
+      final code = (e.response?.data is Map)
+          ? (e.response?.data['error']?['code'] as String?)
+          : null;
+      setState(() {
+        _error = code == 'LOGIN_RATE_LIMITED'
+            ? 'Đăng nhập sai quá nhiều lần, thử lại sau.'
+            : 'Sai tên đăng nhập hoặc mật khẩu.';
+      });
     } catch (_) {
       setState(() => _error = 'Sai tên đăng nhập hoặc mật khẩu.');
     } finally {
