@@ -10,9 +10,15 @@ export function createOfficerApprovalController(service: AccountRegistrationServ
       res.status(200).json({ success: true, data: result, error: null });
     },
 
+    async listDistricts(_req: Request, res: Response) {
+      const result = await service.listDistrictsForAssignment();
+      res.status(200).json({ success: true, data: result, error: null });
+    },
+
     async approve(req: Request, res: Response) {
       if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
-      await service.approveOfficer(req.user.id, req.params.id as string);
+      const { districtId } = req.body as { districtId: string };
+      await service.approveOfficer(req.user.id, req.params.id as string, districtId);
       res.status(200).json({ success: true, data: { approved: true }, error: null });
     },
 

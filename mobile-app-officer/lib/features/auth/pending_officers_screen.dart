@@ -15,13 +15,20 @@ class PendingOfficersScreen extends ConsumerStatefulWidget {
 
 class _PendingOfficersScreenState extends ConsumerState<PendingOfficersScreen> {
   Future<List<Map<String, dynamic>>>? _future;
+  List<Map<String, dynamic>> _districts = [];
   String? _forbiddenMessage;
   final Set<String> _acting = {};
+  // districtId chosen so far, keyed by pending officer id — required before "Duyệt" is enabled
+  // (a self-registered officer has zero district assignments until approval sets one).
+  final Map<String, String> _chosenDistrict = {};
 
   @override
   void initState() {
     super.initState();
     _refresh();
+    ref.read(officerRegistrationRepositoryProvider).listDistricts().then((value) {
+      if (mounted) setState(() => _districts = value);
+    }).catchError((Object _) {});
   }
 
   void _refresh() {
@@ -37,15 +44,29 @@ class _PendingOfficersScreenState extends ConsumerState<PendingOfficersScreen> {
     });
   }
 
-  Future<void> _act(String officerId, {required bool approve}) async {
+  Future<void> _approve(String officerId) async {
+    final districtId = _chosenDistrict[officerId];
+    if (districtId == null) return;
     setState(() => _acting.add(officerId));
     try {
-      final repo = ref.read(officerRegistrationRepositoryProvider);
-      if (approve) {
-        await repo.approve(officerId);
-      } else {
-        await repo.reject(officerId);
-      }
+      await ref.read(officerRegistrationRepositoryProvider).approve(officerId, districtId);
+      if (!mounted) return;
+      _refresh();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message = e.response?.statusCode == 403
+          ? 'Chỉ quản trị viên mới thực hiện được thao tác này.'
+          : 'Duyệt thất bại, thử lại sau.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _acting.remove(officerId));
+    }
+  }
+
+  Future<void> _reject(String officerId) async {
+    setState(() => _acting.add(officerId));
+    try {
+      await ref.read(officerRegistrationRepositoryProvider).reject(officerId);
       if (!mounted) return;
       _refresh();
     } on DioException catch (e) {
@@ -108,6 +129,7 @@ class _PendingOfficersScreenState extends ConsumerState<PendingOfficersScreen> {
                 final officer = pending[index];
                 final id = officer['id'] as String;
                 final busy = _acting.contains(id);
+                final selectedDistrict = _chosenDistrict[id];
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -121,18 +143,32 @@ class _PendingOfficersScreenState extends ConsumerState<PendingOfficersScreen> {
                         Text('CCCD/CMND: ${officer['cccdNumber']}'),
                         Text('Địa chỉ: ${officer['address']}'),
                         const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedDistrict,
+                          decoration: const InputDecoration(labelText: 'Địa bàn phụ trách', isDense: true),
+                          items: _districts
+                              .map((d) => DropdownMenuItem(
+                                    value: d['id'] as String,
+                                    child: Text(d['tenXa'] as String),
+                                  ))
+                              .toList(),
+                          onChanged: (value) => setState(() {
+                            if (value != null) _chosenDistrict[id] = value;
+                          }),
+                        ),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
                               child: FilledButton(
-                                onPressed: busy ? null : () => _act(id, approve: true),
+                                onPressed: (busy || selectedDistrict == null) ? null : () => _approve(id),
                                 child: const Text('Duyệt'),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: busy ? null : () => _act(id, approve: false),
+                                onPressed: busy ? null : () => _reject(id),
                                 style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                                 child: const Text('Từ chối'),
                               ),
