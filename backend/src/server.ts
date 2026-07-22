@@ -47,6 +47,11 @@ import { createWebAccountRoutes } from "./api/auth/webAccount.routes.js";
 import { createWantedNoticesService } from "./services/wantedNotices.service.js";
 import { createWantedNoticesController } from "./api/wanted/wantedNotices.controller.js";
 import { createWantedNoticesRoutes } from "./api/wanted/wantedNotices.routes.js";
+import { createAccountRegistrationService } from "./services/accountRegistration.service.js";
+import { createRegistrationController } from "./api/auth/registration.controller.js";
+import { createRegistrationRoutes } from "./api/auth/registration.routes.js";
+import { createOfficerApprovalController } from "./api/admin/officerApproval.controller.js";
+import { createOfficerApprovalRoutes } from "./api/admin/officerApproval.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -140,6 +145,19 @@ async function main() {
   const wantedNoticesController = createWantedNoticesController(wantedNoticesService);
   const wantedNoticesRouter = createWantedNoticesRoutes(wantedNoticesController, requireAuth);
 
+  const accountRegistrationService = createAccountRegistrationService({
+    prisma,
+    piiEncryptionKey: env.PII_ENCRYPTION_KEY,
+    phoneBlindIndexKey: env.PHONE_BLIND_INDEX_KEY,
+    authService,
+    storage,
+    auditLog,
+  });
+  const registrationController = createRegistrationController(accountRegistrationService);
+  const registrationRouter = createRegistrationRoutes(registrationController);
+  const officerApprovalController = createOfficerApprovalController(accountRegistrationService);
+  const officerApprovalRouter = createOfficerApprovalRoutes(officerApprovalController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -153,6 +171,8 @@ async function main() {
       searchRouter,
       webAccountRouter,
       wantedNoticesRouter,
+      registrationRouter,
+      officerApprovalRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

@@ -27,6 +27,11 @@ export interface AppRouters {
   /** "Lệnh truy nã" — mounted at "/wanted-notices". GET is any authenticated account
    * (citizen or officer); POST is senior_officer/admin only. */
   wantedNoticesRouter?: Router;
+  /** Username/password registration+login — mounted at "/auth" alongside authRouter's OTP
+   * flow. Both routers share the base path; neither one touches the other's routes. */
+  registrationRouter?: Router;
+  /** Admin approval for self-registered officer accounts — mounted at "/admin/officers". */
+  officerApprovalRouter?: Router;
 }
 
 export interface AppConfig {
@@ -48,6 +53,12 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   });
 
   app.use("/auth", routers.authRouter);
+  if (routers.registrationRouter) {
+    app.use("/auth", routers.registrationRouter);
+  }
+  if (routers.officerApprovalRouter) {
+    app.use("/admin/officers", routers.officerApprovalRouter);
+  }
   if (routers.citizenReportsRouter) {
     app.use("/reports", routers.citizenReportsRouter);
   }

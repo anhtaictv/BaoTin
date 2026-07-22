@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
 import 'secure_token_store.dart';
 import '../features/auth/officer_auth_repository.dart';
+import '../features/auth/officer_registration_repository.dart';
 import '../features/reports_list/officer_reports_repository.dart';
 import '../features/cameras/camera_repository.dart';
 import '../features/signals/signals_repository.dart';
@@ -15,6 +16,10 @@ final apiClientProvider = Provider<ApiClient>(
 
 final officerAuthRepositoryProvider = Provider<OfficerAuthRepository>(
   (ref) => OfficerAuthRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
+);
+
+final officerRegistrationRepositoryProvider = Provider<OfficerRegistrationRepository>(
+  (ref) => OfficerRegistrationRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
 );
 
 final officerReportsRepositoryProvider = Provider<OfficerReportsRepository>(

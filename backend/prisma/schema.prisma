@@ -49,6 +49,17 @@ enum OfficerRole {
   @@map("officer_role")
 }
 
+/// Gates password-based officer login (auth/registration.service.ts) — self-registered
+/// officers start `pending` and cannot log in until an admin approves them. Existing
+/// seed/admin-provisioned officers default `approved` so their OTP login stays unaffected.
+enum OfficerApprovalStatus {
+  pending
+  approved
+  rejected
+
+  @@map("officer_approval_status")
+}
+
 enum ExtractionRequestStatus {
   pending
   sent
@@ -70,6 +81,17 @@ model User {
   isAnonymousPublic Boolean   @default(true) @map("is_anonymous_public")
   createdAt         DateTime  @default(now()) @map("created_at")
 
+  /// Username/password registration (auth/registration.service.ts) — a citizen who's only
+  /// ever used OTP has all 6 of these null. Registering fills them in on the *same* row
+  /// (matched by phoneHash) rather than creating a duplicate account.
+  username          String?   @unique
+  passwordHash      String?   @map("password_hash")
+  cccdNumberEnc     String?   @map("cccd_number_enc")
+  addressEnc        String?   @map("address_enc")
+  /// MinIO object keys (not URLs), same non-URL-storage pattern as ReportAttachment.fileUrl.
+  cccdFrontPhotoUrl String?   @map("cccd_front_photo_url")
+  cccdBackPhotoUrl  String?   @map("cccd_back_photo_url")
+
   reports       Report[]
   otpChallenges OtpChallenge[]
   refreshTokens RefreshToken[]
@@ -86,6 +108,18 @@ model Officer {
   unitName       String?     @map("unit_name")
   role           OfficerRole @default(officer)
   createdAt      DateTime    @default(now()) @map("created_at")
+
+  /// Username/password self-registration (auth/registration.service.ts) — a citizen-facing
+  /// counterpart to WebAccount, but self-service and gated by approvalStatus instead of
+  /// admin-provisioned. `approved` default keeps every existing seed/OTP-only officer
+  /// (including admin) logging in exactly as before; only rows created via the new
+  /// self-registration endpoint start at `pending`. Deliberately no CCCD photo columns here
+  /// (product decision: officer registration takes a text CCCD number only, unlike citizen).
+  username       String?     @unique
+  passwordHash   String?     @map("password_hash")
+  cccdNumberEnc  String?     @map("cccd_number_enc")
+  addressEnc     String?     @map("address_enc")
+  approvalStatus OfficerApprovalStatus @default(approved) @map("approval_status")
 
   assignments        OfficerDistrictAssignment[]
   assignedReports     Report[]                    @relation("AssignedOfficer")

@@ -1,12 +1,15 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { loadEnv } from "../../src/config/env.js";
+import { createStorageClient } from "../../src/storage/minioClient.js";
 import { seedDistricts } from "./seed-districts.js";
 import { seedOfficers, seedOfficersForAllDistricts } from "./seed-officers.js";
 import { seedWebAccounts } from "./seed-web-accounts.js";
 import { seedCameras } from "./seed-cameras.js";
 import { seedSignals } from "./seed-signals.js";
 import { seedEmergencyContacts } from "./seed-emergency-contacts.js";
+import { seedAccountRegistrationDemo } from "./seed-account-registration.js";
 
 async function main() {
   const env = loadEnv();
@@ -41,6 +44,26 @@ async function main() {
 
   console.log("Seeding emergency contacts (Giai đoạn 3) ...");
   await seedEmergencyContacts(prisma);
+
+  console.log("Seeding demo username/password accounts (registration flow) ...");
+  const storage = createStorageClient({
+    endPoint: env.MINIO_ENDPOINT,
+    port: env.MINIO_PORT,
+    useSSL: env.MINIO_USE_SSL,
+    accessKey: env.MINIO_ROOT_USER,
+    secretKey: env.MINIO_ROOT_PASSWORD,
+    bucket: env.MINIO_BUCKET,
+    presignedUrlTtlSeconds: env.MINIO_PRESIGNED_URL_TTL_SECONDS,
+  });
+  await seedAccountRegistrationDemo({
+    prisma,
+    piiEncryptionKey: env.PII_ENCRYPTION_KEY,
+    phoneBlindIndexKey: env.PHONE_BLIND_INDEX_KEY,
+    otpPepper: env.OTP_HASH_PEPPER,
+    storage,
+    jwtPrivateKeyPem: readFileSync(env.JWT_PRIVATE_KEY_PATH, "utf8"),
+    jwtPublicKeyPem: readFileSync(env.JWT_PUBLIC_KEY_PATH, "utf8"),
+  });
 
   await prisma.$disconnect();
   console.log("Seed complete.");
