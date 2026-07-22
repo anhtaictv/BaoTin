@@ -112,6 +112,22 @@ export function roleLabel(role: string): string {
   }
 }
 
+/** Ported 1:1 from theme.dart's categoryOptions (both Flutter apps) — kept in sync so a
+ * report's category reads the same Vietnamese label everywhere a citizen/officer/admin sees
+ * it. category is free-text on the backend (Report.category is String?, not an enum), so any
+ * value not in this map falls back to the raw code rather than hiding it. */
+const CATEGORY_LABELS: Record<string, string> = {
+  trom_cap: 'Trộm cắp',
+  tai_nan: 'Tai nạn',
+  chay_no: 'Cháy nổ',
+  an_ninh_khan_cap: 'An ninh khẩn cấp',
+  khac: 'Khác',
+};
+
+export function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category] ?? category;
+}
+
 export function extractionStatusLabel(status: string): string {
   switch (status) {
     case 'sent':
