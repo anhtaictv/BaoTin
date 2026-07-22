@@ -23,6 +23,9 @@ async function main() {
     secretKey: env.MINIO_ROOT_PASSWORD,
     bucket: env.MINIO_BUCKET,
     presignedUrlTtlSeconds: env.MINIO_PRESIGNED_URL_TTL_SECONDS,
+    publicEndPoint: env.MINIO_PUBLIC_ENDPOINT,
+    publicPort: env.MINIO_PUBLIC_PORT,
+    publicUseSSL: env.MINIO_PUBLIC_USE_SSL,
   });
   const geoMatch = createGeoMatchService(prisma);
   const assignOfficer = createAssignOfficerService(prisma);

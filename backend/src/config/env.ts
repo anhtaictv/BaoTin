@@ -20,6 +20,19 @@ const EnvSchema = z.object({
   MINIO_ROOT_PASSWORD: z.string().min(1).default("changeme_minio_pw"),
   MINIO_BUCKET: z.string().min(1).default("baotin-reports"),
   MINIO_PRESIGNED_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  /** Host baked into presigned GET URLs handed to browsers/apps — MinIO itself stays bound to
+   * 127.0.0.1 only (docs/DEPLOY.md §1.4, never exposed directly), so this must be a
+   * reverse-proxied public host (e.g. the domain, path-proxying the bucket name to MinIO) or
+   * every presigned URL comes back as "http://localhost:9000/..." — unreachable from any
+   * client that isn't the server itself. Defaults to MINIO_ENDPOINT/PORT/USE_SSL, which is
+   * correct for local dev (browser and MinIO are the same "localhost" there) but MUST be
+   * overridden in production. */
+  MINIO_PUBLIC_ENDPOINT: z.string().min(1).optional(),
+  MINIO_PUBLIC_PORT: z.coerce.number().int().positive().optional(),
+  MINIO_PUBLIC_USE_SSL: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
 
   JWT_PRIVATE_KEY_PATH: z.string().min(1).default("./keys/jwt-private.pem"),
   JWT_PUBLIC_KEY_PATH: z.string().min(1).default("./keys/jwt-public.pem"),
@@ -73,6 +86,16 @@ const EnvSchema = z.object({
           "OTP_HASH_PEPPER is required in production — an empty pepper lets a stolen otp_challenges " +
           "table be brute-forced offline (SECURITY.md §1.2/§2.2). Generate one with: " +
           `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`,
+      });
+    }
+    if (!env.MINIO_PUBLIC_ENDPOINT) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["MINIO_PUBLIC_ENDPOINT"],
+        message:
+          "MINIO_PUBLIC_ENDPOINT is required in production — without it, presigned image URLs " +
+          "default to MINIO_ENDPOINT (e.g. \"localhost\"), which a browser/app on any other " +
+          "machine can never reach. Set it to the public domain, reverse-proxied to MinIO.",
       });
     }
   });
