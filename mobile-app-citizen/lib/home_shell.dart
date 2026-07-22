@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'core/bao_tin_badge.dart';
+import 'core/responsive.dart';
 import 'core/theme.dart';
 import 'features/report/bao_tin_screen.dart';
 import 'features/emergency/sos_screen.dart';
@@ -6,13 +8,11 @@ import 'features/status/my_reports_screen.dart';
 import 'features/area_safety/area_safety_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
 
-/// Bottom-nav shell for the 4 persistent citizen sections, plus SOS reachable via a small red
-/// dot docked in the bottom bar (anh's request 2026-07-22, then trimmed down further the same
-/// day — a big floating circle with an "SOS" label read as too much/oversized once seen live).
-/// SOS used to be a 5th equal-weight nav tab; a distinctly-colored dot in its own gap still
-/// reads as "obviously different" from routine nav icons (CLAUDE.md: SOS must never blend in)
-/// without the earlier oversized glow/label — pushed as its own full-screen route rather than
-/// persisted IndexedStack state, since it's a one-shot action, not a section you browse.
+/// Adaptive shell: bottom nav + SOS dot on a phone-width screen, a left sidebar rail on a
+/// desktop-width browser (anh, 2026-07-22: a fixed phone-shaped layout on wide browsers
+/// "trông như app mobile" — a sidebar is the standard "this is a real website" pattern,
+/// same idea Notion/Linear/Gmail use). SOS is pushed as its own full-screen route either way
+/// — it's a one-shot action, not a section you browse.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -31,18 +31,49 @@ class _HomeShellState extends State<HomeShell> {
   ];
 
   static const _destinations = [
-    (icon: Icons.campaign_outlined, activeIcon: Icons.campaign, label: 'Báo tin'),
+    (
+      icon: Icons.campaign_outlined,
+      activeIcon: Icons.campaign,
+      label: 'Báo tin'
+    ),
     (icon: Icons.history, activeIcon: Icons.history, label: 'Tin của tôi'),
     (icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Khu vực'),
     (icon: Icons.badge_outlined, activeIcon: Icons.badge, label: 'Truy nã'),
   ];
 
   void _openSos() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SosScreen()));
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const SosScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isWideScreen(context)) {
+      return Scaffold(
+        body: Row(
+          children: [
+            _SideNav(
+              destinations: _destinations,
+              selectedIndex: _index,
+              onSelect: (i) => setState(() => _index = i),
+              onSos: _openSos,
+            ),
+            Expanded(
+              child: ColoredBox(
+                color: const Color(0xFFF7F5F2),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: IndexedStack(index: _index, children: _screens),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -72,8 +103,122 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
+class _SideNav extends StatelessWidget {
+  const _SideNav({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.onSos,
+  });
+
+  final List<({IconData icon, IconData activeIcon, String label})> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final VoidCallback onSos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 248,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
+              child: Row(
+                children: [
+                  BaoTinBadge(size: 36),
+                  SizedBox(width: 10),
+                  Text('Báo Tin',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            for (var i = 0; i < destinations.length; i++)
+              _SideNavItem(
+                  item: destinations[i],
+                  selected: selectedIndex == i,
+                  onTap: () => onSelect(i)),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: OutlinedButton.icon(
+                onPressed: onSos,
+                icon: const Icon(Icons.warning_amber_rounded),
+                label: const Text('Cấp cứu / SOS'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: BaoTinTheme.primary,
+                  side: const BorderSide(color: BaoTinTheme.primary),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SideNavItem extends StatelessWidget {
+  const _SideNavItem(
+      {required this.item, required this.selected, required this.onTap});
+
+  final ({IconData icon, IconData activeIcon, String label}) item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: Material(
+        color: selected
+            ? BaoTinTheme.primary.withValues(alpha: 0.1)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? item.activeIcon : item.icon,
+                  size: 22,
+                  color: selected ? BaoTinTheme.primary : Colors.grey.shade600,
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    color:
+                        selected ? BaoTinTheme.primary : Colors.grey.shade800,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.destinations, required this.selectedIndex, required this.onSelect});
+  const _BottomBar(
+      {required this.destinations,
+      required this.selectedIndex,
+      required this.onSelect});
 
   final List<({IconData icon, IconData activeIcon, String label})> destinations;
   final int selectedIndex;
@@ -88,7 +233,10 @@ class _BottomBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, -2)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, -2)),
           ],
         ),
         child: Row(
@@ -96,9 +244,15 @@ class _BottomBar extends StatelessWidget {
             for (var i = 0; i < destinations.length; i++)
               if (i == destinations.length ~/ 2) ...[
                 const SizedBox(width: 46), // gap the SOS dot sits in
-                _NavItem(item: destinations[i], selected: selectedIndex == i, onTap: () => onSelect(i)),
+                _NavItem(
+                    item: destinations[i],
+                    selected: selectedIndex == i,
+                    onTap: () => onSelect(i)),
               ] else
-                _NavItem(item: destinations[i], selected: selectedIndex == i, onTap: () => onSelect(i)),
+                _NavItem(
+                    item: destinations[i],
+                    selected: selectedIndex == i,
+                    onTap: () => onSelect(i)),
           ],
         ),
       ),
@@ -107,7 +261,8 @@ class _BottomBar extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.item, required this.selected, required this.onTap});
+  const _NavItem(
+      {required this.item, required this.selected, required this.onTap});
 
   final ({IconData icon, IconData activeIcon, String label}) item;
   final bool selected;
@@ -122,11 +277,15 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(selected ? item.activeIcon : item.icon, color: color, size: 24),
+            Icon(selected ? item.activeIcon : item.icon,
+                color: color, size: 24),
             const SizedBox(height: 4),
             Text(
               item.label,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
+              style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
             ),
           ],
         ),
@@ -152,10 +311,12 @@ class _SosFab extends StatelessWidget {
           shape: BoxShape.circle,
           color: BaoTinTheme.primary,
           boxShadow: [
-            BoxShadow(color: Color(0x40C62828), blurRadius: 8, offset: Offset(0, 3)),
+            BoxShadow(
+                color: Color(0x40C62828), blurRadius: 8, offset: Offset(0, 3)),
           ],
         ),
-        child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
+        child: const Icon(Icons.warning_amber_rounded,
+            color: Colors.white, size: 24),
       ),
     );
   }
