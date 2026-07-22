@@ -19,7 +19,9 @@ const _emergencyLabels = <String, String>{
 
 /// Deliberately the simplest screen in the app: one tap to pick emergency type, one tap
 /// to send. No photo, no description, no multi-step form — API_SPEC.md requires this path
-/// to prioritize speed above everything else.
+/// to prioritize speed above everything else. Pushed as a full-screen route (home_shell.dart's
+/// SOS dot), so it needs its own explicit close affordance — an AppBar close button, not just
+/// an assumed swipe/back gesture (anh, 2026-07-22: "vào không có nút tắt sos").
 class SosScreen extends ConsumerStatefulWidget {
   const SosScreen({super.key});
 
@@ -61,6 +63,15 @@ class _SosScreenState extends ConsumerState<SosScreen> {
     if (_sentReportId != null) {
       return Scaffold(
         backgroundColor: BaoTinTheme.emergency,
+        appBar: AppBar(
+          backgroundColor: BaoTinTheme.emergency,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -68,11 +79,11 @@ class _SosScreenState extends ConsumerState<SosScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 64),
+                  const Icon(Icons.check_circle, color: Colors.white, size: 56),
                   const SizedBox(height: 16),
                   const Text(
                     'Đã gửi tin báo cấp cứu!',
-                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
@@ -82,13 +93,10 @@ class _SosScreenState extends ConsumerState<SosScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white),
-                    ),
-                    onPressed: () => setState(() => _sentReportId = null),
-                    child: const Text('Quay lại'),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: BaoTinTheme.emergency),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Đóng'),
                   ),
                 ],
               ),
@@ -99,48 +107,62 @@ class _SosScreenState extends ConsumerState<SosScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cấp cứu / SOS'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Chọn loại tình huống khẩn cấp',
-                style: Theme.of(context).textTheme.titleLarge,
-                textAlign: TextAlign.center,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Chọn loại tình huống khẩn cấp',
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Chạm một lần để gửi ngay — vị trí của bạn sẽ được gửi kèm tự động.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.1,
+                    children: _emergencyTypes.entries.map((entry) {
+                      return _EmergencyButton(
+                        icon: entry.value,
+                        label: _emergencyLabels[entry.key]!,
+                        disabled: _sending,
+                        onTap: () => _sendEmergency(entry.key),
+                      );
+                    }).toList(),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                  ],
+                  if (_sending) ...[
+                    const SizedBox(height: 16),
+                    const Center(child: CircularProgressIndicator(color: BaoTinTheme.emergency)),
+                  ],
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Chạm một lần để gửi ngay — vị trí của bạn sẽ được gửi kèm tự động.',
-                style: TextStyle(color: Colors.grey.shade600),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  children: _emergencyTypes.entries.map((entry) {
-                    return _EmergencyButton(
-                      icon: entry.value,
-                      label: _emergencyLabels[entry.key]!,
-                      disabled: _sending,
-                      onTap: () => _sendEmergency(entry.key),
-                    );
-                  }).toList(),
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-              ],
-              if (_sending) ...[
-                const SizedBox(height: 16),
-                const Center(child: CircularProgressIndicator(color: BaoTinTheme.emergency)),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -165,21 +187,21 @@ class _EmergencyButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: BaoTinTheme.emergency,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         onTap: disabled ? null : onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white, size: 40),
-              const SizedBox(height: 12),
+              Icon(icon, color: Colors.white, size: 32),
+              const SizedBox(height: 8),
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
           ),
