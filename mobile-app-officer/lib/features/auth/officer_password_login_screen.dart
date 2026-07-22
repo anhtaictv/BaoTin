@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/bao_tin_badge.dart';
 import '../../core/providers.dart';
+import '../../core/theme.dart';
 import '../../home_shell.dart';
 import 'officer_login_screen.dart';
 import 'officer_register_screen.dart';
@@ -68,59 +70,113 @@ class _OfficerPasswordLoginScreenState extends ConsumerState<OfficerPasswordLogi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Icon(Icons.local_police_outlined, size: 56, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 16),
-              Text(
-                'Báo Tin — Cán bộ',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+        bottom: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 36),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [BaoTinOfficerTheme.primaryDark, BaoTinOfficerTheme.primaryLight],
+                          ),
+                        ),
+                        child: const Column(
+                          children: [
+                            BaoTinBadge(size: 96),
+                            SizedBox(height: 18),
+                            Text(
+                              'BÁO TIN — CÁN BỘ',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: BaoTinOfficerTheme.gold,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Cổng tiếp nhận & xác minh tin báo',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white70, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _usernameController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Tên đăng nhập',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'Mật khẩu',
+                                  prefixIcon: Icon(Icons.lock_outline),
+                                ),
+                              ),
+                              if (_error != null) ...[
+                                const SizedBox(height: 8),
+                                Text(_error!, style: const TextStyle(color: Colors.red)),
+                              ],
+                              const SizedBox(height: 20),
+                              FilledButton(
+                                onPressed: _submitting ? null : _submit,
+                                child: _submitting
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Text('Đăng nhập'),
+                              ),
+                              TextButton(
+                                onPressed: _submitting
+                                    ? null
+                                    : () => Navigator.of(context)
+                                        .push(MaterialPageRoute(builder: (_) => const OfficerRegisterScreen())),
+                                child: const Text('Chưa có tài khoản? Đăng ký (chờ admin duyệt)'),
+                              ),
+                              const Divider(height: 32),
+                              TextButton(
+                                onPressed: _submitting
+                                    ? null
+                                    : () => Navigator.of(context)
+                                        .push(MaterialPageRoute(builder: (_) => const OfficerLoginScreen())),
+                                child: const Text('Đăng nhập bằng SĐT + OTP (tài khoản đã được cấp)'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Tên đăng nhập'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu'),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-              ],
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _submitting ? null : _submit,
-                child: _submitting
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Đăng nhập'),
-              ),
-              TextButton(
-                onPressed: _submitting
-                    ? null
-                    : () => Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (_) => const OfficerRegisterScreen())),
-                child: const Text('Chưa có tài khoản? Đăng ký (chờ admin duyệt)'),
-              ),
-              const Divider(height: 32),
-              TextButton(
-                onPressed: _submitting
-                    ? null
-                    : () =>
-                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfficerLoginScreen())),
-                child: const Text('Đăng nhập bằng SĐT + OTP (tài khoản đã được cấp)'),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
