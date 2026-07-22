@@ -170,12 +170,12 @@ export function createFakeDashboardPrisma() {
           }));
       }
 
-      // getVolumeTrend: values = [period, days, period] (no district) or
-      // [period, days, districtId, period] (with district) — period appears twice
-      // (SELECT + GROUP BY), so districtId's presence is inferred from values.length.
+      // getVolumeTrend: values = [period, days] (no district) or [period, days, districtId]
+      // (with district) — GROUP BY 1 now, so period is bound only once (see the real query's
+      // "must appear in GROUP BY" fix), and districtId's presence is inferred from length.
       const period = values[0] as "day" | "week" | "month";
       const days = values[1] as number;
-      const districtId = values.length === 4 ? (values[2] as string) : undefined;
+      const districtId = values.length === 3 ? (values[2] as string) : undefined;
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       const filtered = reports.filter(
         (r) =>
