@@ -3,6 +3,7 @@ import 'features/locations/report_map_screen.dart';
 import 'features/overview/overview_screen.dart';
 import 'features/reports_list/report_list_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
+import 'features/auth/pending_officers_screen.dart';
 
 /// Bottom-nav shell tying the officer app's 4 top-level views together — mirrors
 /// mobile-app-citizen's home_shell.dart. "Tin nhanh (tham khảo)" deliberately stays out of
@@ -25,6 +26,7 @@ class _HomeShellState extends State<HomeShell> {
     ReportMapScreen(),
     ReportListScreen(historyMode: true),
     WantedNoticesScreen(),
+    PendingOfficersScreen(),
   ];
 
   @override
@@ -40,6 +42,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Địa điểm'),
           NavigationDestination(icon: Icon(Icons.history), label: 'Lịch sử'),
           NavigationDestination(icon: Icon(Icons.badge_outlined), label: 'Truy nã'),
+          NavigationDestination(icon: Icon(Icons.how_to_reg_outlined), label: 'Duyệt TK'),
         ],
       ),
     );

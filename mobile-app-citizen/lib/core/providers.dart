@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
 import 'secure_token_store.dart';
 import '../features/auth/auth_repository.dart';
+import '../features/auth/registration_repository.dart';
 import '../features/report/report_repository.dart';
 import '../features/report/camera_gps_capture.dart';
 import '../features/emergency/emergency_repository.dart';
@@ -16,6 +17,10 @@ final apiClientProvider = Provider<ApiClient>(
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
+);
+
+final registrationRepositoryProvider = Provider<RegistrationRepository>(
+  (ref) => RegistrationRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
 );
 
 final reportRepositoryProvider = Provider<ReportRepository>(
