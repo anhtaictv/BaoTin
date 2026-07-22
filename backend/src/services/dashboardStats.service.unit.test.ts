@@ -149,7 +149,7 @@ describe("dashboardStats.service — getVolumeTrend", () => {
     });
 
     const service = buildService(fakePrisma);
-    const trend = await service.getVolumeTrend(30);
+    const trend = await service.getVolumeTrend({ days: 30 });
 
     expect(trend).toHaveLength(2);
     expect(trend[0]!.date < trend[1]!.date).toBe(true);
@@ -171,10 +171,132 @@ describe("dashboardStats.service — getVolumeTrend", () => {
     });
 
     const service = buildService(fakePrisma);
-    const trend = await service.getVolumeTrend(30, districtA);
+    const trend = await service.getVolumeTrend({ days: 30, districtId: districtA });
 
     expect(trend).toHaveLength(1);
     expect(trend[0]?.count).toBe(1);
+  });
+});
+
+describe("dashboardStats.service — getVolumeTrend period", () => {
+  it("buckets by week when period='week' — two reports 2 days apart land in the same ISO week", async () => {
+    const fakePrisma = createFakeDashboardPrisma();
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: null, assignedOfficerId: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(3),
+    });
+    fakePrisma.seedReport({
+      id: "r2", source: "citizen", districtId: null, assignedOfficerId: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+
+    const service = buildService(fakePrisma);
+    const daily = await service.getVolumeTrend({ days: 30, period: "day" });
+    const weekly = await service.getVolumeTrend({ days: 30, period: "week" });
+
+    expect(daily).toHaveLength(2);
+    expect(weekly.reduce((sum, w) => sum + w.count, 0)).toBe(2);
+  });
+});
+
+describe("dashboardStats.service — getReportCountByDistrict", () => {
+  it("counts reports per district, busiest first", async () => {
+    const fakePrisma = createFakeDashboardPrisma();
+    const busy = randomUUID();
+    const quiet = randomUUID();
+    fakePrisma.seedDistrict({ id: busy, tenXa: "Phường Đông" });
+    fakePrisma.seedDistrict({ id: quiet, tenXa: "Phường Vắng" });
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: busy, assignedOfficerId: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+    fakePrisma.seedReport({
+      id: "r2", source: "citizen", districtId: busy, assignedOfficerId: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+    fakePrisma.seedReport({
+      id: "r3", source: "citizen", districtId: quiet, assignedOfficerId: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+
+    const service = buildService(fakePrisma);
+    const result = await service.getReportCountByDistrict({});
+
+    expect(result[0]).toMatchObject({ districtName: "Phường Đông", reportCount: 2 });
+    expect(result[1]).toMatchObject({ districtName: "Phường Vắng", reportCount: 1 });
+  });
+});
+
+describe("dashboardStats.service — getByCategory", () => {
+  it("counts reports per category, most common first, coalescing null to 'khac'", async () => {
+    const fakePrisma = createFakeDashboardPrisma();
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: null, assignedOfficerId: null, category: "trom_cap",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+    fakePrisma.seedReport({
+      id: "r2", source: "citizen", districtId: null, assignedOfficerId: null, category: "trom_cap",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+    fakePrisma.seedReport({
+      id: "r3", source: "citizen", districtId: null, assignedOfficerId: null, category: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+    });
+
+    const service = buildService(fakePrisma);
+    const result = await service.getByCategory({});
+
+    expect(result[0]).toMatchObject({ category: "trom_cap", count: 2 });
+    expect(result[1]).toMatchObject({ category: "khac", count: 1 });
+  });
+});
+
+describe("dashboardStats.service — getReportLocations", () => {
+  it("returns lat/lng + status/category/urgency for the map, filtered by window", async () => {
+    const fakePrisma = createFakeDashboardPrisma();
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: null, assignedOfficerId: null, category: "chay_no",
+      status: "verifying", urgency: "emergency", responseTimeSeconds: null, createdAt: daysAgo(1),
+      lat: 12.678, lng: 108.05,
+    });
+    // Outside the window — must be excluded.
+    fakePrisma.seedReport({
+      id: "r2", source: "citizen", districtId: null, assignedOfficerId: null, category: "khac",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(60),
+      lat: 12.9, lng: 108.2,
+    });
+
+    const service = buildService(fakePrisma);
+    const result = await service.getReportLocations({ days: 30 });
+
+    expect(result).toEqual([
+      {
+        id: "r1", lat: 12.678, lng: 108.05, status: "verifying", category: "chay_no",
+        urgency: "emergency", createdAt: expect.any(Date),
+      },
+    ]);
+  });
+
+  it("filters by districtId when provided", async () => {
+    const fakePrisma = createFakeDashboardPrisma();
+    const districtA = randomUUID();
+    const districtB = randomUUID();
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: districtA, assignedOfficerId: null, category: "khac",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+      lat: 1, lng: 1,
+    });
+    fakePrisma.seedReport({
+      id: "r2", source: "citizen", districtId: districtB, assignedOfficerId: null, category: "khac",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: daysAgo(1),
+      lat: 2, lng: 2,
+    });
+
+    const service = buildService(fakePrisma);
+    const result = await service.getReportLocations({ days: 30, districtId: districtA });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe("r1");
   });
 });
 

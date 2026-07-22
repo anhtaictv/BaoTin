@@ -5,8 +5,12 @@ export interface FakeDashboardReport {
   assignedOfficerId: string | null;
   status: string;
   urgency: string;
+  category?: string | null;
   responseTimeSeconds: number | null;
   createdAt: Date;
+  /** Only used by the ST_Y/ST_X-mimicking branch of $queryRaw (getReportLocations). */
+  lat?: number;
+  lng?: number;
 }
 
 export interface FakeDashboardDistrict {
@@ -137,9 +141,41 @@ export function createFakeDashboardPrisma() {
         return [...groups.entries()].map(([key, count]) => ({ [field]: key, _count: _count ? count : undefined }));
       },
     },
-    async $queryRaw(_strings: TemplateStringsArray, ...values: unknown[]) {
-      const days = values[0] as number;
-      const districtId = values[1] as string | undefined;
+    // Two shapes of raw query come through here — dispatched by SQL content since the fake
+    // only implements a single $queryRaw method (real Prisma just runs whatever SQL it's
+    // given; this fake has to guess intent from the query text instead).
+    async $queryRaw(strings: TemplateStringsArray, ...values: unknown[]) {
+      const sql = strings.join(" ");
+
+      if (sql.includes("ST_Y")) {
+        // getReportLocations: values = [days] or [days, districtId].
+        const days = values[0] as number;
+        const districtId = values[1] as string | undefined;
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        return reports
+          .filter(
+            (r) =>
+              r.source === "citizen" &&
+              r.createdAt >= since &&
+              (districtId === undefined || r.districtId === districtId),
+          )
+          .map((r) => ({
+            id: r.id,
+            lat: r.lat ?? 0,
+            lng: r.lng ?? 0,
+            status: r.status,
+            category: r.category ?? null,
+            urgency: r.urgency,
+            createdAt: r.createdAt,
+          }));
+      }
+
+      // getVolumeTrend: values = [period, days, period] (no district) or
+      // [period, days, districtId, period] (with district) — period appears twice
+      // (SELECT + GROUP BY), so districtId's presence is inferred from values.length.
+      const period = values[0] as "day" | "week" | "month";
+      const days = values[1] as number;
+      const districtId = values.length === 4 ? (values[2] as string) : undefined;
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       const filtered = reports.filter(
         (r) =>
@@ -147,12 +183,24 @@ export function createFakeDashboardPrisma() {
           r.createdAt >= since &&
           (districtId === undefined || r.districtId === districtId),
       );
-      const byDate = new Map<string, number>();
+
+      const bucketKey = (d: Date): string => {
+        if (period === "month") return `${d.toISOString().slice(0, 7)}-01`;
+        if (period === "week") {
+          const isoDay = d.getUTCDay() || 7;
+          const monday = new Date(d);
+          monday.setUTCDate(d.getUTCDate() - isoDay + 1);
+          return monday.toISOString().slice(0, 10);
+        }
+        return d.toISOString().slice(0, 10);
+      };
+
+      const byBucket = new Map<string, number>();
       for (const row of filtered) {
-        const dateStr = row.createdAt.toISOString().slice(0, 10);
-        byDate.set(dateStr, (byDate.get(dateStr) ?? 0) + 1);
+        const key = bucketKey(row.createdAt);
+        byBucket.set(key, (byBucket.get(key) ?? 0) + 1);
       }
-      return [...byDate.entries()]
+      return [...byBucket.entries()]
         .sort((a, b) => (a[0] < b[0] ? -1 : 1))
         .map(([date, count]) => ({ date, count: BigInt(count) }));
     },
