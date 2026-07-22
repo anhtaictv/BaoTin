@@ -6,13 +6,13 @@ import 'features/status/my_reports_screen.dart';
 import 'features/area_safety/area_safety_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
 
-/// Bottom-nav shell for the 4 persistent citizen sections, plus SOS reachable via a floating
-/// circular button that overlaps the bar (anh's request, 2026-07-22: match the reference
-/// "SOS An ninh trật tự" app's layout). SOS used to be a 5th equal-weight nav tab; a floating
-/// button that visually breaks out of the bar is a stronger "obviously different/urgent"
-/// signal than an icon the same size as everything else (CLAUDE.md: SOS must never blend in
-/// with routine UI) — pushed as its own full-screen route rather than persisted IndexedStack
-/// state, since it's a one-shot action, not a section you browse.
+/// Bottom-nav shell for the 4 persistent citizen sections, plus SOS reachable via a small red
+/// dot docked in the bottom bar (anh's request 2026-07-22, then trimmed down further the same
+/// day — a big floating circle with an "SOS" label read as too much/oversized once seen live).
+/// SOS used to be a 5th equal-weight nav tab; a distinctly-colored dot in its own gap still
+/// reads as "obviously different" from routine nav icons (CLAUDE.md: SOS must never blend in)
+/// without the earlier oversized glow/label — pushed as its own full-screen route rather than
+/// persisted IndexedStack state, since it's a one-shot action, not a section you browse.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -47,7 +47,7 @@ class _HomeShellState extends State<HomeShell> {
       body: Stack(
         children: [
           Positioned.fill(
-            bottom: 72,
+            bottom: 64,
             child: IndexedStack(index: _index, children: _screens),
           ),
           Positioned(
@@ -63,7 +63,7 @@ class _HomeShellState extends State<HomeShell> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 34,
+            bottom: 9,
             child: Center(child: _SosFab(onTap: _openSos)),
           ),
         ],
@@ -95,7 +95,7 @@ class _BottomBar extends StatelessWidget {
           children: [
             for (var i = 0; i < destinations.length; i++)
               if (i == destinations.length ~/ 2) ...[
-                const SizedBox(width: 64), // gap the floating SOS button sits above
+                const SizedBox(width: 46), // gap the SOS dot sits in
                 _NavItem(item: destinations[i], selected: selectedIndex == i, onTap: () => onSelect(i)),
               ] else
                 _NavItem(item: destinations[i], selected: selectedIndex == i, onTap: () => onSelect(i)),
@@ -145,32 +145,17 @@ class _SosFab extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 84,
-        height: 84,
+        width: 46,
+        height: 46,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: BaoTinTheme.primary.withValues(alpha: 0.14),
+          color: BaoTinTheme.primary,
+          boxShadow: [
+            BoxShadow(color: Color(0x40C62828), blurRadius: 8, offset: Offset(0, 3)),
+          ],
         ),
-        child: Container(
-          width: 64,
-          height: 64,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [BaoTinTheme.primary, BaoTinTheme.primaryDark],
-            ),
-            boxShadow: [
-              BoxShadow(color: Color(0x40C62828), blurRadius: 14, offset: Offset(0, 6)),
-            ],
-          ),
-          child: const Text(
-            'SOS',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: 0.5),
-          ),
-        ),
+        child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
       ),
     );
   }
