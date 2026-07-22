@@ -3,7 +3,11 @@ import type { DashboardController } from "./dashboard.controller.js";
 import type { RequireAuth } from "../../middleware/auth.js";
 import { validateRequest } from "../../middleware/validateRequest.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
-import { dashboardDaysQuerySchema, dashboardOverviewQuerySchema } from "../../validation/schemas/dashboard.schema.js";
+import {
+  dashboardDaysQuerySchema,
+  dashboardOverviewQuerySchema,
+  dashboardVolumeTrendQuerySchema,
+} from "../../validation/schemas/dashboard.schema.js";
 
 const DASHBOARD_ROLES = ["admin", "senior_officer"] as const;
 
@@ -36,8 +40,29 @@ export function createDashboardRoutes(controller: DashboardController, requireAu
   router.get(
     "/volume-trend",
     requireDashboardRole,
-    validateRequest(dashboardDaysQuerySchema, "query"),
+    validateRequest(dashboardVolumeTrendQuerySchema, "query"),
     asyncHandler(controller.volumeTrend),
+  );
+
+  router.get(
+    "/report-count-by-district",
+    requireDashboardRole,
+    validateRequest(dashboardDaysQuerySchema, "query"),
+    asyncHandler(controller.reportCountByDistrict),
+  );
+
+  router.get(
+    "/by-category",
+    requireDashboardRole,
+    validateRequest(dashboardDaysQuerySchema, "query"),
+    asyncHandler(controller.byCategory),
+  );
+
+  router.get(
+    "/report-locations",
+    requireDashboardRole,
+    validateRequest(dashboardDaysQuerySchema, "query"),
+    asyncHandler(controller.reportLocations),
   );
 
   router.get("/camera-queue", requireDashboardRole, asyncHandler(controller.cameraQueue));
