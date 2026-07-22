@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
 
-/// Báo Tin citizen app theme: calm blue for everyday reporting, a single unmistakable
-/// red reserved only for the SOS/emergency action so it never competes visually with
-/// normal UI chrome (per ARCHITECTURE.md: SOS must read as obviously different/urgent).
+/// Báo Tin citizen app theme — red/green, matching the visual language of official Vietnamese
+/// police "SOS An ninh trật tự" apps (anh's explicit request, 2026-07-22: "làm giao diện giống
+/// người ta" after showing screenshots of CATP HCM's SOS app). Red now carries the whole brand
+/// (buttons, links, active states) rather than being reserved only for the emergency action —
+/// same as the reference app. SOS still reads as unmistakably distinct, just via a floating
+/// circular button that breaks out of the bottom nav bar (see home_shell.dart) instead of via
+/// a color no other element is allowed to use.
 class BaoTinTheme {
   BaoTinTheme._();
 
-  static const Color primary = Color(0xFF1B5FA8);
-  static const Color emergency = Color(0xFFD32F2F);
+  static const Color primary = Color(0xFFC62828);
+  static const Color primaryDark = Color(0xFF8E1C1C);
+  static const Color heroGreenDark = Color(0xFF1B4D22);
+  static const Color heroGreenLight = Color(0xFF2E7D32);
+  static const Color heroCream = Color(0xFFFFFBEA);
+  static const Color gold = Color(0xFFE3C169);
+
+  /// Alias kept for call sites that still name it "emergency" — same red as `primary` now,
+  /// SOS's distinctiveness comes from shape/position, not a reserved hue.
+  static const Color emergency = primary;
 
   static ThemeData light() {
     final colorScheme = ColorScheme.fromSeed(
@@ -17,39 +29,63 @@ class BaoTinTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      // Tonal elevation (M3): scaffold sits one tone below card surfaces instead of a
-      // hand-picked hex, so the background stays tied to the seed color in dark mode too.
-      scaffoldBackgroundColor: colorScheme.surfaceContainerLow,
-      appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surfaceContainerLow,
-        foregroundColor: colorScheme.onSurface,
+      scaffoldBackgroundColor: const Color(0xFFF7F5F2),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: Color(0xFF1A1A1A),
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(54),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(54),
+          shape: const StadiumBorder(),
+          side: const BorderSide(color: primary),
+          foregroundColor: primary,
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: primary),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+        color: Colors.white,
       ),
       chipTheme: ChipThemeData(
         shape: StadiumBorder(side: BorderSide(color: colorScheme.outlineVariant)),
         selectedColor: colorScheme.primaryContainer,
-        backgroundColor: colorScheme.surface,
+        backgroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: Colors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: primary, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
@@ -69,7 +105,7 @@ Color statusColor(String status) {
       return const Color(0xFFF9A825);
     case 'pending':
     default:
-      return const Color(0xFF1B5FA8);
+      return BaoTinTheme.primary;
   }
 }
 

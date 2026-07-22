@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/bao_tin_badge.dart';
 import '../../core/providers.dart';
 import 'otp_verify_screen.dart';
 
@@ -57,7 +58,7 @@ class _OtpRequestScreenState extends ConsumerState<OtpRequestScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.shield_outlined, size: 56, color: Theme.of(context).colorScheme.primary),
+              const BaoTinBadge(size: 84),
               const SizedBox(height: 16),
               Text(
                 'Báo Tin',
