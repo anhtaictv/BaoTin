@@ -89,7 +89,10 @@ export async function seedAccountRegistrationDemo(deps: SeedAccountRegistrationD
       address: "[DEMO] 34 Y Jút, Buôn Ma Thuột",
     });
     const officer = await deps.prisma.officer.findUnique({ where: { username: "demo_officer_approved" } });
-    if (officer) await service.approveOfficer(adminOfficer?.id ?? officer.id, officer.id);
+    const demoDistrict = await deps.prisma.district.findFirst({ where: { tenXa: "Buôn Ma Thuột" } });
+    if (officer && demoDistrict) {
+      await service.approveOfficer(adminOfficer?.id ?? officer.id, officer.id, demoDistrict.id);
+    }
     console.log("[seed-account-registration] demo_officer_approved (approved, ready to log in)");
   } catch (err: any) {
     if (err?.code !== "PHONE_ALREADY_REGISTERED" && err?.code !== "USERNAME_TAKEN") throw err;

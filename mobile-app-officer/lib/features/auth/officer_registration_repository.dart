@@ -48,8 +48,17 @@ class OfficerRegistrationRepository {
     return List<Map<String, dynamic>>.from(res.data['data'] as List);
   }
 
-  Future<void> approve(String officerId) async {
-    await _apiClient.dio.post('/admin/officers/$officerId/approve');
+  /// Admin-only — the ward list to pick from when approving (see approve() below).
+  Future<List<Map<String, dynamic>>> listDistricts() async {
+    final res = await _apiClient.dio.get('/admin/officers/districts');
+    return List<Map<String, dynamic>>.from(res.data['data'] as List);
+  }
+
+  /// Approval assigns the officer to `districtId` in the same step — a self-registered
+  /// officer starts with zero district assignments, so without this they'd be approved but
+  /// still never see or get geo-matched to any report.
+  Future<void> approve(String officerId, String districtId) async {
+    await _apiClient.dio.post('/admin/officers/$officerId/approve', data: {'districtId': districtId});
   }
 
   Future<void> reject(String officerId) async {

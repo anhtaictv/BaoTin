@@ -180,9 +180,28 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     }));
   }
 
-  async function approveOfficer(adminOfficerId: string, officerId: string): Promise<void> {
+  /** The list an admin picks a `districtId` from when approving — same shape geo-matching
+   * keys off (District.tenXa), cheap enough (102 rows) to return unpaginated. */
+  async function listDistrictsForAssignment(): Promise<{ id: string; tenXa: string }[]> {
+    return deps.prisma.district.findMany({ select: { id: true, tenXa: true }, orderBy: { tenXa: "asc" } });
+  }
+
+  /** A self-registered officer starts with zero district assignments — without one, they
+   * can never be geo-matched to a report or see anything in their "Tin báo" list even after
+   * approval (found via a real production report that got silently routed to a different,
+   * already-assigned officer instead). So approval now REQUIRES picking the ward the officer
+   * is responsible for, same table/pattern seed-officers.ts uses for admin-provisioned ones. */
+  async function approveOfficer(adminOfficerId: string, officerId: string, districtId: string): Promise<void> {
+    const district = await deps.prisma.district.findUnique({ where: { id: districtId } });
+    if (!district) throw new HttpError(404, "DISTRICT_NOT_FOUND", "Không tìm thấy địa bàn.");
+
     await deps.prisma.officer.update({ where: { id: officerId }, data: { approvalStatus: "approved" } });
-    await deps.auditLog.record(adminOfficerId, "approve_officer", { type: "officer", id: officerId });
+    await deps.prisma.officerDistrictAssignment.upsert({
+      where: { officerId_districtId: { officerId, districtId } },
+      update: { isActive: true },
+      create: { officerId, districtId, isActive: true },
+    });
+    await deps.auditLog.record(adminOfficerId, "approve_officer", { type: "officer", id: officerId }, { districtId });
   }
 
   async function rejectOfficer(adminOfficerId: string, officerId: string): Promise<void> {
@@ -196,6 +215,7 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     registerOfficer,
     loginOfficer,
     listPendingOfficers,
+    listDistrictsForAssignment,
     approveOfficer,
     rejectOfficer,
   };
