@@ -9,7 +9,8 @@ class CitizenRegisterScreen extends ConsumerStatefulWidget {
   const CitizenRegisterScreen({super.key});
 
   @override
-  ConsumerState<CitizenRegisterScreen> createState() => _CitizenRegisterScreenState();
+  ConsumerState<CitizenRegisterScreen> createState() =>
+      _CitizenRegisterScreenState();
 }
 
 class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
@@ -60,8 +61,9 @@ class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
     );
     if (source == null) return;
     final capture = ref.read(cameraGpsCaptureProvider);
-    final photo =
-        source == ImageSource.camera ? await capture.captureFromCamera() : await capture.pickFromGallery();
+    final photo = source == ImageSource.camera
+        ? await capture.captureFromCamera()
+        : await capture.pickFromGallery();
     if (photo == null) return;
     final bytes = await photo.readAsBytes();
     setState(() {
@@ -84,7 +86,8 @@ class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
     final address = _addressController.text.trim();
 
     if (!RegExp(r'^[a-zA-Z0-9_]{4,32}$').hasMatch(username)) {
-      setState(() => _error = 'Tên đăng nhập phải 4-32 ký tự, chỉ gồm chữ, số và dấu gạch dưới.');
+      setState(() => _error =
+          'Tên đăng nhập phải 4-32 ký tự, chỉ gồm chữ, số và dấu gạch dưới.');
       return;
     }
     if (password.length < 8) {
@@ -108,7 +111,8 @@ class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
       return;
     }
     if (_cccdFrontBytes == null || _cccdBackBytes == null) {
-      setState(() => _error = 'Vui lòng chụp đủ ảnh CCCD mặt trước và mặt sau.');
+      setState(
+          () => _error = 'Vui lòng chụp đủ ảnh CCCD mặt trước và mặt sau.');
       return;
     }
 
@@ -135,13 +139,17 @@ class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
         (route) => false,
       );
     } catch (_) {
-      setState(() => _error = 'Đăng ký thất bại — tên đăng nhập/số điện thoại có thể đã được sử dụng.');
+      setState(() => _error =
+          'Đăng ký thất bại — tên đăng nhập/số điện thoại có thể đã được sử dụng.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  Widget _cccdPhotoTile({required String label, required Uint8List? bytes, required VoidCallback onTap}) {
+  Widget _cccdPhotoTile(
+      {required String label,
+      required Uint8List? bytes,
+      required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -164,7 +172,8 @@ class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
               )
             : ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.memory(bytes, fit: BoxFit.cover, width: double.infinity),
+                child: Image.memory(bytes,
+                    fit: BoxFit.cover, width: double.infinity),
               ),
       ),
     );
@@ -177,80 +186,92 @@ class _CitizenRegisterScreenState extends ConsumerState<CitizenRegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Tên đăng nhập'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu (tối thiểu 8 ký tự)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _fullNameController,
-                decoration: const InputDecoration(labelText: 'Họ và tên'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                decoration: const InputDecoration(labelText: 'Số điện thoại', counterText: ''),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _cccdController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Số CCCD/CMND'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Địa chỉ thường trú'),
-              ),
-              const SizedBox(height: 16),
-              Text('Ảnh CCCD', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 8),
-              Row(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: _cccdPhotoTile(
-                      label: 'Mặt trước',
-                      bytes: _cccdFrontBytes,
-                      onTap: () => _pickCccdPhoto(isFront: true),
-                    ),
+                  TextField(
+                    controller: _usernameController,
+                    decoration:
+                        const InputDecoration(labelText: 'Tên đăng nhập'),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _cccdPhotoTile(
-                      label: 'Mặt sau',
-                      bytes: _cccdBackBytes,
-                      onTap: () => _pickCccdPhoto(isFront: false),
-                    ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Mật khẩu (tối thiểu 8 ký tự)'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _fullNameController,
+                    decoration: const InputDecoration(labelText: 'Họ và tên'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    maxLength: 10,
+                    decoration: const InputDecoration(
+                        labelText: 'Số điện thoại', counterText: ''),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _cccdController,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'Số CCCD/CMND'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _addressController,
+                    decoration:
+                        const InputDecoration(labelText: 'Địa chỉ thường trú'),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Ảnh CCCD',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _cccdPhotoTile(
+                          label: 'Mặt trước',
+                          bytes: _cccdFrontBytes,
+                          onTap: () => _pickCccdPhoto(isFront: true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _cccdPhotoTile(
+                          label: 'Mặt sau',
+                          bytes: _cccdBackBytes,
+                          onTap: () => _pickCccdPhoto(isFront: false),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                  ],
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: _submitting ? null : _submit,
+                    child: _submitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Đăng ký'),
                   ),
                 ],
               ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-              ],
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _submitting ? null : _submit,
-                child: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Đăng ký'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
