@@ -34,6 +34,15 @@ function mockHappyPath() {
     if (url === '/admin/dashboard/volume-trend') {
       return { data: { data: [{ date: '2026-01-01', count: 4 }] } };
     }
+    if (url === '/admin/dashboard/report-count-by-district') {
+      return { data: { data: [{ districtId: 'd1', districtName: 'Buôn Ma Thuột', reportCount: 5 }] } };
+    }
+    if (url === '/admin/dashboard/by-category') {
+      return { data: { data: [{ category: 'tai_nan', count: 4 }] } };
+    }
+    if (url === '/admin/dashboard/report-locations') {
+      return { data: { data: [] } };
+    }
     if (url === '/admin/dashboard/camera-queue') {
       return { data: { data: { pending: 2, sent: 1, fulfilled: 0, rejected: 0 } } };
     }
@@ -68,6 +77,9 @@ describe('OverviewPage', () => {
     expect(screen.getByText('Thời gian phản hồi TB theo cán bộ')).toBeInTheDocument();
     expect(screen.getByText('Xu hướng số tin')).toBeInTheDocument();
     expect(screen.getByText('Phân bổ trạng thái')).toBeInTheDocument();
+    expect(screen.getByText('Phân loại tin báo')).toBeInTheDocument();
+    expect(screen.getByText('Số tin theo xã/phường')).toBeInTheDocument();
+    expect(screen.getByText('Bản đồ tin báo')).toBeInTheDocument();
     expect(await screen.findByText('Hàng đợi yêu cầu trích xuất camera')).toBeInTheDocument();
   });
 
@@ -82,6 +94,9 @@ describe('OverviewPage', () => {
       }
       if (url === '/admin/dashboard/response-time-by-officer') return { data: { data: [] } };
       if (url === '/admin/dashboard/volume-trend') return { data: { data: [] } };
+      if (url === '/admin/dashboard/report-count-by-district') return { data: { data: [] } };
+      if (url === '/admin/dashboard/by-category') return { data: { data: [] } };
+      if (url === '/admin/dashboard/report-locations') return { data: { data: [] } };
       if (url === '/admin/dashboard/camera-queue') return { data: { data: {} } };
       throw new Error(`unexpected GET ${url}`);
     });
