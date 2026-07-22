@@ -10,7 +10,8 @@ class OfficerRegisterScreen extends ConsumerStatefulWidget {
   const OfficerRegisterScreen({super.key});
 
   @override
-  ConsumerState<OfficerRegisterScreen> createState() => _OfficerRegisterScreenState();
+  ConsumerState<OfficerRegisterScreen> createState() =>
+      _OfficerRegisterScreenState();
 }
 
 class _OfficerRegisterScreenState extends ConsumerState<OfficerRegisterScreen> {
@@ -44,7 +45,8 @@ class _OfficerRegisterScreenState extends ConsumerState<OfficerRegisterScreen> {
     final address = _addressController.text.trim();
 
     if (!RegExp(r'^[a-zA-Z0-9_]{4,32}$').hasMatch(username)) {
-      setState(() => _error = 'Tên đăng nhập phải 4-32 ký tự, chỉ gồm chữ, số và dấu gạch dưới.');
+      setState(() => _error =
+          'Tên đăng nhập phải 4-32 ký tự, chỉ gồm chữ, số và dấu gạch dưới.');
       return;
     }
     if (password.length < 8) {
@@ -90,15 +92,18 @@ class _OfficerRegisterScreenState extends ConsumerState<OfficerRegisterScreen> {
             'Tài khoản của bạn đang chờ quản trị viên duyệt. Vui lòng quay lại đăng nhập sau khi được duyệt.',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Đã hiểu')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Đã hiểu')),
           ],
         ),
       );
       if (!mounted) return;
       Navigator.of(context).pop();
     } on DioException catch (e) {
-      final code =
-          (e.response?.data is Map) ? (e.response?.data['error']?['code'] as String?) : null;
+      final code = (e.response?.data is Map)
+          ? (e.response?.data['error']?['code'] as String?)
+          : null;
       setState(() {
         _error = code == 'USERNAME_TAKEN'
             ? 'Tên đăng nhập đã được sử dụng.'
@@ -120,54 +125,67 @@ class _OfficerRegisterScreenState extends ConsumerState<OfficerRegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Tên đăng nhập'),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _usernameController,
+                    decoration:
+                        const InputDecoration(labelText: 'Tên đăng nhập'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Mật khẩu (tối thiểu 8 ký tự)'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _fullNameController,
+                    decoration: const InputDecoration(labelText: 'Họ và tên'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    maxLength: 10,
+                    decoration: const InputDecoration(
+                        labelText: 'Số điện thoại', counterText: ''),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _cccdController,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'Số CCCD/CMND'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _addressController,
+                    decoration:
+                        const InputDecoration(labelText: 'Địa chỉ thường trú'),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                  ],
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: _submitting ? null : _submit,
+                    child: _submitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Gửi yêu cầu đăng ký'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mật khẩu (tối thiểu 8 ký tự)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _fullNameController,
-                decoration: const InputDecoration(labelText: 'Họ và tên'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                decoration: const InputDecoration(labelText: 'Số điện thoại', counterText: ''),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _cccdController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Số CCCD/CMND'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Địa chỉ thường trú'),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
-              ],
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _submitting ? null : _submit,
-                child: _submitting
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Gửi yêu cầu đăng ký'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
