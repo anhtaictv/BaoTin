@@ -63,6 +63,17 @@ export const webLoginLimiter = rateLimit({
   message: rateLimitedResponse("LOGIN_RATE_LIMITED", "Đăng nhập sai quá nhiều lần, thử lại sau."),
 });
 
+/** Citizen/officer self-registration (registration.routes.ts) — IP-keyed, generous enough for
+ * a real user retrying a typo'd form but bounds spam account creation. */
+export const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  message: rateLimitedResponse("REGISTRATION_RATE_LIMITED", "Quá nhiều lần đăng ký, vui lòng thử lại sau."),
+});
+
 /**
  * SECURITY.md §3 — "mọi endpoint auth", including /auth/refresh. Refresh tokens are
  * high-entropy opaque values (tokenHash.ts: 256-bit random) so brute-forcing one is
