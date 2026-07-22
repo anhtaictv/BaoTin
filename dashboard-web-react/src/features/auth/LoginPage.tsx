@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Lock, Siren, User } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
 import { useAuth } from '../../core/AuthContext';
 
 export function LoginPage() {
@@ -29,19 +29,7 @@ export function LoginPage() {
     <div className="auth-shell">
       <div className="auth-brand-panel">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: 'var(--secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Siren size={20} strokeWidth={2.25} />
-          </span>
+          <img src="/logo.png" alt="Báo Tin" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
           <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 19, letterSpacing: '-0.02em' }}>BÁO TIN</p>
         </div>
 
