@@ -41,3 +41,7 @@ export const registerOfficerSchema = z.object({
 export const officerIdParamsSchema = z.object({
   id: z.string().uuid(),
 });
+
+export const approveOfficerSchema = z.object({
+  districtId: z.string().uuid(),
+});

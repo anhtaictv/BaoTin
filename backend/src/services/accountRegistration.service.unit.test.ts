@@ -16,9 +16,11 @@ async function testJpeg(): Promise<Buffer> {
 function fakePrisma() {
   const users = new Map<string, any>();
   const officers = new Map<string, any>();
+  const districts = new Map<string, any>();
+  const assignments = new Map<string, any>();
   const auditLogRows: any[] = [];
   return {
-    store: { users, officers, auditLogRows },
+    store: { users, officers, districts, assignments, auditLogRows },
     user: {
       async findUnique({ where }: any) {
         if (where.username) return [...users.values()].find((u) => u.username === where.username) ?? null;
@@ -58,6 +60,23 @@ function fakePrisma() {
         return row;
       },
     },
+    district: {
+      async findUnique({ where }: any) {
+        return districts.get(where.id) ?? null;
+      },
+      async findMany() {
+        return [...districts.values()];
+      },
+    },
+    officerDistrictAssignment: {
+      async upsert({ where, create, update }: any) {
+        const key = `${where.officerId_districtId.officerId}:${where.officerId_districtId.districtId}`;
+        const existing = assignments.get(key);
+        const row = existing ? { ...existing, ...update } : { id: randomUUID(), ...create };
+        assignments.set(key, row);
+        return row;
+      },
+    },
     adminAuditLog: {
       async create({ data }: any) {
         auditLogRows.push(data);
@@ -92,8 +111,8 @@ function buildService(prisma: ReturnType<typeof fakePrisma>) {
   };
   const { storage, objects } = fakeStorage();
   const auditLog = {
-    record: async (officerId: string, action: string, target?: unknown) => {
-      await prisma.adminAuditLog.create({ data: { officerId, action, target } });
+    record: async (officerId: string, action: string, target?: unknown, metadata?: unknown) => {
+      await prisma.adminAuditLog.create({ data: { officerId, action, target, metadata } });
     },
   };
   const service = createAccountRegistrationService({
@@ -273,9 +292,11 @@ describe("accountRegistration.service — registerOfficer / loginOfficer / appro
     });
   });
 
-  it("lets an approved officer log in and issues a token with their role", async () => {
+  it("lets an approved officer log in and issues a token with their role, and assigns them to the chosen district", async () => {
     const prisma = fakePrisma();
     const { service, issueTokenPairCalls } = buildService(prisma);
+    const districtId = randomUUID();
+    prisma.store.districts.set(districtId, { id: districtId, tenXa: "Buôn Ma Thuột" });
     await service.registerOfficer({
       username: "officer_2",
       password: "Correct-Horse-1",
@@ -287,14 +308,51 @@ describe("accountRegistration.service — registerOfficer / loginOfficer / appro
     const officerId = [...prisma.store.officers.values()][0]!.id;
     const adminId = randomUUID();
 
-    await service.approveOfficer(adminId, officerId);
+    await service.approveOfficer(adminId, officerId, districtId);
     const tokens = await service.loginOfficer("officer_2", "Correct-Horse-1");
 
     expect(tokens.accessToken).toBe("fake-access");
     expect(issueTokenPairCalls).toEqual([{ subjectType: "officer", officerId, role: "officer" }]);
     expect(prisma.store.auditLogRows).toEqual([
-      { officerId: adminId, action: "approve_officer", target: { type: "officer", id: officerId } },
+      {
+        officerId: adminId,
+        action: "approve_officer",
+        target: { type: "officer", id: officerId },
+        metadata: { districtId },
+      },
     ]);
+    expect([...prisma.store.assignments.values()]).toEqual([
+      { id: expect.any(String), officerId, districtId, isActive: true },
+    ]);
+  });
+
+  it("404s approving with an unknown districtId, without approving the officer", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    await service.registerOfficer({
+      username: "officer_2b",
+      password: "Correct-Horse-1",
+      fullName: "I2",
+      phoneNumber: "0911111119",
+      cccdNumber: "079099001249",
+      address: "addr",
+    });
+    const officerId = [...prisma.store.officers.values()][0]!.id;
+
+    await expect(service.approveOfficer(randomUUID(), officerId, randomUUID())).rejects.toMatchObject({
+      status: 404,
+      code: "DISTRICT_NOT_FOUND",
+    });
+    expect(prisma.store.officers.get(officerId)?.approvalStatus).toBe("pending");
+  });
+
+  it("lists districts for the approval dropdown", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const districtId = randomUUID();
+    prisma.store.districts.set(districtId, { id: districtId, tenXa: "Buôn Hồ" });
+
+    expect(await service.listDistrictsForAssignment()).toEqual([{ id: districtId, tenXa: "Buôn Hồ" }]);
   });
 
   it("rejects a pending officer and blocks their login with a clear message", async () => {
