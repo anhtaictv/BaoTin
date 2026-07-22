@@ -16,6 +16,7 @@
     "prisma:generate": "prisma generate",
     "seed": "tsx prisma/seed/index.ts",
     "seed:demo-accounts": "tsx prisma/seed/seed-demo-accounts.ts",
+    "seed:demo-reports": "tsx prisma/seed/run-seed-demo-reports.ts",
     "crawl:rss": "tsx src/crawler/runCrawler.ts",
     "test": "vitest run",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
