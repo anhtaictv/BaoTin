@@ -70,21 +70,11 @@ export function AppLayout() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 10px 22px' }}>
-          <span
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 10,
-              background: 'var(--secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              flexShrink: 0,
-            }}
-          >
-            <Siren size={18} strokeWidth={2.25} />
-          </span>
+          <img
+            src="/logo.png"
+            alt="Báo Tin"
+            style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }}
+          />
           <div>
             <p style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16.5, letterSpacing: '-0.02em', color: 'var(--sidebar-ink)' }}>
               BÁO TIN

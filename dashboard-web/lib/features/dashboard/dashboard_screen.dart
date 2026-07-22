@@ -47,7 +47,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Báo Tin — Trung tâm điều hành'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipOval(child: Image.asset('assets/logo.png', width: 28, height: 28, fit: BoxFit.cover)),
+            const SizedBox(width: 10),
+            const Flexible(
+              child: Text('Báo Tin — Trung tâm điều hành', overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
         actions: [
           IconButton(tooltip: 'Làm mới', icon: const Icon(Icons.refresh), onPressed: _refreshAll),
           IconButton(tooltip: 'Đăng xuất', icon: const Icon(Icons.logout), onPressed: _logout),
