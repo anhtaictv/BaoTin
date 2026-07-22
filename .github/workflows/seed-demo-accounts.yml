@@ -1,0 +1,29 @@
+name: Seed demo accounts (production)
+
+# Manual only, same self-hosted runner as deploy-windows.yml. Runs
+# dist/prisma/seed/seed-demo-accounts.js — deliberately NOT dist/prisma/seed/index.js, which
+# reseeds districts/cameras/signals/emergency-contacts via plain .create() and would duplicate
+# rows if run twice against a database that already has real data (docs/DEPLOY.md). The
+# demo-accounts seed is safe to rerun any number of times (see seed-demo-accounts.ts).
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-windows
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: [self-hosted, baotin-vps]
+    environment: production
+    steps:
+      - name: Run demo-accounts seed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:Path = "C:\node20;$env:Path"
+          Set-Location C:\baotin\backend
+          node --env-file=.env dist\prisma\seed\seed-demo-accounts.js
