@@ -88,15 +88,21 @@ export async function seedAccountRegistrationDemo(deps: SeedAccountRegistrationD
       cccdNumber: "064099000092",
       address: "[DEMO] 34 Y Jút, Buôn Ma Thuột",
     });
+    console.log("[seed-account-registration] demo_officer_approved created");
+  } catch (err: any) {
+    if (err?.code !== "PHONE_ALREADY_REGISTERED" && err?.code !== "USERNAME_TAKEN") throw err;
+    console.log("[seed-account-registration] demo_officer_approved already exists");
+  }
+  // Unconditional, not just on first creation — approveOfficer's district-assignment upsert
+  // is idempotent, and this repairs any row seeded before the "officers need a district"
+  // fix (see accountRegistration.service.ts) landed, without a separate migration.
+  {
     const officer = await deps.prisma.officer.findUnique({ where: { username: "demo_officer_approved" } });
     const demoDistrict = await deps.prisma.district.findFirst({ where: { tenXa: "Buôn Ma Thuột" } });
     if (officer && demoDistrict) {
       await service.approveOfficer(adminOfficer?.id ?? officer.id, officer.id, demoDistrict.id);
+      console.log("[seed-account-registration] demo_officer_approved (approved + assigned to Buôn Ma Thuột)");
     }
-    console.log("[seed-account-registration] demo_officer_approved (approved, ready to log in)");
-  } catch (err: any) {
-    if (err?.code !== "PHONE_ALREADY_REGISTERED" && err?.code !== "USERNAME_TAKEN") throw err;
-    console.log("[seed-account-registration] demo_officer_approved already exists — skipping");
   }
 
   try {
