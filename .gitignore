@@ -46,3 +46,8 @@ skills-lock.json
 /ROADMAP.md
 /docs/
 Sc/
+
+# Source logo file anh drops at repo root to regenerate brand assets from — the derived
+# per-app icons/badges are what's committed, not this raw working file.
+/logo.png
+/logo.jpg
