@@ -1,10 +1,14 @@
-name: Preserve ARR host header (temporary, one-off)
+name: Fix IIS proxy for MinIO presigned URLs (temporary, one-off)
 
-# MinIO presigned URLs (AWS SigV4) sign the exact Host header. IIS's ARR reverse-proxy
-# rewrites the outbound Host header to the proxy target by default, so MinIO sees
-# "127.0.0.1:9000" instead of "baotin.work.gd" and rejects the request with
-# SignatureDoesNotMatch. This flips the global ARR setting to forward the original Host
-# header unchanged — matches docs/DEPLOY.md's "Enable proxy" step, same mechanism.
+# Two separate IIS-level blockers found while verifying the MinIO presigned-URL fix on
+# production:
+# 1. ARR rewrites the outbound Host header to the proxy target by default, breaking MinIO's
+#    AWS SigV4 signature validation (it signs the exact Host header) -> SignatureDoesNotMatch.
+# 2. IIS's request-filtering rejects "double escaping" (a %-encoded sequence that itself looks
+#    encoded) by default — AWS SigV4 query strings always contain "%2F" (an encoded slash) in
+#    X-Amz-Credential, e.g. "admin%2F20260722%2Fus-east-1%2Fs3%2Faws4_request" -> IIS 400s it
+#    before the request ever reaches URL Rewrite/MinIO. Scoped to the BaoTin site only, not
+#    machine-wide, so the other sites sharing this IIS server keep the stricter default.
 on:
   workflow_dispatch: {}
 
@@ -20,10 +24,14 @@ jobs:
     runs-on: [self-hosted, baotin-vps]
     environment: production
     steps:
-      - name: Enable preserveHostHeader on the ARR proxy
+      - name: Enable preserveHostHeader (ARR) + allowDoubleEscaping (BaoTin site only)
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           Import-Module WebAdministration
           Set-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "preserveHostHeader" -value "True"
+          Set-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST/BaoTin" -filter "system.webServer/security/requestFiltering" -name "allowDoubleEscaping" -value "True"
+          Write-Host "--- preserveHostHeader ---"
           Get-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST" -filter "system.webServer/proxy" -name "preserveHostHeader"
+          Write-Host "--- allowDoubleEscaping (BaoTin) ---"
+          Get-WebConfigurationProperty -pspath "MACHINE/WEBROOT/APPHOST/BaoTin" -filter "system.webServer/security/requestFiltering" -name "allowDoubleEscaping"
