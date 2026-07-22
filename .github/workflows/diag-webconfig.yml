@@ -1,0 +1,30 @@
+name: Diagnose web.config (temporary, read-only)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-windows
+  cancel-in-progress: false
+
+jobs:
+  diag:
+    runs-on: [self-hosted, baotin-vps]
+    environment: production
+    steps:
+      - name: Show deployed web.config + test local MinIO proxy
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Continue"
+          Write-Host "=== web.config content ==="
+          Get-Content "C:\inetpub\baotin\web.config"
+          Write-Host "=== IIS sites ==="
+          Import-Module WebAdministration
+          Get-Website | Format-Table Name, State, PhysicalPath, Bindings -AutoSize
+          Write-Host "=== direct curl to MinIO from VPS itself ==="
+          try { (Invoke-WebRequest -Uri "http://127.0.0.1:9000/baotin-reports/test" -UseBasicParsing -ErrorAction Stop).StatusCode } catch { Write-Host "MinIO direct: $($_.Exception.Message)" }
+          Write-Host "=== curl to the public path from the VPS (loopback through IIS) ==="
+          try { (Invoke-WebRequest -Uri "https://baotin.work.gd/baotin-reports/test" -UseBasicParsing -ErrorAction Stop).StatusCode } catch { Write-Host "Via IIS: $($_.Exception.Message)" }
