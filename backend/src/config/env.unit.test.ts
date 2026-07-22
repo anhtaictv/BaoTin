@@ -35,6 +35,18 @@ describe("loadEnv — production fail-fast", () => {
     ).toThrow(/APP_DATABASE_URL is required in production/);
   });
 
+  it("throws when MINIO_PUBLIC_ENDPOINT is missing — otherwise presigned URLs default to the internal-only MINIO_ENDPOINT (e.g. \"localhost\"), unreachable from any real client", () => {
+    expect(() =>
+      loadEnv({
+        ...BASE_ENV,
+        NODE_ENV: "production",
+        APP_DATABASE_URL: "postgres://app_role@localhost/baotin",
+        CORS_ALLOWED_ORIGINS: "https://dashboard.example.com",
+        OTP_HASH_PEPPER: "c".repeat(44),
+      }),
+    ).toThrow(/MINIO_PUBLIC_ENDPOINT is required in production/);
+  });
+
   it("succeeds once every production-only secret is set", () => {
     expect(() =>
       loadEnv({
@@ -43,6 +55,7 @@ describe("loadEnv — production fail-fast", () => {
         APP_DATABASE_URL: "postgres://app_role@localhost/baotin",
         CORS_ALLOWED_ORIGINS: "https://dashboard.example.com",
         OTP_HASH_PEPPER: "c".repeat(44),
+        MINIO_PUBLIC_ENDPOINT: "baotin.work.gd",
       }),
     ).not.toThrow();
   });
