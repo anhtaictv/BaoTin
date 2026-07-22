@@ -9,3 +9,9 @@ export const dashboardDaysQuerySchema = z.object({
   district_id: z.string().uuid().optional(),
   days: z.coerce.number().int().min(1).max(365).default(30),
 });
+
+export const dashboardVolumeTrendQuerySchema = z.object({
+  district_id: z.string().uuid().optional(),
+  days: z.coerce.number().int().min(1).max(365).default(30),
+  period: z.enum(["day", "week", "month"]).default("day"),
+});

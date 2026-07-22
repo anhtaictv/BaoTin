@@ -93,6 +93,67 @@ describe("GET /admin/dashboard/*", () => {
     expect(res.body.data.reduce((sum: number, d: { count: number }) => sum + d.count, 0)).toBe(1);
   });
 
+  it("volume-trend accepts an optional period filter (day/week/month)", async () => {
+    const { app, tokenFor } = await buildTestApp();
+    const res = await request(app)
+      .get("/admin/dashboard/volume-trend?period=month")
+      .set("Authorization", `Bearer ${await tokenFor("admin")}`);
+    expect(res.status).toBe(200);
+  });
+
+  it("400s on an invalid period value", async () => {
+    const { app, tokenFor } = await buildTestApp();
+    const res = await request(app)
+      .get("/admin/dashboard/volume-trend?period=year")
+      .set("Authorization", `Bearer ${await tokenFor("admin")}`);
+    expect(res.status).toBe(400);
+  });
+
+  it("report-count-by-district ranks busiest first", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    const districtId = randomUUID();
+    fakePrisma.seedDistrict({ id: districtId, tenXa: "Phường Test" });
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId, assignedOfficerId: null,
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: new Date(),
+    });
+
+    const res = await request(app)
+      .get("/admin/dashboard/report-count-by-district")
+      .set("Authorization", `Bearer ${await tokenFor("admin")}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data[0]).toMatchObject({ districtName: "Phường Test", reportCount: 1 });
+  });
+
+  it("by-category groups reports by category", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: null, assignedOfficerId: null, category: "tai_nan",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: new Date(),
+    });
+
+    const res = await request(app)
+      .get("/admin/dashboard/by-category")
+      .set("Authorization", `Bearer ${await tokenFor("admin")}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([{ category: "tai_nan", count: 1 }]);
+  });
+
+  it("report-locations returns lat/lng for the map", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    fakePrisma.seedReport({
+      id: "r1", source: "citizen", districtId: null, assignedOfficerId: null, category: "khac",
+      status: "pending", urgency: "normal", responseTimeSeconds: null, createdAt: new Date(),
+      lat: 12.5, lng: 108.1,
+    });
+
+    const res = await request(app)
+      .get("/admin/dashboard/report-locations")
+      .set("Authorization", `Bearer ${await tokenFor("admin")}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data[0]).toMatchObject({ id: "r1", lat: 12.5, lng: 108.1 });
+  });
+
   it("camera-queue returns an object keyed by status", async () => {
     const { app, fakePrisma, tokenFor } = await buildTestApp();
     fakePrisma.seedExtractionRequest({ id: "e1", status: "pending" });

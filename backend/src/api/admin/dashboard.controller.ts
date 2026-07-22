@@ -22,8 +22,30 @@ export function createDashboardController(service: DashboardStatsService) {
     },
 
     async volumeTrend(req: Request, res: Response) {
+      const { district_id, days, period } = req.query as unknown as {
+        district_id?: string;
+        days: number;
+        period: "day" | "week" | "month";
+      };
+      const data = await service.getVolumeTrend({ days, districtId: district_id, period });
+      res.status(200).json({ success: true, data, error: null });
+    },
+
+    async reportCountByDistrict(req: Request, res: Response) {
+      const { days } = req.query as unknown as { days: number };
+      const data = await service.getReportCountByDistrict({ days });
+      res.status(200).json({ success: true, data, error: null });
+    },
+
+    async byCategory(req: Request, res: Response) {
       const { district_id, days } = req.query as unknown as { district_id?: string; days: number };
-      const data = await service.getVolumeTrend(days, district_id);
+      const data = await service.getByCategory({ days, districtId: district_id });
+      res.status(200).json({ success: true, data, error: null });
+    },
+
+    async reportLocations(req: Request, res: Response) {
+      const { district_id, days } = req.query as unknown as { district_id?: string; days: number };
+      const data = await service.getReportLocations({ days, districtId: district_id });
       res.status(200).json({ success: true, data, error: null });
     },
 
