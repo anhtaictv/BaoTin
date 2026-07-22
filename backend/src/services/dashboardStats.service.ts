@@ -130,20 +130,25 @@ export function createDashboardStatsService(deps: DashboardStatsDeps) {
     const period = options.period ?? "day";
     // Two separate tagged-template queries (rather than a null-coalescing SQL condition) so
     // every parameter's type is unambiguous to Postgres — see ADR 0001, parameterized only.
+    // GROUP BY 1 (not a repeated date_trunc(${period}, ...) expression): each ${period}
+    // interpolation binds its own placeholder, so a second copy in GROUP BY is a *different*
+    // parameter to Postgres and it can't prove the two expressions are equal — "column
+    // reports.created_at must appear in the GROUP BY clause" (42803), found via a real prod
+    // 500 on every period value. Grouping by the SELECT-list position sidesteps that entirely.
     const rows = options.districtId
       ? await deps.prisma.$queryRaw<{ date: unknown; count: bigint }[]>`
           SELECT date_trunc(${period}, created_at) AS date, COUNT(*) AS count
           FROM reports
           WHERE source = 'citizen' AND created_at >= now() - make_interval(days => ${days}::int)
             AND district_id = ${options.districtId}
-          GROUP BY date_trunc(${period}, created_at)
+          GROUP BY 1
           ORDER BY date ASC
         `
       : await deps.prisma.$queryRaw<{ date: unknown; count: bigint }[]>`
           SELECT date_trunc(${period}, created_at) AS date, COUNT(*) AS count
           FROM reports
           WHERE source = 'citizen' AND created_at >= now() - make_interval(days => ${days}::int)
-          GROUP BY date_trunc(${period}, created_at)
+          GROUP BY 1
           ORDER BY date ASC
         `;
     return rows.map((r) => ({
