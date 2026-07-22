@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  getByCategory,
   getCameraQueue,
   getDistrictOptions,
   getOverview,
+  getReportCountByDistrict,
+  getReportLocations,
   getResponseTimeByDistrict,
   getResponseTimeByOfficer,
   getVolumeTrend,
   type DashboardFilters,
+  type TrendPeriod,
 } from './dashboardApi';
 
 export function useDistrictOptions() {
@@ -34,8 +38,30 @@ export function useResponseTimeByOfficer(filters: DashboardFilters) {
   });
 }
 
-export function useVolumeTrend(filters: DashboardFilters) {
-  return useQuery({ queryKey: ['dashboard', 'volume-trend', filters], queryFn: () => getVolumeTrend(filters) });
+export function useVolumeTrend(filters: DashboardFilters, period: TrendPeriod) {
+  return useQuery({
+    queryKey: ['dashboard', 'volume-trend', filters, period],
+    queryFn: () => getVolumeTrend(filters, period),
+  });
+}
+
+/** Same "always all districts" reasoning as useResponseTimeByDistrict. */
+export function useReportCountByDistrict(days: number) {
+  return useQuery({
+    queryKey: ['dashboard', 'report-count-by-district', days],
+    queryFn: () => getReportCountByDistrict(days),
+  });
+}
+
+export function useByCategory(filters: DashboardFilters) {
+  return useQuery({ queryKey: ['dashboard', 'by-category', filters], queryFn: () => getByCategory(filters) });
+}
+
+export function useReportLocations(filters: DashboardFilters) {
+  return useQuery({
+    queryKey: ['dashboard', 'report-locations', filters],
+    queryFn: () => getReportLocations(filters),
+  });
 }
 
 export function useCameraQueue() {
