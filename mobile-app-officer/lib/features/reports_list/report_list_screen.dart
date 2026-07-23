@@ -163,9 +163,11 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
                           ),
                           title: Row(
                             children: [
-                              UrgencyBadge(urgency: report['urgency'] as String? ?? 'normal'),
-                              if ((report['urgency'] as String?) == 'emergency') const SizedBox(width: 8),
-                              Expanded(child: Text(categoryLabel(category))),
+                              if ((report['urgency'] as String?) == 'emergency') ...[
+                                Icon(Icons.warning_amber_rounded, size: 16, color: urgencyColor('emergency')),
+                                const SizedBox(width: 4),
+                              ],
+                              Expanded(child: Text(categoryLabel(category), overflow: TextOverflow.ellipsis)),
                             ],
                           ),
                           subtitle: Text(_formatDate(report['createdAt'] as String?)),
