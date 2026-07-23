@@ -32,6 +32,11 @@ export interface AppRouters {
   registrationRouter?: Router;
   /** Admin approval for self-registered officer accounts — mounted at "/admin/officers". */
   officerApprovalRouter?: Router;
+  /** Detector worker ingestion (X-Detector-Api-Key, not a user JWT) — mounted at
+   * "/detections/traffic-accidents". */
+  trafficAccidentIngestRouter?: Router;
+  /** Officer-facing list/detail/confirm/dismiss — mounted at "/officer/traffic-accident-alerts". */
+  trafficAccidentAlertsRouter?: Router;
 }
 
 export interface AppConfig {
@@ -88,6 +93,12 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.wantedNoticesRouter) {
     app.use("/wanted-notices", routers.wantedNoticesRouter);
+  }
+  if (routers.trafficAccidentIngestRouter) {
+    app.use("/detections/traffic-accidents", routers.trafficAccidentIngestRouter);
+  }
+  if (routers.trafficAccidentAlertsRouter) {
+    app.use("/officer/traffic-accident-alerts", routers.trafficAccidentAlertsRouter);
   }
 
   app.use(notFoundHandler);

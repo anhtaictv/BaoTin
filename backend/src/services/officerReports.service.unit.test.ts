@@ -21,6 +21,7 @@ function buildService(fakePrisma: FakeOfficerPrisma) {
       notifyCalls.push({ userId, reportId, status });
       return new Date();
     },
+    notifyOfficerOfAccidentAlert: async () => new Date(),
   };
   const service = createOfficerReportsService({
     prisma: fakePrisma as any,
