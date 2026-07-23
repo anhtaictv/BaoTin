@@ -31,7 +31,19 @@ export function createNotificationService(sender: NotificationSender) {
     return sentAt;
   }
 
-  return { notifyOfficerOfNewReport, notifyUserOfStatusChange };
+  /** Same channel as notifyOfficerOfNewReport — a detected-accident alert still needs an
+   * officer to look at it and confirm/dismiss (human-in-the-loop, CLAUDE.md #3), so it gets
+   * the same nudge a citizen report would. */
+  async function notifyOfficerOfAccidentAlert(officerId: string, alertId: string): Promise<Date> {
+    const { sentAt } = await sender.send(officerId, {
+      title: "🚧 Cảnh báo tai nạn giao thông",
+      body: `Camera phát hiện khả năng có tai nạn (mã: ${alertId}) — cần xác nhận.`,
+      data: { alertId },
+    });
+    return sentAt;
+  }
+
+  return { notifyOfficerOfNewReport, notifyUserOfStatusChange, notifyOfficerOfAccidentAlert };
 }
 
 export type NotificationService = ReturnType<typeof createNotificationService>;

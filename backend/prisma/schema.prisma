@@ -60,6 +60,14 @@ enum OfficerApprovalStatus {
   @@map("officer_approval_status")
 }
 
+enum TrafficAccidentAlertStatus {
+  pending
+  confirmed
+  dismissed
+
+  @@map("traffic_accident_alert_status")
+}
+
 enum ExtractionRequestStatus {
   pending
   sent
@@ -130,6 +138,8 @@ model Officer {
   cameraExtractionRequests CameraExtractionRequest[]
   webAccount          WebAccount?
   wantedNotices       WantedNotice[]
+  assignedTrafficAccidentAlerts  TrafficAccidentAlert[] @relation("AssignedTrafficAccidentAlert")
+  confirmedTrafficAccidentAlerts TrafficAccidentAlert[] @relation("ConfirmedTrafficAccidentAlert")
 
   @@map("officers")
 }
@@ -192,11 +202,12 @@ model District {
   boundary   Unsupported("geometry(MultiPolygon,4326)")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  assignments       OfficerDistrictAssignment[]
-  reports           Report[]
-  signals           SocialMediaSignal[]
-  cameras           Camera[]
-  emergencyContacts EmergencyContact[]
+  assignments           OfficerDistrictAssignment[]
+  reports               Report[]
+  signals               SocialMediaSignal[]
+  cameras               Camera[]
+  emergencyContacts     EmergencyContact[]
+  trafficAccidentAlerts TrafficAccidentAlert[]
 
   @@map("districts")
 }
@@ -384,9 +395,10 @@ model AdminAuditLog {
   @@map("admin_audit_log")
 }
 
-/// v1.1 — registered security cameras. CLAUDE.md non-negotiable #8: this table stores ONLY
-/// location + managing-unit contact info. No video/stream URL column, no recognition-result
-/// column — Báo Tin never connects to, views, downloads, or analyzes camera footage itself.
+/// v1.1 — registered security cameras. Originally location + managing-unit contact only (no
+/// recognition of any kind) — product decision (anh, 2026-07-23) added the scoped traffic-
+/// accident detector below, so that boundary now only holds for identity: still never face
+/// recognition or cross-camera person tracking (see TrafficAccidentAlert).
 model Camera {
   id                  String   @id @default(uuid())
   name                String
@@ -396,10 +408,41 @@ model Camera {
   districtId          String?  @map("district_id")
   createdAt           DateTime @default(now()) @map("created_at")
 
-  district           District?                 @relation(fields: [districtId], references: [id])
-  extractionRequests CameraExtractionRequest[]
+  district              District?                 @relation(fields: [districtId], references: [id])
+  extractionRequests    CameraExtractionRequest[]
+  trafficAccidentAlerts TrafficAccidentAlert[]
 
   @@map("cameras")
+}
+
+/// Object-detection-only traffic accident alert (YOLO person/vehicle detection + collision/
+/// deceleration heuristic + license-plate OCR — see the paired Python worker). Deliberately
+/// excludes anything from the same codebase that does face embedding, person re-id, or
+/// cross-camera tracking — that stays out of Báo Tin entirely (biometric surveillance needs
+/// its own legal basis, a decision this table does not revisit). Human-in-the-loop still
+/// applies: every alert starts `pending` — nothing here is ever auto-filed as a confirmed
+/// incident, same principle as citizen reports (CLAUDE.md #3).
+model TrafficAccidentAlert {
+  id                   String                     @id @default(uuid())
+  cameraId             String                     @map("camera_id")
+  districtId           String?                    @map("district_id")
+  assignedOfficerId    String?                     @map("assigned_officer_id")
+  /// Comma-separated OCR reads (usually 1-2 vehicles per accident) — a scalar array column
+  /// isn't worth the extra type surface for a field never queried/filtered on individually.
+  plateNumbers         String?                    @map("plate_numbers")
+  thumbnailUrl         String?                    @map("thumbnail_url")
+  status               TrafficAccidentAlertStatus @default(pending)
+  detectedAt           DateTime                   @default(now()) @map("detected_at")
+  confirmedAt          DateTime?                  @map("confirmed_at")
+  confirmedByOfficerId String?                    @map("confirmed_by_officer_id")
+
+  camera             Camera    @relation(fields: [cameraId], references: [id])
+  district            District? @relation(fields: [districtId], references: [id])
+  assignedOfficer     Officer?  @relation("AssignedTrafficAccidentAlert", fields: [assignedOfficerId], references: [id])
+  confirmedByOfficer  Officer?  @relation("ConfirmedTrafficAccidentAlert", fields: [confirmedByOfficerId], references: [id])
+
+  @@index([districtId])
+  @@map("traffic_accident_alerts")
 }
 
 /// v1.1 — an administrative *request* to a camera's managing unit, not a result. No column
