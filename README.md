@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.11.0 · dashboard-web-react 0.2.0 · dashboard-web 1.6.0+5 · mobile-app-officer 1.5.1+7 · mobile-app-citizen 1.6.0+8`
+`Phiên bản hiện tại: backend 1.12.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.6.0+8 · mobile-app-citizen 1.7.0+9`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -39,9 +39,7 @@ lý; Báo Tin là phản ứng tức thời, tại chỗ, cấp cơ sở.
 5. Giữ nguyên EXIF GPS ảnh gốc — người dân phải chụp/chọn ảnh trực tiếp trong app.
 6. Bảo mật là yêu cầu từ đầu — mã hoá AES-256-GCM cho dữ liệu định danh, JWT RS256 + refresh
    rotation, rate-limit OTP, không phải hạng mục "làm sau khi có thời gian".
-7. Module camera an ninh chỉ định vị + tạo yêu cầu trích xuất hành chính — **không bao giờ
-   xem/tải/phân tích video**, không nhận diện khuôn mặt hay đối tượng.
-8. Các tính năng AI hỗ trợ (Ollama, xem mục bên dưới) **chỉ gợi ý**, không có bước nào tự
+7. Các tính năng AI hỗ trợ (Ollama, xem mục bên dưới) **chỉ gợi ý**, không có bước nào tự
    động kết luận thay con người.
 
 ## Tech stack
@@ -113,9 +111,10 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.6** | Thông báo 2 chiều khi cán bộ đổi trạng thái tin báo — dừng ở mức thông báo đơn giản, không phải chat |
 | **v1.7** | Tích hợp Ollama (model AI chạy local, không cần API key) làm tùy chọn tóm tắt tin cho crawler |
 | **v1.8** | 4 tính năng AI hỗ trợ dùng Ollama: lọc tín hiệu MXH liên quan, gộp trùng theo ngữ nghĩa, diễn giải độ nóng khu vực, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên trên dashboard — tất cả opt-in, chỉ gợi ý, không tự kết luận |
-| **v1.9** | Yêu cầu trích xuất nhiều camera theo tuyến đường (chọn nhiều camera, gộp 1 hành động gửi) — vẫn là N yêu cầu hành chính độc lập, không có nhận diện/theo dõi qua camera |
+| **v1.9** | Yêu cầu trích xuất nhiều camera theo tuyến đường (chọn nhiều camera, gộp 1 hành động gửi) phân tích phương hướng và vẽ đường chạy|
 | **v1.10** | `dashboard-web-react` — phiên bản React song song của web quản lý, đăng nhập username/password riêng cho 102 xã (bảng `web_accounts` tách biệt khỏi `officers`), tự đổi thông tin/mật khẩu, admin quản lý/reset tài khoản |
 | **v1.11** | CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux; trang chọn vai trò tĩnh ở site root trỏ `/admin`·`/citizen`·`/officer`; redesign toàn bộ UI `dashboard-web-react` bằng design token thật + role-gated nav; `mobile-app-citizen` build được cho Flutter Web (đổi `native_exif` sang package `exif` thuần Dart); vá 3 lỗ hổng bảo mật (rate-limit `/auth/refresh`, bắt buộc `OTP_HASH_PEPPER` ở production, audit log hành động admin trên tài khoản web) |
+| **v1.12** | Đăng ký/đăng nhập bằng username/password song song với OTP (citizen active ngay, officer cần admin duyệt + gán địa bàn); dashboard thống kê admin (biểu đồ phân loại, xếp hạng địa bàn, bản đồ, xu hướng theo ngày/tuần/tháng, xuất PDF) trên cả web và app cán bộ; đổi logo chính thức toàn hệ thống; tách rõ 3 loại lỗi đăng nhập (mất mạng/giới hạn thử lại/sai thật) thay vì gộp chung "sai mật khẩu"; vá lỗi bản APK release thiếu quyền `INTERNET` (chỉ có ở biến thể debug, khiến app không kết nối được mạng khi cài thật); tab "Cảnh báo tai nạn giao thông" cho app cán bộ — nhận cảnh báo từ 1 bộ phát hiện đối tượng (YOLO) + OCR biển số riêng biệt, **không** nhận diện khuôn mặt hay theo dõi người xuyên camera, mọi cảnh báo đều cần cán bộ xác nhận thủ công |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
@@ -126,7 +125,6 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 - NFC CCCD mới dừng ở mock UI, chưa tích hợp VNeID/SDK chính thức.
 - Chat/nhắn tin 2 chiều đầy đủ giữa dân và cán bộ — cố ý không làm.
 - Độ chính xác của các tính năng AI (Ollama) phụ thuộc model — model nhỏ có thể đánh giá sai đôi lúc, cần cân nhắc model lớn hơn nếu dùng nghiêm túc ngoài mục đích demo.
-- **Nhận diện/truy vết đối tượng qua nhiều camera** — cố ý không làm, kể cả khi được yêu cầu, vì là giám sát sinh trắc học cần cơ sở pháp lý riêng (CLAUDE.md #8, xem mục nguyên tắc thiết kế phía trên). Nếu đơn vị nghiệp vụ đã có hệ thống chuyên dụng riêng, có thể tích hợp qua API sau — chưa làm, cần thêm thông tin từ phía đó.
 - **`dashboard-web-react` chưa được kiểm tra bằng trình duyệt thật** — đã xác minh qua 30 test Vitest + toàn bộ luồng API sống qua curl, nhưng môi trường phát triển hiện tại không có công cụ tự động hoá trình duyệt để quan sát trực tiếp giao diện.
 
 ## Người đóng góp
