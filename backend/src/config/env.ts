@@ -55,6 +55,12 @@ const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().default(""),
   OLLAMA_BASE_URL: z.string().min(1).default("http://localhost:11434"),
   OLLAMA_MODEL: z.string().min(1).default("qwen2.5:1.5b"),
+
+  /** Shared secret the traffic-accident detector worker sends as X-Detector-Api-Key when
+   * posting a detected accident (object-detection + plate OCR only, see TrafficAccidentAlert
+   * in schema.prisma) — machine-to-machine, not a citizen/officer JWT. Empty default means the
+   * ingestion endpoint rejects everything until explicitly configured. */
+  TRAFFIC_DETECTOR_API_KEY: z.string().default(""),
 })
   /**
    * SECURITY.md §4 (least-privilege DB user) and §5 (no wildcard CORS in production) are easy

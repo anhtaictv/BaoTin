@@ -40,6 +40,7 @@ function buildService(
       return new Date();
     },
     notifyUserOfStatusChange: async () => new Date(),
+    notifyOfficerOfAccidentAlert: async () => new Date(),
   };
 
   const service = createReportLifecycleService({

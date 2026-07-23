@@ -24,7 +24,11 @@ async function buildTestApp() {
   const officialCaseLink = { pushToOfficialCase: async () => {} };
   const auditLog = { record: async () => {} };
   const storage = { putObject: async () => {}, getPresignedGetUrl: async (key: string) => `https://minio.local/${key}` };
-  const notifications = { notifyOfficerOfNewReport: async () => new Date(), notifyUserOfStatusChange: async () => new Date() };
+  const notifications = {
+    notifyOfficerOfNewReport: async () => new Date(),
+    notifyUserOfStatusChange: async () => new Date(),
+    notifyOfficerOfAccidentAlert: async () => new Date(),
+  };
   const service = createOfficerReportsService({
     prisma: fakePrisma as any,
     districtScope,

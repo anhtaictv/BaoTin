@@ -52,6 +52,11 @@ import { createRegistrationController } from "./api/auth/registration.controller
 import { createRegistrationRoutes } from "./api/auth/registration.routes.js";
 import { createOfficerApprovalController } from "./api/admin/officerApproval.controller.js";
 import { createOfficerApprovalRoutes } from "./api/admin/officerApproval.routes.js";
+import { createTrafficAccidentAlertsService } from "./services/trafficAccidentAlerts.service.js";
+import { createTrafficAccidentsController } from "./api/detections/trafficAccidents.controller.js";
+import { createTrafficAccidentIngestRoutes } from "./api/detections/trafficAccidentIngest.routes.js";
+import { createTrafficAccidentAlertsRoutes } from "./api/officer/trafficAccidentAlerts.routes.js";
+import { createDetectorApiKeyMiddleware } from "./middleware/detectorApiKey.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -161,6 +166,21 @@ async function main() {
   const officerApprovalController = createOfficerApprovalController(accountRegistrationService);
   const officerApprovalRouter = createOfficerApprovalRoutes(officerApprovalController, requireAuth);
 
+  const trafficAccidentAlertsService = createTrafficAccidentAlertsService({
+    prisma,
+    districtScope,
+    assignOfficer,
+    storage,
+    notifications,
+  });
+  const trafficAccidentsController = createTrafficAccidentsController(trafficAccidentAlertsService);
+  const requireDetectorApiKey = createDetectorApiKeyMiddleware(env.TRAFFIC_DETECTOR_API_KEY);
+  const trafficAccidentIngestRouter = createTrafficAccidentIngestRoutes(
+    trafficAccidentsController,
+    requireDetectorApiKey,
+  );
+  const trafficAccidentAlertsRouter = createTrafficAccidentAlertsRoutes(trafficAccidentsController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -176,6 +196,8 @@ async function main() {
       wantedNoticesRouter,
       registrationRouter,
       officerApprovalRouter,
+      trafficAccidentIngestRouter,
+      trafficAccidentAlertsRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

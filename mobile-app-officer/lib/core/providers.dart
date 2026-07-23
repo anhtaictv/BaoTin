@@ -8,6 +8,7 @@ import '../features/cameras/camera_repository.dart';
 import '../features/signals/signals_repository.dart';
 import '../features/wanted/wanted_notices_repository.dart';
 import '../features/analytics/admin_dashboard_repository.dart';
+import '../features/traffic_accidents/traffic_accident_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -41,4 +42,8 @@ final wantedNoticesRepositoryProvider = Provider<WantedNoticesRepository>(
 
 final adminDashboardRepositoryProvider = Provider<AdminDashboardRepository>(
   (ref) => AdminDashboardRepository(ref.watch(apiClientProvider)),
+);
+
+final trafficAccidentRepositoryProvider = Provider<TrafficAccidentRepository>(
+  (ref) => TrafficAccidentRepository(ref.watch(apiClientProvider)),
 );

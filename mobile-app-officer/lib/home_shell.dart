@@ -8,6 +8,7 @@ import 'features/reports_list/report_list_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
 import 'features/auth/pending_officers_screen.dart';
 import 'features/analytics/admin_analytics_screen.dart';
+import 'features/traffic_accidents/traffic_accident_list_screen.dart';
 
 /// Adaptive shell: bottom nav on a phone-width screen, a left sidebar on a desktop-width
 /// browser (same pattern/breakpoint as mobile-app-citizen's home_shell.dart — anh, 2026-07-22:
@@ -32,6 +33,7 @@ class _HomeShellState extends State<HomeShell> {
     ReportMapScreen(),
     ReportListScreen(historyMode: true),
     WantedNoticesScreen(),
+    TrafficAccidentListScreen(),
     AdminAnalyticsScreen(),
     PendingOfficersScreen(),
   ];
@@ -50,6 +52,11 @@ class _HomeShellState extends State<HomeShell> {
     (icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Địa điểm'),
     (icon: Icons.history, activeIcon: Icons.history, label: 'Lịch sử'),
     (icon: Icons.badge_outlined, activeIcon: Icons.badge, label: 'Truy nã'),
+    (
+      icon: Icons.car_crash_outlined,
+      activeIcon: Icons.car_crash,
+      label: 'Cảnh báo TNGT'
+    ),
     (
       icon: Icons.bar_chart_outlined,
       activeIcon: Icons.bar_chart,
