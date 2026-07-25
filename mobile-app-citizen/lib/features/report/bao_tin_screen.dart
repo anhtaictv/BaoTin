@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
@@ -120,6 +121,16 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
         _categoryManuallySet = false;
         _categoryJustSuggested = false;
       });
+    } on DioException catch (e) {
+      // ACCOUNT_LOCKED (4+ reports an officer confirmed as false) is a permanent block, not a
+      // transient failure — the generic "thử lại" message below would just send the citizen
+      // into an endless retry loop instead of explaining why. Same code/message pattern as
+      // citizen_login_screen.dart's LOGIN_RATE_LIMITED check.
+      final code = (e.response?.data is Map) ? (e.response?.data['error']?['code'] as String?) : null;
+      final serverMessage = (e.response?.data is Map) ? (e.response?.data['error']?['message'] as String?) : null;
+      setState(() => _error = code == 'ACCOUNT_LOCKED'
+          ? (serverMessage ?? 'Tài khoản đã bị khóa.')
+          : 'Gửi tin báo thất bại. Vui lòng thử lại.');
     } catch (_) {
       setState(() => _error = 'Gửi tin báo thất bại. Vui lòng thử lại.');
     } finally {
