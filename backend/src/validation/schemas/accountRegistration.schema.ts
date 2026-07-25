@@ -46,10 +46,11 @@ export const approveOfficerSchema = z.object({
   districtId: z.string().uuid(),
 });
 
-/** Same shape as webAccount.schema.ts's changePasswordSchema — officers here have a
- * `password_hash` column directly on `officers` (registerOfficer/loginOfficer), a separate
- * mechanism from WebAccount (dashboard-web-react's 102-xã accounts). */
-export const changeOfficerPasswordSchema = z.object({
+/** Same shape as webAccount.schema.ts's changePasswordSchema — shared by both
+ * /auth/officer/change-password and /auth/citizen/change-password, which each verify against
+ * their own row's password_hash (officers.password_hash / users.password_hash respectively,
+ * separate mechanisms from WebAccount's dashboard-web-react accounts). */
+export const changePasswordSchema = z.object({
   oldPassword: z.string().min(1).max(200),
   newPassword: passwordSchema,
 });

@@ -303,6 +303,59 @@ describe("accountRegistration.service — registerCitizen / loginCitizen", () =>
   });
 });
 
+describe("accountRegistration.service — changeCitizenPassword", () => {
+  async function registerCitizen(prisma: ReturnType<typeof fakePrisma>, service: ReturnType<typeof buildService>["service"]) {
+    const jpeg = await testJpeg();
+    await service.registerCitizen({
+      username: "citizen_pw",
+      password: "Correct-Horse-1",
+      fullName: "P",
+      phoneNumber: "0900009999",
+      cccdNumber: "079099008888",
+      address: "addr",
+      cccdFront: { buffer: jpeg, mimetype: "image/jpeg" },
+      cccdBack: { buffer: jpeg, mimetype: "image/jpeg" },
+    });
+    return [...prisma.store.users.values()][0]!.id;
+  }
+
+  it("changes the password when the current one is correct — locked accounts included, this isn't gated by lockedAt", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const userId = await registerCitizen(prisma, service);
+    prisma.store.users.get(userId).lockedAt = new Date(); // auto-locked for false reports
+
+    await service.changeCitizenPassword(userId, "Correct-Horse-1", "New-Horse-2");
+
+    await expect(service.loginCitizen("citizen_pw", "Correct-Horse-1")).rejects.toMatchObject({ status: 401 });
+    const tokens = await service.loginCitizen("citizen_pw", "New-Horse-2");
+    expect(tokens.accessToken).toBe("fake-access");
+  });
+
+  it("401s when the current password is wrong", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const userId = await registerCitizen(prisma, service);
+
+    await expect(service.changeCitizenPassword(userId, "wrong-current", "New-Horse-2")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_CREDENTIALS",
+    });
+  });
+
+  it("409s for a citizen who only ever used OTP login (no password set)", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const otpOnlyId = randomUUID();
+    prisma.store.users.set(otpOnlyId, { id: otpOnlyId, passwordHash: null });
+
+    await expect(service.changeCitizenPassword(otpOnlyId, "anything", "New-Horse-2")).rejects.toMatchObject({
+      status: 409,
+      code: "NO_PASSWORD_SET",
+    });
+  });
+});
+
 describe("accountRegistration.service — registerOfficer / loginOfficer / approval", () => {
   it("creates a pending officer that cannot log in until approved", async () => {
     const prisma = fakePrisma();

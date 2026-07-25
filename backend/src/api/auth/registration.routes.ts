@@ -5,7 +5,7 @@ import { validateRequest } from "../../middleware/validateRequest.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { uploadCccdPhotos } from "./cccdUpload.middleware.js";
 import {
-  changeOfficerPasswordSchema,
+  changePasswordSchema,
   loginPasswordSchema,
   registerCitizenSchema,
   registerOfficerSchema,
@@ -38,6 +38,15 @@ export function createRegistrationRoutes(controller: RegistrationController, req
     asyncHandler(controller.loginCitizen),
   );
 
+  // Self-service — deliberately doesn't check lockedAt (see changeCitizenPassword's comment):
+  // a citizen auto-locked for repeated false reports can still manage their own account.
+  router.post(
+    "/citizen/change-password",
+    requireAuth(["citizen"]),
+    validateRequest(changePasswordSchema),
+    asyncHandler(controller.changeCitizenPassword),
+  );
+
   router.post(
     "/register/officer",
     registrationLimiter,
@@ -57,7 +66,7 @@ export function createRegistrationRoutes(controller: RegistrationController, req
   router.post(
     "/officer/change-password",
     requireAuth([...OFFICER_ROLES]),
-    validateRequest(changeOfficerPasswordSchema),
+    validateRequest(changePasswordSchema),
     asyncHandler(controller.changeOfficerPassword),
   );
 
