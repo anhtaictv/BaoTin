@@ -9,6 +9,7 @@ import 'features/wanted/wanted_notices_screen.dart';
 import 'features/auth/pending_officers_screen.dart';
 import 'features/analytics/admin_analytics_screen.dart';
 import 'features/traffic_accidents/traffic_accident_list_screen.dart';
+import 'features/news/news_screen.dart';
 
 /// Adaptive shell: bottom nav on a phone-width screen, a left sidebar on a desktop-width
 /// browser (same pattern/breakpoint as mobile-app-citizen's home_shell.dart — anh, 2026-07-22:
@@ -36,6 +37,7 @@ class _HomeShellState extends State<HomeShell> {
     TrafficAccidentListScreen(),
     AdminAnalyticsScreen(),
     PendingOfficersScreen(),
+    NewsScreen(),
   ];
 
   static const _destinations = [
@@ -66,6 +68,11 @@ class _HomeShellState extends State<HomeShell> {
       icon: Icons.how_to_reg_outlined,
       activeIcon: Icons.how_to_reg,
       label: 'Duyệt TK'
+    ),
+    (
+      icon: Icons.newspaper_outlined,
+      activeIcon: Icons.newspaper,
+      label: 'Tin tức'
     ),
   ];
 
@@ -98,12 +105,111 @@ class _HomeShellState extends State<HomeShell> {
 
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _AnimatedNavBar(
+        destinations: _destinations,
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: [
-          for (final d in _destinations)
-            NavigationDestination(icon: Icon(d.icon), label: d.label),
+        onSelect: (i) => setState(() => _index = i),
+      ),
+    );
+  }
+}
+
+/// 9 tabs is too many to caption all at once on a phone-width bar — icon-only by default,
+/// evenly split; tapping a tab grows its slot to fit the label (sliding it out) and the rest
+/// shrink evenly to make room, instead of Material's stock NavigationBar which just fades a
+/// label in/out in place.
+class _AnimatedNavBar extends StatelessWidget {
+  const _AnimatedNavBar({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final List<({IconData icon, IconData activeIcon, String label})> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  static const _selectedWidth = 124.0;
+  static const _slideDuration = Duration(milliseconds: 260);
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, -2)),
+          ],
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final restWidth =
+                (constraints.maxWidth - _selectedWidth) / (destinations.length - 1);
+            return Row(
+              children: [
+                for (var i = 0; i < destinations.length; i++)
+                  AnimatedContainer(
+                    duration: _slideDuration,
+                    curve: Curves.easeOutCubic,
+                    width: i == selectedIndex ? _selectedWidth : restWidth,
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: const BoxDecoration(),
+                    child: _AnimatedNavItem(
+                      item: destinations[i],
+                      selected: i == selectedIndex,
+                      onTap: () => onSelect(i),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedNavItem extends StatelessWidget {
+  const _AnimatedNavItem(
+      {required this.item, required this.selected, required this.onTap});
+
+  final ({IconData icon, IconData activeIcon, String label}) item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? BaoTinOfficerTheme.primary : Colors.grey.shade500;
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(selected ? item.activeIcon : item.icon, color: color, size: 22),
+          if (selected) ...[
+            const SizedBox(width: 6),
+            Flexible(
+              child: AnimatedOpacity(
+                opacity: selected ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

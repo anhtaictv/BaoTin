@@ -8,6 +8,7 @@ import '../features/report/camera_gps_capture.dart';
 import '../features/emergency/emergency_repository.dart';
 import '../features/area_safety/area_safety_repository.dart';
 import '../features/wanted/wanted_notices_repository.dart';
+import '../features/news/news_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -41,4 +42,8 @@ final cameraGpsCaptureProvider = Provider<CameraGpsCapture>((ref) => CameraGpsCa
 
 final wantedNoticesRepositoryProvider = Provider<WantedNoticesRepository>(
   (ref) => WantedNoticesRepository(ref.watch(apiClientProvider)),
+);
+
+final newsRepositoryProvider = Provider<NewsRepository>(
+  (ref) => NewsRepository(ref.watch(apiClientProvider)),
 );

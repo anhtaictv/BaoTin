@@ -37,6 +37,8 @@ export interface AppRouters {
   trafficAccidentIngestRouter?: Router;
   /** Officer-facing list/detail/confirm/dismiss — mounted at "/officer/traffic-accident-alerts". */
   trafficAccidentAlertsRouter?: Router;
+  /** Tin tức bocongan.gov.vn — mounted at "/news". GET is any authenticated account. */
+  newsFeedRouter?: Router;
 }
 
 export interface AppConfig {
@@ -99,6 +101,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.trafficAccidentAlertsRouter) {
     app.use("/officer/traffic-accident-alerts", routers.trafficAccidentAlertsRouter);
+  }
+  if (routers.newsFeedRouter) {
+    app.use("/news", routers.newsFeedRouter);
   }
 
   app.use(notFoundHandler);
