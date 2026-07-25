@@ -52,6 +52,8 @@ import { createRegistrationController } from "./api/auth/registration.controller
 import { createRegistrationRoutes } from "./api/auth/registration.routes.js";
 import { createOfficerApprovalController } from "./api/admin/officerApproval.controller.js";
 import { createOfficerApprovalRoutes } from "./api/admin/officerApproval.routes.js";
+import { createAdminCitizensController } from "./api/admin/adminCitizens.controller.js";
+import { createAdminCitizensRoutes } from "./api/admin/adminCitizens.routes.js";
 import { createTrafficAccidentAlertsService } from "./services/trafficAccidentAlerts.service.js";
 import { createTrafficAccidentsController } from "./api/detections/trafficAccidents.controller.js";
 import { createTrafficAccidentIngestRoutes } from "./api/detections/trafficAccidentIngest.routes.js";
@@ -168,6 +170,8 @@ async function main() {
   const registrationRouter = createRegistrationRoutes(registrationController);
   const officerApprovalController = createOfficerApprovalController(accountRegistrationService);
   const officerApprovalRouter = createOfficerApprovalRoutes(officerApprovalController, requireAuth);
+  const adminCitizensController = createAdminCitizensController(accountRegistrationService);
+  const adminCitizensRouter = createAdminCitizensRoutes(adminCitizensController, requireAuth);
 
   const trafficAccidentAlertsService = createTrafficAccidentAlertsService({
     prisma,
@@ -203,6 +207,7 @@ async function main() {
       wantedNoticesRouter,
       registrationRouter,
       officerApprovalRouter,
+      adminCitizensRouter,
       trafficAccidentIngestRouter,
       trafficAccidentAlertsRouter,
       newsFeedRouter,
