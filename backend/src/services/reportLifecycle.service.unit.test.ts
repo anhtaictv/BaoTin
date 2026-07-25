@@ -140,6 +140,55 @@ describe("reportLifecycle.service — createEmergencyReport", () => {
     expect(fakePrisma.store.reports[0]?.urgency).toBe("emergency");
     expect(notifyCalls).toEqual([{ officerId: ASSIGNED_OFFICER_ID, reportId: expect.any(String), urgent: true }]);
   });
+
+  it("also pushes to every admin account (not just the district's assigned officer)", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    const admin1 = randomUUID();
+    const admin2 = randomUUID();
+    fakePrisma.seedOfficer({ id: admin1, role: "admin" });
+    fakePrisma.seedOfficer({ id: admin2, role: "admin" });
+    fakePrisma.seedOfficer({ id: randomUUID(), role: "officer" }); // not an admin — must not be notified
+    const { service, notifyCalls } = buildService(fakePrisma);
+
+    await service.createEmergencyReport({
+      userId: USER_ID,
+      emergencyType: "chay_no",
+      location: { lat: 12.66, lng: 108.05 },
+    });
+
+    expect(notifyCalls).toHaveLength(3);
+    expect(notifyCalls.map((c) => c.officerId).sort()).toEqual([ASSIGNED_OFFICER_ID, admin1, admin2].sort());
+    expect(notifyCalls.every((c) => c.urgent)).toBe(true);
+  });
+
+  it("still notifies admins even when no district/officer could be matched", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    const admin1 = randomUUID();
+    fakePrisma.seedOfficer({ id: admin1, role: "admin" });
+    const { service, notifyCalls } = buildService(fakePrisma, { districtId: null, officerId: null });
+
+    await service.createEmergencyReport({
+      userId: USER_ID,
+      emergencyType: "chay_no",
+      location: { lat: 0, lng: 0 },
+    });
+
+    expect(notifyCalls).toEqual([{ officerId: admin1, reportId: expect.any(String), urgent: true }]);
+  });
+
+  it("does not double-notify when the assigned officer is themselves an admin", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    fakePrisma.seedOfficer({ id: ASSIGNED_OFFICER_ID, role: "admin" });
+    const { service, notifyCalls } = buildService(fakePrisma);
+
+    await service.createEmergencyReport({
+      userId: USER_ID,
+      emergencyType: "chay_no",
+      location: { lat: 12.66, lng: 108.05 },
+    });
+
+    expect(notifyCalls).toEqual([{ officerId: ASSIGNED_OFFICER_ID, reportId: expect.any(String), urgent: true }]);
+  });
 });
 
 describe("reportLifecycle.service — listMyReports / getReportStatus", () => {

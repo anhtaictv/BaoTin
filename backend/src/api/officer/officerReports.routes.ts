@@ -21,6 +21,14 @@ export function createOfficerReportsRoutes(controller: OfficerReportsController,
     asyncHandler(controller.list),
   );
 
+  // Must be registered before "/:id" — otherwise Express would match "overview-stats" as
+  // the :id param and 400 on the uuid() validation instead of hitting this handler.
+  router.get(
+    "/overview-stats",
+    requireAuth([...OFFICER_ROLES]),
+    asyncHandler(controller.overviewStats),
+  );
+
   router.get(
     "/:id",
     requireAuth([...OFFICER_ROLES]),

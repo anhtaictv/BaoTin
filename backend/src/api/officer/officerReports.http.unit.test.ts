@@ -79,7 +79,37 @@ describe("GET /officer/reports", () => {
       .set("Authorization", `Bearer ${await tokenFor("officer", officerId)}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.map((r: any) => r.id)).toEqual(["mine"]);
+    expect(res.body.data.reports.map((r: any) => r.id)).toEqual(["mine"]);
+    expect(res.body.data).toMatchObject({ page: 1, pageSize: 50, total: 1, hasMore: false });
+  });
+
+  it("paginates via ?page & ?page_size", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    for (let i = 0; i < 3; i++) {
+      fakePrisma.seedReport({
+        id: `r${i}`, category: null, urgency: "normal", status: "pending", source: "citizen",
+        districtId, createdAt: new Date(1000 * i), verifiedAt: null, responseTimeSeconds: null,
+      });
+    }
+
+    const res = await request(app)
+      .get("/officer/reports?page=2&page_size=2")
+      .set("Authorization", `Bearer ${await tokenFor("officer", officerId)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.reports.map((r: any) => r.id)).toEqual(["r2"]);
+    expect(res.body.data).toMatchObject({ page: 2, pageSize: 2, total: 3, hasMore: false });
+  });
+
+  it("400s on a page_size over the max", async () => {
+    const { app, tokenFor } = await buildTestApp();
+    const res = await request(app)
+      .get("/officer/reports?page_size=1000")
+      .set("Authorization", `Bearer ${await tokenFor("officer")}`);
+    expect(res.status).toBe(400);
   });
 
   it("400s on an invalid urgency query value", async () => {
