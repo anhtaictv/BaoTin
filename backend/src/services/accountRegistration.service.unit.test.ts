@@ -458,6 +458,62 @@ describe("accountRegistration.service — registerOfficer / loginOfficer / appro
   });
 });
 
+describe("accountRegistration.service — changeOfficerPassword", () => {
+  async function registerAndApprove(prisma: ReturnType<typeof fakePrisma>, service: ReturnType<typeof buildService>["service"]) {
+    const districtId = randomUUID();
+    prisma.store.districts.set(districtId, { id: districtId, tenXa: "Buôn Ma Thuột" });
+    await service.registerOfficer({
+      username: "officer_pw",
+      password: "Correct-Horse-1",
+      fullName: "P",
+      phoneNumber: "0911119999",
+      cccdNumber: "079099009999",
+      address: "addr",
+    });
+    const officerId = [...prisma.store.officers.values()][0]!.id;
+    await service.approveOfficer(randomUUID(), officerId, districtId);
+    return officerId;
+  }
+
+  it("changes the password when the current one is correct — works for a regular officer, not just admin", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const officerId = await registerAndApprove(prisma, service);
+
+    await service.changeOfficerPassword(officerId, "Correct-Horse-1", "New-Horse-2");
+
+    // Old password no longer works, new one does.
+    await expect(service.loginOfficer("officer_pw", "Correct-Horse-1")).rejects.toMatchObject({ status: 401 });
+    const tokens = await service.loginOfficer("officer_pw", "New-Horse-2");
+    expect(tokens.accessToken).toBe("fake-access");
+  });
+
+  it("401s when the current password is wrong, without changing anything", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const officerId = await registerAndApprove(prisma, service);
+
+    await expect(service.changeOfficerPassword(officerId, "wrong-current", "New-Horse-2")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_CREDENTIALS",
+    });
+    // Original password still works.
+    await expect(service.loginOfficer("officer_pw", "Correct-Horse-1")).resolves.toBeDefined();
+  });
+
+  it("409s for an officer who only ever used OTP login (no password set)", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    const otpOnlyId = randomUUID();
+    prisma.store.officers.set(otpOnlyId, { id: otpOnlyId, passwordHash: null });
+
+    await expect(service.changeOfficerPassword(otpOnlyId, "anything", "New-Horse-2")).rejects.toMatchObject({
+      status: 409,
+      code: "NO_PASSWORD_SET",
+    });
+  });
+});
+
 describe("accountRegistration.service — listLockedCitizens / unlockCitizen", () => {
   function seedLockedUser(prisma: ReturnType<typeof fakePrisma>, overrides: Partial<{ id: string; lockedAt: Date }> = {}) {
     const id = overrides.id ?? randomUUID();

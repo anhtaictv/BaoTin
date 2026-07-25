@@ -1,14 +1,18 @@
 import { Router } from "express";
 import type { RegistrationController } from "./registration.controller.js";
+import type { RequireAuth } from "../../middleware/auth.js";
 import { validateRequest } from "../../middleware/validateRequest.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { uploadCccdPhotos } from "./cccdUpload.middleware.js";
 import {
+  changeOfficerPasswordSchema,
   loginPasswordSchema,
   registerCitizenSchema,
   registerOfficerSchema,
 } from "../../validation/schemas/accountRegistration.schema.js";
 import { registrationLimiter, webLoginLimiter } from "../../middleware/rateLimiters.js";
+
+const OFFICER_ROLES = ["officer", "senior_officer", "admin"] as const;
 
 /**
  * Username/password registration+login — mounted at "/auth" alongside authRoutes.ts's OTP
@@ -16,7 +20,7 @@ import { registrationLimiter, webLoginLimiter } from "../../middleware/rateLimit
  * router/controller/service instead of extending auth.service.ts, so the OTP path stays
  * untouched per the product decision to keep both login methods side by side.
  */
-export function createRegistrationRoutes(controller: RegistrationController): Router {
+export function createRegistrationRoutes(controller: RegistrationController, requireAuth: RequireAuth): Router {
   const router = Router();
 
   router.post(
@@ -46,6 +50,15 @@ export function createRegistrationRoutes(controller: RegistrationController): Ro
     webLoginLimiter,
     validateRequest(loginPasswordSchema),
     asyncHandler(controller.loginOfficer),
+  );
+
+  // Self-service, any officer role — not admin-only. requireAuth([...OFFICER_ROLES]) rather
+  // than requireAuth([]) so a citizen token can't hit this (it's an officer-only column).
+  router.post(
+    "/officer/change-password",
+    requireAuth([...OFFICER_ROLES]),
+    validateRequest(changeOfficerPasswordSchema),
+    asyncHandler(controller.changeOfficerPassword),
   );
 
   return router;

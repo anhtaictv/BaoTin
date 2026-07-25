@@ -167,6 +167,23 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     return deps.authService.issueTokenPair({ subjectType: "officer", officerId: officer.id, role: officer.role });
   }
 
+  /** Self-service, any role (not admin-only) — a regular officer needs this exactly as much
+   * as an admin. officerId comes from the authenticated JWT, never the request body, so an
+   * officer can only ever change their own password. */
+  async function changeOfficerPassword(officerId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const officer = await deps.prisma.officer.findUnique({ where: { id: officerId } });
+    if (!officer?.passwordHash) {
+      throw new HttpError(409, "NO_PASSWORD_SET", "Tài khoản chưa có mật khẩu đăng nhập (chỉ dùng OTP).");
+    }
+    if (!(await verifyPassword(oldPassword, officer.passwordHash))) {
+      throw new HttpError(401, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng.");
+    }
+    await deps.prisma.officer.update({
+      where: { id: officerId },
+      data: { passwordHash: await hashPassword(newPassword) },
+    });
+  }
+
   /** Admin-only — viewing pending officers' decrypted PII is exactly the kind of "thao tác
    * nhạy cảm" SECURITY.md §1.4 requires an audit trail for, same rationale as
    * webAccountAuth.service.ts's listWebAccounts. */
@@ -263,6 +280,7 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     loginCitizen,
     registerOfficer,
     loginOfficer,
+    changeOfficerPassword,
     listPendingOfficers,
     listDistrictsForAssignment,
     approveOfficer,
