@@ -43,6 +43,13 @@ export function createRegistrationController(service: AccountRegistrationService
       res.status(200).json({ success: true, data: tokens, error: null });
     },
 
+    async changeCitizenPassword(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const { oldPassword, newPassword } = req.body as { oldPassword: string; newPassword: string };
+      await service.changeCitizenPassword(req.user.id, oldPassword, newPassword);
+      res.status(200).json({ success: true, data: { changed: true }, error: null });
+    },
+
     async registerOfficer(req: Request, res: Response) {
       const { username, password, fullName, phoneNumber, cccdNumber, address } = req.body as {
         username: string;
