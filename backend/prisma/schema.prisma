@@ -270,6 +270,13 @@ model Report {
   cameraExtractionRequests CameraExtractionRequest[]
 
   @@index([districtId])
+  // status/assignedOfficerId are filtered directly (officerReports listReports, dashboard
+  // groupBy); (source, createdAt) covers the WHERE clause common to every dashboardStats
+  // query (getOverview/getVolumeTrend/getReportLocations/... all filter source='citizen'
+  // AND created_at >= X first).
+  @@index([status])
+  @@index([assignedOfficerId])
+  @@index([source, createdAt])
   @@map("reports")
 }
 
