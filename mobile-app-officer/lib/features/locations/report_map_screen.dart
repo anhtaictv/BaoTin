@@ -24,14 +24,25 @@ class _ReportMapScreenState extends ConsumerState<ReportMapScreen> {
   final _mapController = MapController();
   bool _fitted = false;
 
+  // ponytail: a map view inherently wants every pin, but the list endpoint is now paginated
+  // (server-side max page_size 100) — a district with more reports than that just won't show
+  // its oldest ones on the map yet. Upgrade path if that becomes real: marker clustering +
+  // viewport-bounded fetching instead of "load everything", which pagination alone can't fix.
+  static const _mapPageSize = 100;
+
   @override
   void initState() {
     super.initState();
-    _future = ref.read(officerReportsRepositoryProvider).listReports();
+    _future = _load();
+  }
+
+  Future<List<Map<String, dynamic>>> _load() async {
+    final page = await ref.read(officerReportsRepositoryProvider).listReports(pageSize: _mapPageSize);
+    return page.reports;
   }
 
   void _refresh() => setState(() {
-        _future = ref.read(officerReportsRepositoryProvider).listReports();
+        _future = _load();
         _fitted = false;
       });
 

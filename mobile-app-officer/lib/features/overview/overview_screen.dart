@@ -10,10 +10,10 @@ import '../reports_list/report_list_screen.dart';
 import '../signals/signal_list_screen.dart';
 
 /// Landing tab: a quick read of the officer's current workload before diving into the full
-/// list. Counts are computed client-side from GET /officer/reports (the same district-scoped,
-/// role-gated endpoint the "Tin báo" tab uses) — there is no separate stats endpoint for this
-/// role (the admin KPI dashboard is admin/senior_officer-only, see docs/API_SPEC.md), so this
-/// screen never calls anything an officer account isn't already allowed to see.
+/// list. Counts come from GET /officer/reports/overview-stats — a server-side aggregate
+/// (groupBy/count) over the same district-scoped, role-gated report set the "Tin báo" tab
+/// uses, not a full report fetch counted client-side (that undercounts once a district has
+/// more reports than a single page — see officerReports.service.ts's getOwnOverview).
 class OverviewScreen extends ConsumerStatefulWidget {
   const OverviewScreen({super.key});
 
@@ -22,16 +22,16 @@ class OverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _OverviewScreenState extends ConsumerState<OverviewScreen> {
-  late Future<List<Map<String, dynamic>>> _future;
+  late Future<Map<String, dynamic>> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = ref.read(officerReportsRepositoryProvider).listReports();
+    _future = ref.read(officerReportsRepositoryProvider).getOverviewStats();
   }
 
   void _refresh() => setState(() {
-        _future = ref.read(officerReportsRepositoryProvider).listReports();
+        _future = ref.read(officerReportsRepositoryProvider).getOverviewStats();
       });
 
   Future<void> _logout() async {
@@ -69,7 +69,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
           _refresh();
           await _future;
         },
-        child: FutureBuilder<List<Map<String, dynamic>>>(
+        child: FutureBuilder<Map<String, dynamic>>(
           future: _future,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
@@ -80,23 +80,22 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
                 children: const [SizedBox(height: 120), Center(child: Text('Không tải được dữ liệu.'))],
               );
             }
-            final reports = snapshot.data ?? const [];
-            final pending = reports.where((r) => r['status'] == 'pending').length;
-            final verifying = reports.where((r) => r['status'] == 'verifying').length;
-            final confirmedTrue = reports.where((r) => r['status'] == 'confirmed_true').length;
-            final confirmedFalse = reports.where((r) => r['status'] == 'confirmed_false').length;
-            final emergency = reports.where((r) => r['urgency'] == 'emergency').length;
-            final needsAttention = reports
-                .where((r) => r['status'] == 'pending' || r['status'] == 'verifying')
-                .take(5)
-                .toList();
+            final stats = snapshot.data ?? const {};
+            final total = stats['total'] as int? ?? 0;
+            final byStatus = Map<String, dynamic>.from(stats['byStatus'] as Map? ?? {});
+            final pending = (byStatus['pending'] as num?)?.toInt() ?? 0;
+            final verifying = (byStatus['verifying'] as num?)?.toInt() ?? 0;
+            final confirmedTrue = (byStatus['confirmed_true'] as num?)?.toInt() ?? 0;
+            final confirmedFalse = (byStatus['confirmed_false'] as num?)?.toInt() ?? 0;
+            final emergency = stats['emergencyCount'] as int? ?? 0;
+            final needsAttention = List<Map<String, dynamic>>.from(stats['needsAttention'] as List? ?? []);
 
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Text('Tổng số tin báo', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 4),
-                Text('${reports.length}', style: Theme.of(context).textTheme.headlineMedium),
+                Text('$total', style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 16),
                 GridView.count(
                   crossAxisCount: 2,

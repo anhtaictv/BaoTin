@@ -15,11 +15,17 @@ const _activeStatusFilters = <String, String>{
 };
 
 // History only ever shows closed reports — the backend's status filter takes one value at a
-// time (no OR), so "both closed statuses, nothing selected" is handled client-side in _load().
+// time (no OR), so "both closed statuses, nothing selected" is handled client-side in _fetchPage().
 const _historyStatusFilters = <String, String>{
   'confirmed_true': 'Đúng sự thật',
   'confirmed_false': 'Tin sai',
 };
+
+class _FetchResult {
+  _FetchResult({required this.reports, required this.hasMore});
+  final List<Map<String, dynamic>> reports;
+  final bool hasMore;
+}
 
 /// Reports arrive already priority-sorted by the server (emergency first, then oldest —
 /// see backend priority.service.ts) — this screen never re-sorts client-side, so it can
@@ -39,32 +45,104 @@ class ReportListScreen extends ConsumerStatefulWidget {
 class _ReportListScreenState extends ConsumerState<ReportListScreen> {
   String? _statusFilter;
   bool _emergencyOnly = false;
-  late Future<List<Map<String, dynamic>>> _future;
+  final _scrollController = ScrollController();
+
+  static const _pageSize = 50;
+  // ponytail: history mode merges 2 independently-paginated status queries into one sorted
+  // list, which doesn't paginate cleanly (page N of confirmed_true and page N of
+  // confirmed_false don't line up chronologically once merged) — so it fetches one big page
+  // instead of real infinite scroll. Upgrade path if a district's history ever exceeds this:
+  // paginate each status query separately and k-way merge instead of one big fetch.
+  static const _historyPageSize = 100;
+
+  List<Map<String, dynamic>> _reports = [];
+  int _page = 1;
+  bool _hasMore = false;
+  bool _isLoadingInitial = true;
+  bool _isLoadingMore = false;
+  bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _scrollController.addListener(_onScroll);
+    _loadInitial();
   }
 
-  Future<List<Map<String, dynamic>>> _load() async {
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final canPaginate = !widget.historyMode && _hasMore && !_isLoadingMore && !_isLoadingInitial;
+    if (!canPaginate) return;
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  Future<_FetchResult> _fetchPage(int page) async {
     final repo = ref.read(officerReportsRepositoryProvider);
     final urgency = _emergencyOnly ? 'emergency' : null;
     if (widget.historyMode && _statusFilter == null) {
       final results = await Future.wait([
-        repo.listReports(status: 'confirmed_true', urgency: urgency),
-        repo.listReports(status: 'confirmed_false', urgency: urgency),
+        repo.listReports(status: 'confirmed_true', urgency: urgency, pageSize: _historyPageSize),
+        repo.listReports(status: 'confirmed_false', urgency: urgency, pageSize: _historyPageSize),
       ]);
-      final merged = [...results[0], ...results[1]];
+      final merged = [...results[0].reports, ...results[1].reports];
       merged.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
-      return merged;
+      return _FetchResult(reports: merged, hasMore: false);
     }
-    return repo.listReports(status: _statusFilter, urgency: urgency);
+    final result = await repo.listReports(status: _statusFilter, urgency: urgency, page: page, pageSize: _pageSize);
+    return _FetchResult(reports: result.reports, hasMore: result.hasMore);
   }
 
-  void _refresh() => setState(() {
-        _future = _load();
+  Future<void> _loadInitial() async {
+    setState(() {
+      _isLoadingInitial = true;
+      _hasError = false;
+    });
+    try {
+      final result = await _fetchPage(1);
+      if (!mounted) return;
+      setState(() {
+        _reports = result.reports;
+        _hasMore = result.hasMore;
+        _page = 1;
+        _isLoadingInitial = false;
       });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _hasError = true;
+        _isLoadingInitial = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    setState(() => _isLoadingMore = true);
+    try {
+      final nextPage = _page + 1;
+      final result = await _fetchPage(nextPage);
+      if (!mounted) return;
+      setState(() {
+        _reports = [..._reports, ...result.reports];
+        _hasMore = result.hasMore;
+        _page = nextPage;
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      // Load-more failing silently keeps the already-loaded list intact — the next scroll
+      // tick or pull-to-refresh retries; no need to nag with a SnackBar for a background fetch.
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
+  void _refresh() => _loadInitial();
 
   @override
   Widget build(BuildContext context) {
@@ -116,18 +194,18 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () async {
-                _refresh();
-                await _future;
-              },
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: _future,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
+              onRefresh: _loadInitial,
+              child: Builder(
+                builder: (context) {
+                  if (_isLoadingInitial) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final reports = snapshot.data ?? const [];
-                  if (reports.isEmpty) {
+                  if (_hasError) {
+                    return ListView(
+                      children: const [SizedBox(height: 120), Center(child: Text('Không tải được dữ liệu.'))],
+                    );
+                  }
+                  if (_reports.isEmpty) {
                     final colors = Theme.of(context).colorScheme;
                     return ListView(
                       children: [
@@ -148,11 +226,18 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
                     );
                   }
                   return ListView.separated(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: reports.length,
+                    itemCount: _reports.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
-                      final report = reports[index];
+                      if (index >= _reports.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final report = _reports[index];
                       final category = report['category'] as String?;
                       final colors = Theme.of(context).colorScheme;
                       return Card(
