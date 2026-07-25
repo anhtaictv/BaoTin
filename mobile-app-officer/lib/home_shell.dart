@@ -6,9 +6,7 @@ import 'features/locations/report_map_screen.dart';
 import 'features/overview/overview_screen.dart';
 import 'features/reports_list/report_list_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
-import 'features/auth/pending_officers_screen.dart';
-import 'features/admin_citizens/locked_citizens_screen.dart';
-import 'features/analytics/admin_analytics_screen.dart';
+import 'features/admin_menu/admin_menu_screen.dart';
 import 'features/traffic_accidents/traffic_accident_list_screen.dart';
 import 'features/news/news_screen.dart';
 
@@ -36,9 +34,7 @@ class _HomeShellState extends State<HomeShell> {
     ReportListScreen(historyMode: true),
     WantedNoticesScreen(),
     TrafficAccidentListScreen(),
-    AdminAnalyticsScreen(),
-    PendingOfficersScreen(),
-    LockedCitizensScreen(),
+    AdminMenuScreen(),
     NewsScreen(),
   ];
 
@@ -62,19 +58,9 @@ class _HomeShellState extends State<HomeShell> {
       label: 'Cảnh báo TNGT'
     ),
     (
-      icon: Icons.bar_chart_outlined,
-      activeIcon: Icons.bar_chart,
-      label: 'Thống kê'
-    ),
-    (
-      icon: Icons.how_to_reg_outlined,
-      activeIcon: Icons.how_to_reg,
-      label: 'Duyệt TK'
-    ),
-    (
-      icon: Icons.lock_open_outlined,
-      activeIcon: Icons.lock_open,
-      label: 'TK bị khóa'
+      icon: Icons.admin_panel_settings_outlined,
+      activeIcon: Icons.admin_panel_settings,
+      label: 'Quản trị'
     ),
     (
       icon: Icons.newspaper_outlined,
