@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.12.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.6.0+8 · mobile-app-citizen 1.7.0+9`
+`Phiên bản hiện tại: backend 1.13.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.7.0+9 · mobile-app-citizen 1.8.0+10`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -18,10 +18,18 @@ thông thường.
 
 ## Giới thiệu
 
-**Báo Tin** là phần mềm được phát triển với mục đích duy nhất: khi có sự việc xảy ra, người dân báo
-tin **kèm định vị GPS thật** (ảnh chụp/quay giữ nguyên EXIF, không qua trung gian Zalo/
-Messenger), hệ thống tự động khoanh vùng địa bàn (PostGIS geo-matching) và đẩy thông báo
-tới đúng cán bộ phụ trách xã/phường đó — không cần chờ quy trình hành chính nhiều bước.
+Khi có sự việc xảy ra ngoài đời, kênh báo tin hành chính thông thường (kể cả VNeID) đúng
+nhưng chậm — nhiều bước, không định vị được ngay tin đó thuộc địa bàn nào, không tự động
+tới đúng người phụ trách. **Báo Tin** thu hẹp khoảng đó ở lớp phản ứng đầu tiên: người dân
+báo tin **kèm định vị GPS thật** (ảnh/video chụp trực tiếp trong app, giữ nguyên EXIF —
+không qua trung gian Zalo/Messenger vì các nền tảng đó thường xóa EXIF), hệ thống dùng
+PostGIS khoanh vùng địa bàn ngay lập tức và đẩy thẳng tới cán bộ phụ trách xã/phường đó,
+không cần chờ luân chuyển qua nhiều cấp.
+
+Mọi tin đều đi qua một cán bộ con người trước khi trở thành "đã xác thực" — không có bước
+AI nào tự kết luận đúng/sai. Tín hiệu từ mạng xã hội/báo chí (giai đoạn 2) được xử lý và
+hiển thị hoàn toàn tách biệt khỏi tin dân báo, không bao giờ trộn lẫn hay tự động nâng cấp
+thành hồ sơ chính thức.
 
 **Định vị:** bổ trợ VNeID, không thay thế. VNeID là kênh tố cáo chính thức có giá trị pháp
 lý; Báo Tin là phản ứng tức thời, tại chỗ, cấp cơ sở.
@@ -46,7 +54,7 @@ lý; Báo Tin là phản ứng tức thời, tại chỗ, cấp cơ sở.
 
 - **Database:** PostgreSQL + PostGIS · **Object storage:** MinIO (chỉ lưu path trong Postgres)
 - **Backend:** Node.js + TypeScript + Express, Prisma ORM, Zod, JWT RS256 + refresh rotation, vitest
-- **3 app Flutter riêng biệt, versioned độc lập, dùng chung backend:** `mobile-app-citizen` (người dân), `mobile-app-officer` (cán bộ phụ trách địa bàn), `dashboard-web` (admin/senior_officer, chạy trình duyệt) — Riverpod, Dio, flutter_secure_storage, flutter_map/OpenStreetMap
+- **3 app Flutter riêng biệt, versioned độc lập, dùng chung backend:** `mobile-app-citizen` (người dân), `mobile-app-officer` (cán bộ phụ trách địa bàn, biểu đồ thống kê dùng `fl_chart`), `dashboard-web` (admin/senior_officer, chạy trình duyệt) — Riverpod, Dio, flutter_secure_storage, flutter_map/OpenStreetMap
 - **`dashboard-web-react`:** phiên bản React song song của web quản lý, dùng chung backend/database — Vite + React + TypeScript, react-router-dom, @tanstack/react-query, axios, recharts. Đăng nhập bằng tài khoản username/password riêng (102 xã/phường) thay vì OTP.
 - **AI hỗ trợ (tùy chọn, opt-in):** [Ollama](https://ollama.com) chạy local — tóm tắt tin MXH, lọc liên quan, gộp trùng ngữ nghĩa, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên. Tắt hoàn toàn nếu không cấu hình `LLM_PROVIDER=ollama`.
 
@@ -91,7 +99,10 @@ cd dashboard-web && flutter analyze && flutter test
 ```
 
 Máy giả lập Android hoặc thiết bị thật để `flutter run` 2 app mobile; `dashboard-web` chạy
-trực tiếp trên Chrome (`flutter run -d chrome`), không cần giả lập.
+trực tiếp trên Chrome (`flutter run -d chrome`), không cần giả lập. Chạy `mobile-app-citizen`/
+`mobile-app-officer` trên Chrome (`flutter run -d chrome`) cũng dùng được để soi UI nhanh —
+chỉ cần trỏ đúng backend qua `--dart-define=API_BASE_URL=http://localhost:3000` (mặc định
+`10.0.2.2:3000` chỉ dùng được cho Android emulator).
 
 ```bash
 cd dashboard-web-react && npm install && npm run typecheck && npm run test
@@ -115,6 +126,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.10** | `dashboard-web-react` — phiên bản React song song của web quản lý, đăng nhập username/password riêng cho 102 xã (bảng `web_accounts` tách biệt khỏi `officers`), tự đổi thông tin/mật khẩu, admin quản lý/reset tài khoản |
 | **v1.11** | CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux; trang chọn vai trò tĩnh ở site root trỏ `/admin`·`/citizen`·`/officer`; redesign toàn bộ UI `dashboard-web-react` bằng design token thật + role-gated nav; `mobile-app-citizen` build được cho Flutter Web (đổi `native_exif` sang package `exif` thuần Dart); vá 3 lỗ hổng bảo mật (rate-limit `/auth/refresh`, bắt buộc `OTP_HASH_PEPPER` ở production, audit log hành động admin trên tài khoản web) |
 | **v1.12** | Đăng ký/đăng nhập bằng username/password song song với OTP (citizen active ngay, officer cần admin duyệt + gán địa bàn); dashboard thống kê admin (biểu đồ phân loại, xếp hạng địa bàn, bản đồ, xu hướng theo ngày/tuần/tháng, xuất PDF) trên cả web và app cán bộ; đổi logo chính thức toàn hệ thống; tách rõ 3 loại lỗi đăng nhập (mất mạng/giới hạn thử lại/sai thật) thay vì gộp chung "sai mật khẩu"; vá lỗi bản APK release thiếu quyền `INTERNET` (chỉ có ở biến thể debug, khiến app không kết nối được mạng khi cài thật); tab "Cảnh báo tai nạn giao thông" cho app cán bộ — nhận cảnh báo từ 1 bộ phát hiện đối tượng (YOLO) + OCR biển số riêng biệt, **không** nhận diện khuôn mặt hay theo dõi người xuyên camera, mọi cảnh báo đều cần cán bộ xác nhận thủ công |
+| **v1.13** | Trang tin tức trong app (RSS bocongan.gov.vn) cho cả `mobile-app-citizen` và `mobile-app-officer`; thay biểu đồ tự vẽ bằng `fl_chart` (pie + line có tooltip) trong tab Thống kê của app cán bộ; viết lại thanh điều hướng dưới của `mobile-app-citizen` dùng đúng slot `bottomNavigationBar` (sửa lỗi giật khi bật/tắt bàn phím) và polish thanh điều hướng app cán bộ |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
