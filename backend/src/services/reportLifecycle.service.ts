@@ -62,6 +62,15 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
   }
 
   async function createCitizenReport(input: CreateCitizenReportInput) {
+    // Blocks normal reports only — createEmergencyReport below never checks this, SOS must
+    // stay reachable regardless (CLAUDE.md: stability for the emergency path over feature
+    // richness). Locked by officerReports.service.ts's updateStatus after a citizen's 4th
+    // confirmed_false report; lifted only by deliberate admin action, no auto-expiry.
+    const user = await deps.prisma.user.findUnique({ where: { id: input.userId }, select: { lockedAt: true } });
+    if (user?.lockedAt) {
+      throw new HttpError(403, "ACCOUNT_LOCKED", "Tài khoản đã bị khóa do có nhiều tin báo bị xác nhận là sai.");
+    }
+
     const districtId = await deps.geoMatch.matchDistrict({ lat: input.location.lat, lng: input.location.lng });
     const assignedOfficerId = districtId ? await deps.assignOfficer.pickOfficerForDistrict(districtId) : null;
 

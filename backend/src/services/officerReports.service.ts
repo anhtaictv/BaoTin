@@ -19,6 +19,8 @@ export interface ListReportsFilters {
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
+/** More than 3 confirmed_false reports (i.e. the 4th) locks the account. */
+const FALSE_REPORT_LOCK_THRESHOLD = 4;
 
 export interface UpdateStatusInput {
   status: "verifying" | "confirmed_true" | "confirmed_false";
@@ -240,6 +242,15 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
       await deps.officialCaseLink.pushToOfficialCase(reportId);
     }
 
+    // Auto-lock after a citizen's 4th confirmed_false report — still human-in-the-loop, since
+    // each individual confirmed_false verdict is an officer's own decision (CLAUDE.md #3);
+    // this only counts what officers have already decided, it never judges a report itself.
+    // Locking blocks new normal reports (reportLifecycle.service.ts's createCitizenReport)
+    // but not SOS (createEmergencyReport deliberately never checks lockedAt).
+    if (input.status === "confirmed_false" && report.userId) {
+      await lockIfRepeatedlyFalse(report.userId, subject.id);
+    }
+
     // The other direction of the same notification channel that already tells an officer
     // about a new report — a citizen previously had no way to learn of a status change
     // except opening the app and checking themselves.
@@ -248,6 +259,19 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
     }
 
     return { reportId, status: input.status, responseTimeSeconds };
+  }
+
+  async function lockIfRepeatedlyFalse(userId: string, lockedByOfficerId: string): Promise<void> {
+    const user = await deps.prisma.user.findUnique({ where: { id: userId }, select: { lockedAt: true } });
+    if (!user || user.lockedAt) return; // already locked, or user row gone — nothing to do
+
+    const falseReportCount = await deps.prisma.report.count({
+      where: { userId, source: "citizen", status: "confirmed_false" },
+    });
+    if (falseReportCount < FALSE_REPORT_LOCK_THRESHOLD) return;
+
+    await deps.prisma.user.update({ where: { id: userId }, data: { lockedAt: new Date() } });
+    await deps.auditLog.record(lockedByOfficerId, "auto_lock_user", { type: "user", id: userId }, { falseReportCount });
   }
 
   return { listReports, getOwnOverview, getReportDetail, updateStatus };

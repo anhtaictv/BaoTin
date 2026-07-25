@@ -88,6 +88,12 @@ model User {
   verifiedAt        DateTime? @map("verified_at")
   isAnonymousPublic Boolean   @default(true) @map("is_anonymous_public")
   createdAt         DateTime  @default(now()) @map("created_at")
+  /// Set automatically the moment a 4th of this user's citizen reports gets marked
+  /// confirmed_false by an officer (reportLifecycle.service.ts's checkAndLockAbusiveUser) —
+  /// null means never locked. Blocks new normal reports only, not SOS (createEmergencyReport
+  /// never checks this — CLAUDE.md: SOS prioritizes stability over feature richness). No
+  /// automatic expiry by design — lifting it is a deliberate admin action, not a timer.
+  lockedAt          DateTime? @map("locked_at")
 
   /// Username/password registration (auth/registration.service.ts) — a citizen who's only
   /// ever used OTP has all 6 of these null. Registering fills them in on the *same* row
