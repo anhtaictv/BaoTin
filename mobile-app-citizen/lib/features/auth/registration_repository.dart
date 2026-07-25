@@ -54,4 +54,13 @@ class RegistrationRepository {
       refreshToken: data['refreshToken'] as String,
     );
   }
+
+  /// Self-service — works even for an account auto-locked by repeated false reports (the
+  /// backend deliberately doesn't check lockedAt here, only on new normal-report submission).
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    await _apiClient.dio.post('/auth/citizen/change-password', data: {
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    });
+  }
 }
