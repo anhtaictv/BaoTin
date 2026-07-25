@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.14.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.8.0+10 · mobile-app-citizen 1.8.0+10`
+`Phiên bản hiện tại: backend 1.15.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.8.0+10 · mobile-app-citizen 1.8.1+11`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -128,6 +128,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.12** | Đăng ký/đăng nhập bằng username/password song song với OTP (citizen active ngay, officer cần admin duyệt + gán địa bàn); dashboard thống kê admin (biểu đồ phân loại, xếp hạng địa bàn, bản đồ, xu hướng theo ngày/tuần/tháng, xuất PDF) trên cả web và app cán bộ; đổi logo chính thức toàn hệ thống; tách rõ 3 loại lỗi đăng nhập (mất mạng/giới hạn thử lại/sai thật) thay vì gộp chung "sai mật khẩu"; vá lỗi bản APK release thiếu quyền `INTERNET` (chỉ có ở biến thể debug, khiến app không kết nối được mạng khi cài thật); tab "Cảnh báo tai nạn giao thông" cho app cán bộ — nhận cảnh báo từ 1 bộ phát hiện đối tượng (YOLO) + OCR biển số riêng biệt, **không** nhận diện khuôn mặt hay theo dõi người xuyên camera, mọi cảnh báo đều cần cán bộ xác nhận thủ công |
 | **v1.13** | Trang tin tức trong app (RSS bocongan.gov.vn) cho cả `mobile-app-citizen` và `mobile-app-officer`; thay biểu đồ tự vẽ bằng `fl_chart` (pie + line có tooltip) trong tab Thống kê của app cán bộ; viết lại thanh điều hướng dưới của `mobile-app-citizen` dùng đúng slot `bottomNavigationBar` (sửa lỗi giật khi bật/tắt bàn phím) và polish thanh điều hướng app cán bộ; thêm index còn thiếu (bao gồm GiST cho 3 cột PostGIS) sau khi rà lại hiệu năng backend |
 | **v1.14** | Phân trang thật cho danh sách tin báo của app cán bộ (trước đây không giới hạn, tải hết rồi sắp xếp ở client) — thứ tự ưu tiên (khẩn cấp trước) đẩy xuống DB để phân trang không làm tin khẩn cấp bị "chôn" ở trang sau; tab Thống kê đổi sang endpoint tổng hợp riêng thay vì tải hết tin rồi đếm ở client; tin khẩn cấp (SOS) giờ cũng đẩy thông báo tới admin, không chỉ cán bộ phụ trách địa bàn; vá lỗi giới hạn đăng nhập officer chỉ tính theo IP (nhiều cán bộ cùng mạng cơ quan có thể tự khóa lẫn nhau) — nay tính theo IP + số điện thoại đúng yêu cầu SECURITY.md |
+| **v1.15** | Tự động khóa tài khoản dân báo tin sau khi có 4 tin bị cán bộ xác nhận là sai (vẫn human-in-the-loop — hệ thống chỉ đếm các xác nhận officer đã tự đưa ra, không tự kết luận tin nào sai) — tài khoản bị khóa vẫn gửi được báo tin khẩn cấp (SOS) bình thường, chỉ chặn báo tin thường; hiện chưa có API/UI mở khóa, cần sửa trực tiếp DB |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
