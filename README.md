@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.16.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.9.0+11 · mobile-app-citizen 1.8.1+11`
+`Phiên bản hiện tại: backend 1.17.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.10.0+12 · mobile-app-citizen 1.8.1+11`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -130,6 +130,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.14** | Phân trang thật cho danh sách tin báo của app cán bộ (trước đây không giới hạn, tải hết rồi sắp xếp ở client) — thứ tự ưu tiên (khẩn cấp trước) đẩy xuống DB để phân trang không làm tin khẩn cấp bị "chôn" ở trang sau; tab Thống kê đổi sang endpoint tổng hợp riêng thay vì tải hết tin rồi đếm ở client; tin khẩn cấp (SOS) giờ cũng đẩy thông báo tới admin, không chỉ cán bộ phụ trách địa bàn; vá lỗi giới hạn đăng nhập officer chỉ tính theo IP (nhiều cán bộ cùng mạng cơ quan có thể tự khóa lẫn nhau) — nay tính theo IP + số điện thoại đúng yêu cầu SECURITY.md |
 | **v1.15** | Tự động khóa tài khoản dân báo tin sau khi có 4 tin bị cán bộ xác nhận là sai (vẫn human-in-the-loop — hệ thống chỉ đếm các xác nhận officer đã tự đưa ra, không tự kết luận tin nào sai) — tài khoản bị khóa vẫn gửi được báo tin khẩn cấp (SOS) bình thường, chỉ chặn báo tin thường; hiện chưa có API/UI mở khóa, cần sửa trực tiếp DB |
 | **v1.16** | Tab "TK bị khóa" mới cho admin trong app cán bộ — xem danh sách tài khoản dân bị tự động khóa (kèm số tin báo bị xác nhận sai) và mở khóa trực tiếp, không cần sửa DB nữa |
+| **v1.17** | Gộp 3 tab admin-only (Thống kê, Duyệt TK, TK bị khóa) vào 1 mục "Quản trị" trong app cán bộ — bottom nav từ 10 tab rút còn 8, không đổi màu sắc/giao diện; thêm chức năng đổi mật khẩu tự phục vụ cho mọi tài khoản cán bộ (không chỉ admin) |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
