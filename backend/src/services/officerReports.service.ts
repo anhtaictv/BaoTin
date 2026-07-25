@@ -6,14 +6,19 @@ import type { AuditLogService } from "./auditLog.service.js";
 import type { StorageClient } from "../storage/minioClient.js";
 import type { NotificationService } from "../notifications/notification.service.js";
 import { decryptField } from "../crypto/aesGcm.js";
-import { isSeriousReport, sortByPriority } from "./priority.service.js";
+import { isSeriousReport } from "./priority.service.js";
 import { isSensitiveIdentityView, serializeReportForViewer } from "./reportAnonymity.js";
 
 export interface ListReportsFilters {
   districtId?: string;
   status?: string;
   urgency?: string;
+  page?: number;
+  pageSize?: number;
 }
+
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
 
 export interface UpdateStatusInput {
   status: "verifying" | "confirmed_true" | "confirmed_false";
@@ -41,34 +46,55 @@ const REPORT_LIST_SELECT = {
 
 export function createOfficerReportsService(deps: OfficerReportsDeps) {
   /**
-   * Lists reports the caller may see. Regular officers are constrained server-side to their
-   * *actual* current assignments (re-derived from officer_district_assignments, not a JWT
-   * claim) — an explicit district_id filter outside that set is rejected, not silently
+   * Shared by listReports and getOwnOverview — regular officers are constrained server-side
+   * to their *actual* current assignments (re-derived from officer_district_assignments, not
+   * a JWT claim); an explicit district_id filter outside that set is rejected, not silently
    * dropped, so a crafted request can't fish for another ward's reports.
    */
-  async function listReports(subject: DistrictScopeSubject, filters: ListReportsFilters) {
+  async function resolveDistrictFilter(subject: DistrictScopeSubject, districtId?: string) {
     const isUnrestricted = subject.role === "senior_officer" || subject.role === "admin";
-    let districtIdFilter: string[] | undefined;
-
     if (isUnrestricted) {
-      districtIdFilter = filters.districtId ? [filters.districtId] : undefined;
-    } else {
-      const allowed = await deps.districtScope.getAllowedDistrictIds(subject.id);
-      if (filters.districtId && !allowed.includes(filters.districtId)) {
-        throw new HttpError(403, "FORBIDDEN", "Không có quyền truy cập tin thuộc địa bàn này.");
-      }
-      districtIdFilter = filters.districtId ? [filters.districtId] : allowed;
+      return districtId ? [districtId] : undefined;
     }
+    const allowed = await deps.districtScope.getAllowedDistrictIds(subject.id);
+    if (districtId && !allowed.includes(districtId)) {
+      throw new HttpError(403, "FORBIDDEN", "Không có quyền truy cập tin thuộc địa bàn này.");
+    }
+    return districtId ? [districtId] : allowed;
+  }
 
-    const reports = await deps.prisma.report.findMany({
-      where: {
-        source: "citizen",
-        ...(districtIdFilter ? { districtId: { in: districtIdFilter } } : {}),
-        ...(filters.status ? { status: filters.status as never } : {}),
-        ...(filters.urgency ? { urgency: filters.urgency as never } : {}),
-      },
-      select: REPORT_LIST_SELECT,
-    });
+  async function listReports(subject: DistrictScopeSubject, filters: ListReportsFilters) {
+    const districtIdFilter = await resolveDistrictFilter(subject, filters.districtId);
+
+    const where = {
+      source: "citizen" as const,
+      ...(districtIdFilter ? { districtId: { in: districtIdFilter } } : {}),
+      ...(filters.status ? { status: filters.status as never } : {}),
+      ...(filters.urgency ? { urgency: filters.urgency as never } : {}),
+    };
+    const page = Math.max(1, filters.page ?? 1);
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, filters.pageSize ?? DEFAULT_PAGE_SIZE));
+
+    const [reports, total] = await Promise.all([
+      deps.prisma.report.findMany({
+        where,
+        select: REPORT_LIST_SELECT,
+        // Priority order pushed into the DB (required for skip/take to slice the *right*
+        // page) — the `report_urgency` enum was declared ('emergency', 'normal') in that
+        // order (0_init migration), so `asc` puts emergency first, matching
+        // priority.service.ts's computePriorityScore giving it the top score.
+        // ponytail: doesn't replicate computePriorityScore's category-based +500 tiebreak
+        // (chay_no/tai_nan/an_ninh_khan_cap ranked above other same-urgency reports) —
+        // urgency ordering alone already guarantees no emergency report gets buried past
+        // page 1, which is the safety-relevant property. Upgrade path if the category
+        // tiebreak needs to hold across page boundaries too: a generated `priority_score`
+        // column (indexable, orderBy-able) instead of computing it in JS.
+        orderBy: [{ urgency: "asc" }, { createdAt: "asc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      deps.prisma.report.count({ where }),
+    ]);
 
     // Same PostGIS-omission workaround as getReportDetail below, batched: one extra query
     // for the whole page's coordinates (map tab needs them) instead of N+1 per report.
@@ -80,7 +106,47 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
       : [];
     const locationById = new Map(locations.map((l) => [l.id, { lat: l.lat, lng: l.lng }]));
 
-    return sortByPriority(reports).map((r) => ({ ...r, location: locationById.get(r.id) ?? null }));
+    return {
+      reports: reports.map((r) => ({ ...r, location: locationById.get(r.id) ?? null })),
+      page,
+      pageSize,
+      total,
+      hasMore: page * pageSize < total,
+    };
+  }
+
+  /**
+   * Backs the officer app's "Tổng quan" tab KPI tiles. Deliberately a `groupBy` aggregate
+   * (like dashboardStats.service.ts's getOverview) instead of listReports() with a big
+   * page_size — that screen used to fetch every matching report and count client-side, which
+   * silently undercounts once a district passes whatever page_size cap listReports uses.
+   * "Cần chú ý" only needs a handful of rows, not a full-table read either.
+   */
+  async function getOwnOverview(subject: DistrictScopeSubject) {
+    const districtIdFilter = await resolveDistrictFilter(subject, undefined);
+    const where = {
+      source: "citizen" as const,
+      ...(districtIdFilter ? { districtId: { in: districtIdFilter } } : {}),
+    };
+
+    const [total, byStatusRaw, emergencyCount, needsAttention] = await Promise.all([
+      deps.prisma.report.count({ where }),
+      deps.prisma.report.groupBy({ by: ["status"], where, _count: true }),
+      deps.prisma.report.count({ where: { ...where, urgency: "emergency" } }),
+      deps.prisma.report.findMany({
+        where: { ...where, status: { in: ["pending", "verifying"] } },
+        select: REPORT_LIST_SELECT,
+        orderBy: [{ urgency: "asc" }, { createdAt: "asc" }],
+        take: 5,
+      }),
+    ]);
+
+    return {
+      total,
+      byStatus: Object.fromEntries(byStatusRaw.map((r) => [r.status, r._count])),
+      emergencyCount,
+      needsAttention,
+    };
   }
 
   async function getReportDetail(subject: DistrictScopeSubject, reportId: string) {
@@ -184,7 +250,7 @@ export function createOfficerReportsService(deps: OfficerReportsDeps) {
     return { reportId, status: input.status, responseTimeSeconds };
   }
 
-  return { listReports, getReportDetail, updateStatus };
+  return { listReports, getOwnOverview, getReportDetail, updateStatus };
 }
 
 export type OfficerReportsService = ReturnType<typeof createOfficerReportsService>;

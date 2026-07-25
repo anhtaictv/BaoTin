@@ -37,13 +37,16 @@ export const otpVerifyLimiter = rateLimit({
   ),
 });
 
-/** SECURITY.md §3 — rate limiting on every auth endpoint, not just OTP. */
+/** SECURITY.md §3 — rate limiting theo IP + theo tài khoản (phoneAndIpKey, not raw req.ip):
+ * nhiều cán bộ cùng đăng nhập từ cùng 1 mạng cơ quan (chung 1 IP ra ngoài) không được dùng
+ * chung 1 "ngân sách" 10 lần/15 phút — mỗi số điện thoại có ngân sách riêng, IP chỉ chặn khi
+ * một số điện thoại cụ thể bị dò từ IP đó. */
 export const officerLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip ?? "unknown",
+  keyGenerator: phoneAndIpKey,
   message: rateLimitedResponse("LOGIN_RATE_LIMITED", "Đăng nhập sai quá nhiều lần, thử lại sau."),
 });
 

@@ -46,9 +46,18 @@ export function createFakeReportPrisma() {
   const reports: FakeReportRow[] = [];
   const attachments: any[] = [];
   const statusHistory: FakeStatusHistoryRow[] = [];
+  const officers: { id: string; role: string }[] = [];
 
   return {
-    store: { reports, attachments, statusHistory },
+    store: { reports, attachments, statusHistory, officers },
+    seedOfficer(officer: { id: string; role: string }) {
+      officers.push(officer);
+    },
+    officer: {
+      async findMany({ where }: any) {
+        return officers.filter((o) => !where?.role || o.role === where.role).map((o) => ({ id: o.id }));
+      },
+    },
     async $executeRaw(_strings: TemplateStringsArray, ...values: unknown[]) {
       const [reportId, userId, category, urgency, description, lng, lat, locationSource, districtId, assignedOfficerId] =
         values as [string, string, string, string, string | null, number, number, string | null, string | null, string | null];

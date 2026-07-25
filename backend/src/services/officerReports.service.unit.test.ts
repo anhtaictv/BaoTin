@@ -52,8 +52,8 @@ describe("officerReports.service — listReports", () => {
     });
 
     const { service } = buildService(fakePrisma);
-    const results = await service.listReports({ id: officerId, role: "officer" }, {});
-    expect(results.map((r) => r.id)).toEqual(["mine"]);
+    const { reports } = await service.listReports({ id: officerId, role: "officer" }, {});
+    expect(reports.map((r) => r.id)).toEqual(["mine"]);
   });
 
   it("rejects an explicit district_id filter outside the officer's assignments", async () => {
@@ -82,8 +82,8 @@ describe("officerReports.service — listReports", () => {
     });
 
     const { service } = buildService(fakePrisma);
-    const results = await service.listReports({ id: officerId, role: "officer" }, {});
-    expect(results.map((r) => r.id)).toEqual(["urgent", "normal"]);
+    const { reports } = await service.listReports({ id: officerId, role: "officer" }, {});
+    expect(reports.map((r) => r.id)).toEqual(["urgent", "normal"]);
   });
 
   it("admin sees across districts without an assignment row", async () => {
@@ -93,8 +93,46 @@ describe("officerReports.service — listReports", () => {
       districtId: randomUUID(), createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null,
     });
     const { service } = buildService(fakePrisma);
-    const results = await service.listReports({ id: randomUUID(), role: "admin" }, {});
-    expect(results).toHaveLength(1);
+    const { reports, total } = await service.listReports({ id: randomUUID(), role: "admin" }, {});
+    expect(reports).toHaveLength(1);
+    expect(total).toBe(1);
+  });
+
+  it("paginates with a default page size, reporting total and hasMore", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    for (let i = 0; i < 5; i++) {
+      fakePrisma.seedReport({
+        id: `r${i}`, category: null, urgency: "normal", status: "pending", source: "citizen",
+        districtId, createdAt: new Date(1000 * i), verifiedAt: null, responseTimeSeconds: null,
+      });
+    }
+
+    const { service } = buildService(fakePrisma);
+    const page1 = await service.listReports({ id: officerId, role: "officer" }, { pageSize: 2 });
+    expect(page1.reports.map((r) => r.id)).toEqual(["r0", "r1"]);
+    expect(page1).toMatchObject({ page: 1, pageSize: 2, total: 5, hasMore: true });
+
+    const page3 = await service.listReports({ id: officerId, role: "officer" }, { page: 3, pageSize: 2 });
+    expect(page3.reports.map((r) => r.id)).toEqual(["r4"]);
+    expect(page3).toMatchObject({ page: 3, pageSize: 2, total: 5, hasMore: false });
+  });
+
+  it("clamps an out-of-range page_size to the max instead of erroring", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "r1", category: null, urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null,
+    });
+
+    const { service } = buildService(fakePrisma);
+    const { pageSize } = await service.listReports({ id: officerId, role: "officer" }, { pageSize: 500 });
+    expect(pageSize).toBe(100);
   });
 
   it("includes each report's lat/lng so the officer app's map tab can plot pins", async () => {
@@ -109,8 +147,60 @@ describe("officerReports.service — listReports", () => {
     });
 
     const { service } = buildService(fakePrisma);
-    const [result] = await service.listReports({ id: officerId, role: "officer" }, {});
-    expect(result!.location).toEqual({ lat: 10.77, lng: 106.7 });
+    const { reports } = await service.listReports({ id: officerId, role: "officer" }, {});
+    expect(reports[0]!.location).toEqual({ lat: 10.77, lng: 106.7 });
+  });
+});
+
+describe("officerReports.service — getOwnOverview", () => {
+  it("aggregates counts server-side instead of requiring the caller to fetch every report", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "p1", category: null, urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(1000), verifiedAt: null, responseTimeSeconds: null,
+    });
+    fakePrisma.seedReport({
+      id: "p2", category: null, urgency: "emergency", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(2000), verifiedAt: null, responseTimeSeconds: null,
+    });
+    fakePrisma.seedReport({
+      id: "v1", category: null, urgency: "normal", status: "verifying", source: "citizen",
+      districtId, createdAt: new Date(3000), verifiedAt: null, responseTimeSeconds: null,
+    });
+    fakePrisma.seedReport({
+      id: "done", category: null, urgency: "normal", status: "confirmed_true", source: "citizen",
+      districtId, createdAt: new Date(4000), verifiedAt: null, responseTimeSeconds: null,
+    });
+
+    const { service } = buildService(fakePrisma);
+    const stats = await service.getOwnOverview({ id: officerId, role: "officer" });
+
+    expect(stats.total).toBe(4);
+    expect(stats.byStatus).toEqual({ pending: 2, verifying: 1, confirmed_true: 1 });
+    expect(stats.emergencyCount).toBe(1);
+    // pending/verifying only, emergency first — same priority order as listReports.
+    expect(stats.needsAttention.map((r) => r.id)).toEqual(["p2", "p1", "v1"]);
+  });
+
+  it("caps needsAttention at 5 rows regardless of how many are pending/verifying", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    for (let i = 0; i < 8; i++) {
+      fakePrisma.seedReport({
+        id: `r${i}`, category: null, urgency: "normal", status: "pending", source: "citizen",
+        districtId, createdAt: new Date(1000 * i), verifiedAt: null, responseTimeSeconds: null,
+      });
+    }
+
+    const { service } = buildService(fakePrisma);
+    const stats = await service.getOwnOverview({ id: officerId, role: "officer" });
+    expect(stats.total).toBe(8);
+    expect(stats.needsAttention).toHaveLength(5);
   });
 });
 
