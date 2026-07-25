@@ -167,7 +167,7 @@ async function main() {
     auditLog,
   });
   const registrationController = createRegistrationController(accountRegistrationService);
-  const registrationRouter = createRegistrationRoutes(registrationController);
+  const registrationRouter = createRegistrationRoutes(registrationController, requireAuth);
   const officerApprovalController = createOfficerApprovalController(accountRegistrationService);
   const officerApprovalRouter = createOfficerApprovalRoutes(officerApprovalController, requireAuth);
   const adminCitizensController = createAdminCitizensController(accountRegistrationService);

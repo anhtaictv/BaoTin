@@ -45,3 +45,11 @@ export const officerIdParamsSchema = z.object({
 export const approveOfficerSchema = z.object({
   districtId: z.string().uuid(),
 });
+
+/** Same shape as webAccount.schema.ts's changePasswordSchema — officers here have a
+ * `password_hash` column directly on `officers` (registerOfficer/loginOfficer), a separate
+ * mechanism from WebAccount (dashboard-web-react's 102-xã accounts). */
+export const changeOfficerPasswordSchema = z.object({
+  oldPassword: z.string().min(1).max(200),
+  newPassword: passwordSchema,
+});

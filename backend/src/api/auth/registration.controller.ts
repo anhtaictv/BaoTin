@@ -62,6 +62,13 @@ export function createRegistrationController(service: AccountRegistrationService
       const tokens = await service.loginOfficer(username, password);
       res.status(200).json({ success: true, data: tokens, error: null });
     },
+
+    async changeOfficerPassword(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const { oldPassword, newPassword } = req.body as { oldPassword: string; newPassword: string };
+      await service.changeOfficerPassword(req.user.id, oldPassword, newPassword);
+      res.status(200).json({ success: true, data: { changed: true }, error: null });
+    },
   };
 }
 
