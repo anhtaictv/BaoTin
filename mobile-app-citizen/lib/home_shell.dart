@@ -78,42 +78,15 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     return Scaffold(
-      // Nested per-tab Scaffolds (e.g. BaoTinScreen's TextField) already resize for the
-      // keyboard on their own; letting this outer Scaffold resize too made the Positioned
-      // bottom bar jump up/down every time the keyboard opened or closed.
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            bottom: 64,
-            child: IndexedStack(index: _index, children: _screens),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            // SOS shares this Stack with the bar (instead of its own Positioned anchored to
-            // the screen bottom) so it rides along with the same SafeArea inset the bar uses
-            // — previously it was offset from the raw screen edge, so on any phone with a
-            // bottom gesture inset it sat visibly lower than the other nav icons.
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                _BottomBar(
-                  destinations: _destinations,
-                  selectedIndex: _index,
-                  onSelect: (i) => setState(() => _index = i),
-                ),
-                Positioned(
-                  top: 9,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _SosFab(onTap: _openSos)),
-                ),
-              ],
-            ),
-          ),
-        ],
+      body: IndexedStack(index: _index, children: _screens),
+      // The real bottomNavigationBar slot (not a hand-positioned Stack overlay) — Scaffold
+      // animates this smoothly against the keyboard on its own, which is what fixed the
+      // jumping bar; a Positioned overlay doesn't participate in that built-in animation.
+      bottomNavigationBar: _CitizenNavBar(
+        destinations: _destinations,
+        selectedIndex: _index,
+        onSelect: (i) => setState(() => _index = i),
+        onSos: _openSos,
       ),
     );
   }
@@ -230,22 +203,34 @@ class _SideNavItem extends StatelessWidget {
   }
 }
 
-class _BottomBar extends StatelessWidget {
-  const _BottomBar(
-      {required this.destinations,
-      required this.selectedIndex,
-      required this.onSelect});
+/// Same icon-only / tap-to-reveal-label pattern as mobile-app-officer's home_shell.dart
+/// _AnimatedNavBar. SOS rides along at the end instead of floating above a centered gap in
+/// the row — it doesn't need centering, just to read as the most prominent, fastest thing to
+/// hit, so it's a bigger solid-red circle instead of matching the other (icon-only-until-
+/// tapped) nav items.
+class _CitizenNavBar extends StatelessWidget {
+  const _CitizenNavBar({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.onSos,
+  });
 
   final List<({IconData icon, IconData activeIcon, String label})> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+  final VoidCallback onSos;
+
+  static const _selectedWidth = 116.0;
+  static const _sosWidth = 68.0;
+  static const _slideDuration = Duration(milliseconds: 260);
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Container(
-        height: 64,
+        height: 60,
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -255,29 +240,38 @@ class _BottomBar extends StatelessWidget {
                 offset: const Offset(0, -2)),
           ],
         ),
-        child: Row(
-          children: [
-            for (var i = 0; i < destinations.length; i++)
-              if (i == destinations.length ~/ 2) ...[
-                const SizedBox(width: 46), // gap the SOS dot sits in
-                _NavItem(
-                    item: destinations[i],
-                    selected: selectedIndex == i,
-                    onTap: () => onSelect(i)),
-              ] else
-                _NavItem(
-                    item: destinations[i],
-                    selected: selectedIndex == i,
-                    onTap: () => onSelect(i)),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final restWidth =
+                (constraints.maxWidth - _selectedWidth - _sosWidth) / (destinations.length - 1);
+            return Row(
+              children: [
+                for (var i = 0; i < destinations.length; i++)
+                  AnimatedContainer(
+                    duration: _slideDuration,
+                    curve: Curves.easeOutCubic,
+                    width: i == selectedIndex ? _selectedWidth : restWidth,
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: const BoxDecoration(),
+                    child: _CitizenNavItem(
+                      item: destinations[i],
+                      selected: i == selectedIndex,
+                      onTap: () => onSelect(i),
+                    ),
+                  ),
+                SizedBox(width: _sosWidth, child: Center(child: _SosButton(onTap: onSos))),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _NavItem extends StatelessWidget {
-  const _NavItem(
+class _CitizenNavItem extends StatelessWidget {
+  const _CitizenNavItem(
       {required this.item, required this.selected, required this.onTap});
 
   final ({IconData icon, IconData activeIcon, String label}) item;
@@ -287,31 +281,37 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected ? BaoTinTheme.primary : Colors.grey.shade500;
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(selected ? item.activeIcon : item.icon,
-                color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              item.label,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(selected ? item.activeIcon : item.icon, color: color, size: 22),
+          if (selected) ...[
+            const SizedBox(width: 6),
+            Flexible(
+              child: AnimatedOpacity(
+                opacity: selected ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _SosFab extends StatelessWidget {
-  const _SosFab({required this.onTap});
+class _SosButton extends StatelessWidget {
+  const _SosButton({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -320,19 +320,19 @@ class _SosFab extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 46,
-        height: 46,
+        width: 48,
+        height: 48,
         alignment: Alignment.center,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
           color: BaoTinTheme.primary,
           boxShadow: [
             BoxShadow(
-                color: Color(0x40C62828), blurRadius: 8, offset: Offset(0, 3)),
+                color: Color(0x40C62828), blurRadius: 10, offset: Offset(0, 3)),
           ],
         ),
         child: const Icon(Icons.warning_amber_rounded,
-            color: Colors.white, size: 24),
+            color: Colors.white, size: 26),
       ),
     );
   }
