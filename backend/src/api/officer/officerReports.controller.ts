@@ -6,13 +6,27 @@ export function createOfficerReportsController(service: OfficerReportsService) {
   return {
     async list(req: Request, res: Response) {
       if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
-      const query = req.query as { district_id?: string; status?: string; urgency?: string };
-      const reports = await service.listReports(req.user, {
+      const query = req.query as {
+        district_id?: string;
+        status?: string;
+        urgency?: string;
+        page?: number;
+        page_size?: number;
+      };
+      const result = await service.listReports(req.user, {
         districtId: query.district_id,
         status: query.status,
         urgency: query.urgency,
+        page: query.page,
+        pageSize: query.page_size,
       });
-      res.status(200).json({ success: true, data: reports, error: null });
+      res.status(200).json({ success: true, data: result, error: null });
+    },
+
+    async overviewStats(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const stats = await service.getOwnOverview(req.user);
+      res.status(200).json({ success: true, data: stats, error: null });
     },
 
     async detail(req: Request, res: Response) {

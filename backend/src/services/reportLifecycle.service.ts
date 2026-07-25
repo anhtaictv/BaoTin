@@ -119,9 +119,17 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
       assignedOfficerId,
     });
 
-    if (assignedOfficerId) {
-      await deps.notifications.notifyOfficerOfNewReport(assignedOfficerId, reportId, true);
-    }
+    // Admin also gets pushed for emergency reports specifically (SOS, any district) —
+    // deliberately NOT done for createCitizenReport's normal-urgency path above, which would
+    // flood admin with every report from all 102 xã/phường instead of just the district
+    // officer who's actually responsible for it (product decision, not an oversight).
+    const admins = await deps.prisma.officer.findMany({ where: { role: "admin" }, select: { id: true } });
+    await Promise.all([
+      assignedOfficerId ? deps.notifications.notifyOfficerOfNewReport(assignedOfficerId, reportId, true) : null,
+      ...admins
+        .filter((a) => a.id !== assignedOfficerId)
+        .map((a) => deps.notifications.notifyOfficerOfNewReport(a.id, reportId, true)),
+    ]);
 
     return { reportId, status: "pending" as const };
   }
