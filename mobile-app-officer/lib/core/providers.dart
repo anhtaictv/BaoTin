@@ -10,6 +10,7 @@ import '../features/wanted/wanted_notices_repository.dart';
 import '../features/analytics/admin_dashboard_repository.dart';
 import '../features/traffic_accidents/traffic_accident_repository.dart';
 import '../features/news/news_repository.dart';
+import '../features/admin_citizens/locked_citizens_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -27,6 +28,10 @@ final officerRegistrationRepositoryProvider = Provider<OfficerRegistrationReposi
 
 final officerReportsRepositoryProvider = Provider<OfficerReportsRepository>(
   (ref) => OfficerReportsRepository(ref.watch(apiClientProvider)),
+);
+
+final lockedCitizensRepositoryProvider = Provider<LockedCitizensRepository>(
+  (ref) => LockedCitizensRepository(ref.watch(apiClientProvider)),
 );
 
 final cameraRepositoryProvider = Provider<CameraRepository>(

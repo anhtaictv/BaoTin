@@ -7,6 +7,7 @@ import 'features/overview/overview_screen.dart';
 import 'features/reports_list/report_list_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
 import 'features/auth/pending_officers_screen.dart';
+import 'features/admin_citizens/locked_citizens_screen.dart';
 import 'features/analytics/admin_analytics_screen.dart';
 import 'features/traffic_accidents/traffic_accident_list_screen.dart';
 import 'features/news/news_screen.dart';
@@ -37,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
     TrafficAccidentListScreen(),
     AdminAnalyticsScreen(),
     PendingOfficersScreen(),
+    LockedCitizensScreen(),
     NewsScreen(),
   ];
 
@@ -68,6 +70,11 @@ class _HomeShellState extends State<HomeShell> {
       icon: Icons.how_to_reg_outlined,
       activeIcon: Icons.how_to_reg,
       label: 'Duyệt TK'
+    ),
+    (
+      icon: Icons.lock_open_outlined,
+      activeIcon: Icons.lock_open,
+      label: 'TK bị khóa'
     ),
     (
       icon: Icons.newspaper_outlined,
