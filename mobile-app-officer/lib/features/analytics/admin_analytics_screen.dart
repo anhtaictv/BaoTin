@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../core/theme.dart';
 import '../report_detail/report_detail_screen.dart';
 
 const _fallbackCenter = latlong.LatLng(16.0, 108.0);
+const _statusOrder = ['pending', 'verifying', 'confirmed_true', 'confirmed_false'];
 const _periods = ['day', 'week', 'month'];
 const _periodLabels = {'day': 'Ngày', 'week': 'Tuần', 'month': 'Tháng'};
 const _categoryColors = [
@@ -122,6 +124,8 @@ class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
                 children: [
                   _buildKpiRow(colors),
                   const SizedBox(height: 20),
+                  _buildStatusPie(colors),
+                  const SizedBox(height: 20),
                   _buildVolumeTrend(colors),
                   const SizedBox(height: 20),
                   _buildRankedCard('Phân loại tin báo', _byCategory, (row) => categoryLabel(row['category'] as String?),
@@ -180,6 +184,82 @@ class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
     );
   }
 
+  Widget _buildStatusPie(ColorScheme colors) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Phân bổ trạng thái', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            FutureBuilder<Map<String, dynamic>>(
+              future: _overview,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const SizedBox(height: 140, child: Center(child: CircularProgressIndicator()));
+                }
+                final byStatus = Map<String, dynamic>.from((snapshot.data ?? const {})['byStatus'] as Map? ?? {});
+                final entries = _statusOrder
+                    .map((s) => (status: s, count: (byStatus[s] as num?)?.toInt() ?? 0))
+                    .where((e) => e.count > 0)
+                    .toList();
+                if (entries.isEmpty) {
+                  return const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Chưa có tin báo nào.'));
+                }
+                return Row(
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 30,
+                          sections: [
+                            for (final e in entries)
+                              PieChartSectionData(
+                                value: e.count.toDouble(),
+                                color: statusColor(e.status),
+                                title: '',
+                                radius: 26,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          for (final e in entries)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(color: statusColor(e.status), shape: BoxShape.circle),
+                                ),
+                                const SizedBox(width: 6),
+                                Text('${statusLabel(e.status)} (${e.count})', style: const TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildVolumeTrend(ColorScheme colors) {
     return Card(
       child: Padding(
@@ -220,30 +300,40 @@ class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
                 }
                 final maxCount = rows.map((r) => (r['count'] as num).toDouble()).reduce((a, b) => a > b ? a : b);
                 return SizedBox(
-                  height: 120,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      for (final row in rows)
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: Tooltip(
-                              message: '${_formatBucketDate(row['date'] as String)}: ${row['count']}',
-                              child: FractionallySizedBox(
-                                heightFactor: maxCount == 0 ? 0 : (row['count'] as num) / maxCount,
-                                alignment: Alignment.bottomCenter,
-                                child: const DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: BaoTinOfficerTheme.gold,
-                                    borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
-                                  ),
-                                ),
-                              ),
-                            ),
+                  height: 140,
+                  child: LineChart(
+                    LineChartData(
+                      minY: 0,
+                      maxY: maxCount == 0 ? 1 : maxCount * 1.15,
+                      gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 1),
+                      titlesData: const FlTitlesData(show: false),
+                      borderData: FlBorderData(show: false),
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipItems: (spots) => spots
+                              .map((s) => LineTooltipItem(
+                                  '${_formatBucketDate(rows[s.x.toInt()]['date'] as String)}: ${rows[s.x.toInt()]['count']}',
+                                  const TextStyle(color: Colors.white, fontSize: 11)))
+                              .toList(),
+                        ),
+                      ),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: [
+                            for (var i = 0; i < rows.length; i++)
+                              FlSpot(i.toDouble(), (rows[i]['count'] as num).toDouble()),
+                          ],
+                          isCurved: true,
+                          color: BaoTinOfficerTheme.gold,
+                          barWidth: 2.5,
+                          dotData: const FlDotData(show: false),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            color: BaoTinOfficerTheme.gold.withValues(alpha: 0.12),
                           ),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
