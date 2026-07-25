@@ -64,4 +64,13 @@ class OfficerRegistrationRepository {
   Future<void> reject(String officerId) async {
     await _apiClient.dio.post('/admin/officers/$officerId/reject');
   }
+
+  /// Self-service, any role — not admin-only. officerId is taken from the JWT server-side,
+  /// never sent in the body, so this can only ever change the caller's own password.
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    await _apiClient.dio.post('/auth/officer/change-password', data: {
+      'oldPassword': oldPassword,
+      'newPassword': newPassword,
+    });
+  }
 }
