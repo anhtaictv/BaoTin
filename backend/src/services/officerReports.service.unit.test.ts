@@ -9,11 +9,15 @@ const PII_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 
 function buildService(fakePrisma: FakeOfficerPrisma) {
   const officialCaseLinkCalls: string[] = [];
-  const auditLogCalls: { officerId: string; action: string }[] = [];
+  const auditLogCalls: { officerId: string; action: string; target?: unknown; metadata?: unknown }[] = [];
   const notifyCalls: { userId: string; reportId: string; status: string }[] = [];
   const districtScope = createDistrictScopeService(fakePrisma as any);
   const officialCaseLink = { pushToOfficialCase: async (reportId: string) => { officialCaseLinkCalls.push(reportId); } };
-  const auditLog = { record: async (officerId: string, action: string) => { auditLogCalls.push({ officerId, action }); } };
+  const auditLog = {
+    record: async (officerId: string, action: string, target?: unknown, metadata?: unknown) => {
+      auditLogCalls.push({ officerId, action, target, metadata });
+    },
+  };
   const storage = { putObject: async () => {}, getPresignedGetUrl: async (key: string) => `https://minio.local/${key}` };
   const notifications = {
     notifyOfficerOfNewReport: async () => new Date(),
@@ -309,7 +313,7 @@ describe("officerReports.service — getReportDetail", () => {
     // to see identity data needs to actually be able to read it.
     expect((detail.user as any).phoneNumber).toBe("0912345678");
     expect((detail.user as any).fullName).toBe("Nguyễn Văn A");
-    expect(auditLogCalls).toEqual([{ officerId: seniorOfficerId, action: "view_identity" }]);
+    expect(auditLogCalls).toContainEqual(expect.objectContaining({ officerId: seniorOfficerId, action: "view_identity" }));
   });
 
   it("does not hide identity for a report that was never flagged anonymous, and still decrypts it", async () => {
@@ -472,5 +476,75 @@ describe("officerReports.service — updateStatus", () => {
     await service.updateStatus({ id: officerId, role: "officer" }, "r1", { status: "verifying" });
 
     expect(notifyCalls).toEqual([]);
+  });
+
+  it("locks the user on their 4th confirmed_false report, not the 3rd", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const userId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedUser({ id: userId });
+    for (let i = 0; i < 3; i++) {
+      fakePrisma.seedReport({
+        id: `old${i}`, category: null, urgency: "normal", status: "confirmed_false", source: "citizen",
+        districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null, userId,
+      });
+    }
+    fakePrisma.seedReport({
+      id: "r4", category: null, urgency: "normal", status: "verifying", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null, userId,
+    });
+
+    const { service, auditLogCalls } = buildService(fakePrisma);
+    // 3rd false report so far → not locked yet.
+    await service.updateStatus({ id: officerId, role: "officer" }, "old2", { status: "confirmed_false" });
+    expect(fakePrisma.store.users.get(userId)?.lockedAt).toBeNull();
+
+    // 4th (this one) → locked, and audit-logged.
+    await service.updateStatus({ id: officerId, role: "officer" }, "r4", { status: "confirmed_false" });
+    expect(fakePrisma.store.users.get(userId)?.lockedAt).toBeInstanceOf(Date);
+    expect(auditLogCalls).toContainEqual(
+      expect.objectContaining({ officerId, action: "auto_lock_user", target: { type: "user", id: userId } }),
+    );
+  });
+
+  it("does not lock on confirmed_true, only confirmed_false", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    const userId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedUser({ id: userId });
+    for (let i = 0; i < 4; i++) {
+      fakePrisma.seedReport({
+        id: `old${i}`, category: null, urgency: "normal", status: "confirmed_false", source: "citizen",
+        districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null, userId,
+      });
+    }
+    fakePrisma.seedReport({
+      id: "r5", category: "khac", urgency: "normal", status: "verifying", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null, userId,
+    });
+
+    const { service } = buildService(fakePrisma);
+    await service.updateStatus({ id: officerId, role: "officer" }, "r5", { status: "confirmed_true" });
+    expect(fakePrisma.store.users.get(userId)?.lockedAt).toBeNull();
+  });
+
+  it("does not crash or lock when the report has no associated user", async () => {
+    const fakePrisma = createFakeOfficerPrisma();
+    const officerId = randomUUID();
+    const districtId = randomUUID();
+    fakePrisma.seedAssignment({ officerId, districtId, isActive: true });
+    fakePrisma.seedReport({
+      id: "r1", category: null, urgency: "normal", status: "pending", source: "citizen",
+      districtId, createdAt: new Date(), verifiedAt: null, responseTimeSeconds: null, userId: null,
+    });
+
+    const { service } = buildService(fakePrisma);
+    await expect(
+      service.updateStatus({ id: officerId, role: "officer" }, "r1", { status: "confirmed_false" }),
+    ).resolves.toMatchObject({ status: "confirmed_false" });
   });
 });
