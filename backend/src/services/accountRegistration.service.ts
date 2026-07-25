@@ -124,6 +124,24 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     return deps.authService.issueTokenPair({ subjectType: "user", userId: user.id, role: "citizen" });
   }
 
+  /** Self-service — same shape as changeOfficerPassword below, targeting users.password_hash
+   * instead. Deliberately doesn't check lockedAt: a citizen auto-locked for repeated false
+   * reports (officerReports.service.ts) can still manage their own account, the lock only
+   * blocks new normal report submissions (reportLifecycle.service.ts). */
+  async function changeCitizenPassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const user = await deps.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.passwordHash) {
+      throw new HttpError(409, "NO_PASSWORD_SET", "Tài khoản chưa có mật khẩu đăng nhập (chỉ dùng OTP).");
+    }
+    if (!(await verifyPassword(oldPassword, user.passwordHash))) {
+      throw new HttpError(401, "INVALID_CREDENTIALS", "Mật khẩu hiện tại không đúng.");
+    }
+    await deps.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await hashPassword(newPassword) },
+    });
+  }
+
   async function registerOfficer(input: PersonalInfoInput): Promise<{ pending: true }> {
     const phoneHash = hashPhoneNumber(input.phoneNumber, deps.phoneBlindIndexKey);
     const existing = await deps.prisma.officer.findUnique({ where: { phoneHash } });
@@ -278,6 +296,7 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
   return {
     registerCitizen,
     loginCitizen,
+    changeCitizenPassword,
     registerOfficer,
     loginOfficer,
     changeOfficerPassword,
