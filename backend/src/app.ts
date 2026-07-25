@@ -32,6 +32,9 @@ export interface AppRouters {
   registrationRouter?: Router;
   /** Admin approval for self-registered officer accounts — mounted at "/admin/officers". */
   officerApprovalRouter?: Router;
+  /** Admin unlock for citizen accounts auto-locked after repeated false reports — mounted
+   * at "/admin/citizens". */
+  adminCitizensRouter?: Router;
   /** Detector worker ingestion (X-Detector-Api-Key, not a user JWT) — mounted at
    * "/detections/traffic-accidents". */
   trafficAccidentIngestRouter?: Router;
@@ -65,6 +68,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.officerApprovalRouter) {
     app.use("/admin/officers", routers.officerApprovalRouter);
+  }
+  if (routers.adminCitizensRouter) {
+    app.use("/admin/citizens", routers.adminCitizensRouter);
   }
   if (routers.citizenReportsRouter) {
     app.use("/reports", routers.citizenReportsRouter);

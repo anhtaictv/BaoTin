@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { createAccountRegistrationService } from "./accountRegistration.service.js";
 import { hashPhoneNumber } from "../crypto/phoneBlindIndex.js";
+import { encryptField } from "../crypto/aesGcm.js";
 
 const PII_KEY = randomBytes(32).toString("base64");
 const PHONE_KEY = randomBytes(32).toString("base64");
@@ -18,14 +19,24 @@ function fakePrisma() {
   const officers = new Map<string, any>();
   const districts = new Map<string, any>();
   const assignments = new Map<string, any>();
+  const reports = new Map<string, any>();
   const auditLogRows: any[] = [];
   return {
-    store: { users, officers, districts, assignments, auditLogRows },
+    store: { users, officers, districts, assignments, reports, auditLogRows },
+    seedReport(report: { id: string; userId: string; source: string; status: string }) {
+      reports.set(report.id, report);
+    },
     user: {
       async findUnique({ where }: any) {
         if (where.username) return [...users.values()].find((u) => u.username === where.username) ?? null;
         if (where.phoneHash) return [...users.values()].find((u) => u.phoneHash === where.phoneHash) ?? null;
         return users.get(where.id) ?? null;
+      },
+      async findMany({ where, orderBy }: any) {
+        const filterLocked = where?.lockedAt && "not" in where.lockedAt;
+        let results = [...users.values()].filter((u) => !filterLocked || u.lockedAt != null);
+        if (orderBy?.lockedAt === "desc") results.sort((a, b) => b.lockedAt.getTime() - a.lockedAt.getTime());
+        return results;
       },
       async create({ data }: any) {
         const row = { id: randomUUID(), createdAt: new Date(), ...data };
@@ -36,6 +47,27 @@ function fakePrisma() {
         const row = users.get(where.id);
         Object.assign(row, data);
         return row;
+      },
+    },
+    report: {
+      async groupBy({ by, where }: any) {
+        const matching = [...reports.values()].filter((r) => {
+          if (where.userId?.in && !where.userId.in.includes(r.userId)) return false;
+          if (where.source && r.source !== where.source) return false;
+          if (where.status && r.status !== where.status) return false;
+          return true;
+        });
+        const counts = new Map<string, number>();
+        for (const r of matching) {
+          const key = by.map((field: string) => r[field]).join(" ");
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        return [...counts.entries()].map(([key, count]) => {
+          const values = key.split(" ");
+          const row: any = { _count: count };
+          by.forEach((field: string, i: number) => (row[field] = values[i]));
+          return row;
+        });
       },
     },
     officer: {
@@ -422,6 +454,89 @@ describe("accountRegistration.service — registerOfficer / loginOfficer / appro
     await expect(service.registerOfficer({ ...input, username: "officer_5b" })).rejects.toMatchObject({
       status: 409,
       code: "PHONE_ALREADY_REGISTERED",
+    });
+  });
+});
+
+describe("accountRegistration.service — listLockedCitizens / unlockCitizen", () => {
+  function seedLockedUser(prisma: ReturnType<typeof fakePrisma>, overrides: Partial<{ id: string; lockedAt: Date }> = {}) {
+    const id = overrides.id ?? randomUUID();
+    prisma.store.users.set(id, {
+      id,
+      username: "citizen_locked",
+      phoneNumberEnc: encryptField("0909000111", PII_KEY),
+      phoneHash: hashPhoneNumber("0909000111", PHONE_KEY),
+      fullNameEnc: encryptField("Trần Thị B", PII_KEY),
+      lockedAt: overrides.lockedAt ?? new Date(),
+      createdAt: new Date(),
+    });
+    return id;
+  }
+
+  it("lists locked citizens with a live recount of their confirmed_false reports", async () => {
+    const prisma = fakePrisma();
+    const adminId = randomUUID();
+    const userId = seedLockedUser(prisma);
+    for (let i = 0; i < 4; i++) {
+      prisma.seedReport({ id: `r${i}`, userId, source: "citizen", status: "confirmed_false" });
+    }
+    prisma.seedReport({ id: "r-other-status", userId, source: "citizen", status: "verifying" });
+    const { service } = buildService(prisma);
+
+    const result = await service.listLockedCitizens(adminId);
+
+    expect(result).toEqual([
+      {
+        id: userId,
+        username: "citizen_locked",
+        fullName: "Trần Thị B",
+        phoneNumber: "0909000111",
+        lockedAt: expect.any(Date),
+        falseReportCount: 4,
+      },
+    ]);
+    expect(prisma.store.auditLogRows).toEqual([{ officerId: adminId, action: "view_locked_citizens", target: undefined }]);
+  });
+
+  it("excludes citizens who were never locked", async () => {
+    const prisma = fakePrisma();
+    prisma.store.users.set("unlocked-1", {
+      id: "unlocked-1",
+      phoneNumberEnc: encryptField("0909000222", PII_KEY),
+      phoneHash: hashPhoneNumber("0909000222", PHONE_KEY),
+      fullNameEnc: null,
+      lockedAt: null,
+      createdAt: new Date(),
+    });
+    const { service } = buildService(prisma);
+
+    expect(await service.listLockedCitizens(randomUUID())).toEqual([]);
+  });
+
+  it("unlocks a citizen and audit-logs it", async () => {
+    const prisma = fakePrisma();
+    const adminId = randomUUID();
+    const userId = seedLockedUser(prisma);
+    const { service } = buildService(prisma);
+
+    await service.unlockCitizen(adminId, userId);
+
+    expect(prisma.store.users.get(userId).lockedAt).toBeNull();
+    expect(prisma.store.auditLogRows).toContainEqual({
+      officerId: adminId,
+      action: "unlock_citizen",
+      target: { type: "user", id: userId },
+      metadata: undefined,
+    });
+  });
+
+  it("404s unlocking a user that doesn't exist", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+
+    await expect(service.unlockCitizen(randomUUID(), randomUUID())).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
     });
   });
 });

@@ -42,6 +42,15 @@ export interface PendingOfficerSummary {
   createdAt: Date;
 }
 
+export interface LockedCitizenSummary {
+  id: string;
+  username: string | null;
+  fullName: string | null;
+  phoneNumber: string;
+  lockedAt: Date;
+  falseReportCount: number;
+}
+
 /**
  * Username/password registration+login — a NEW path that sits *alongside* the OTP flow
  * (auth.service.ts) rather than replacing it, per product decision. Citizens register and
@@ -209,6 +218,46 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     await deps.auditLog.record(adminOfficerId, "reject_officer", { type: "officer", id: officerId });
   }
 
+  /** Admin-only — same audit-log-the-view rationale as listPendingOfficers. Locked by
+   * officerReports.service.ts's lockIfRepeatedlyFalse (4th confirmed_false report); this is
+   * the only way to find *which* accounts got auto-locked, since there's no notification for
+   * it beyond the audit log. falseReportCount is a live recount, not a stored snapshot — it
+   * only ever grows (nothing un-confirms a report), so it's always >= the 4 that triggered
+   * the lock. */
+  async function listLockedCitizens(adminOfficerId: string): Promise<LockedCitizenSummary[]> {
+    await deps.auditLog.record(adminOfficerId, "view_locked_citizens");
+
+    const rows = await deps.prisma.user.findMany({
+      where: { lockedAt: { not: null } },
+      orderBy: { lockedAt: "desc" },
+    });
+    if (rows.length === 0) return [];
+
+    const falseCounts = await deps.prisma.report.groupBy({
+      by: ["userId"],
+      where: { userId: { in: rows.map((r) => r.id) }, source: "citizen", status: "confirmed_false" },
+      _count: true,
+    });
+    const falseCountByUserId = new Map(falseCounts.map((c) => [c.userId, c._count]));
+
+    return rows.map((row) => ({
+      id: row.id,
+      username: row.username,
+      fullName: row.fullNameEnc ? decryptField(row.fullNameEnc, deps.piiEncryptionKey) : null,
+      phoneNumber: decryptField(row.phoneNumberEnc, deps.piiEncryptionKey),
+      lockedAt: row.lockedAt!,
+      falseReportCount: falseCountByUserId.get(row.id) ?? 0,
+    }));
+  }
+
+  async function unlockCitizen(adminOfficerId: string, userId: string): Promise<void> {
+    const user = await deps.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new HttpError(404, "USER_NOT_FOUND", "Không tìm thấy tài khoản.");
+
+    await deps.prisma.user.update({ where: { id: userId }, data: { lockedAt: null } });
+    await deps.auditLog.record(adminOfficerId, "unlock_citizen", { type: "user", id: userId });
+  }
+
   return {
     registerCitizen,
     loginCitizen,
@@ -218,6 +267,8 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     listDistrictsForAssignment,
     approveOfficer,
     rejectOfficer,
+    listLockedCitizens,
+    unlockCitizen,
   };
 }
 
