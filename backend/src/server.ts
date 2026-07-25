@@ -57,6 +57,9 @@ import { createTrafficAccidentsController } from "./api/detections/trafficAccide
 import { createTrafficAccidentIngestRoutes } from "./api/detections/trafficAccidentIngest.routes.js";
 import { createTrafficAccidentAlertsRoutes } from "./api/officer/trafficAccidentAlerts.routes.js";
 import { createDetectorApiKeyMiddleware } from "./middleware/detectorApiKey.js";
+import { createNewsFeedService } from "./services/newsFeed.service.js";
+import { createNewsFeedController } from "./api/news/newsFeed.controller.js";
+import { createNewsFeedRoutes } from "./api/news/newsFeed.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -181,6 +184,10 @@ async function main() {
   );
   const trafficAccidentAlertsRouter = createTrafficAccidentAlertsRoutes(trafficAccidentsController, requireAuth);
 
+  const newsFeedService = createNewsFeedService();
+  const newsFeedController = createNewsFeedController(newsFeedService);
+  const newsFeedRouter = createNewsFeedRoutes(newsFeedController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -198,6 +205,7 @@ async function main() {
       officerApprovalRouter,
       trafficAccidentIngestRouter,
       trafficAccidentAlertsRouter,
+      newsFeedRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")
