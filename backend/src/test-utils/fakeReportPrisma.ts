@@ -47,15 +47,26 @@ export function createFakeReportPrisma() {
   const attachments: any[] = [];
   const statusHistory: FakeStatusHistoryRow[] = [];
   const officers: { id: string; role: string }[] = [];
+  const lockedUserIds = new Set<string>();
 
   return {
-    store: { reports, attachments, statusHistory, officers },
+    store: { reports, attachments, statusHistory, officers, lockedUserIds },
     seedOfficer(officer: { id: string; role: string }) {
       officers.push(officer);
+    },
+    /** Any userId not passed here defaults to unlocked — matches every existing test's
+     * USER_ID, which never explicitly seeds a user row. */
+    seedLockedUser(userId: string) {
+      lockedUserIds.add(userId);
     },
     officer: {
       async findMany({ where }: any) {
         return officers.filter((o) => !where?.role || o.role === where.role).map((o) => ({ id: o.id }));
+      },
+    },
+    user: {
+      async findUnique({ where }: any) {
+        return { id: where.id, lockedAt: lockedUserIds.has(where.id) ? new Date() : null };
       },
     },
     async $executeRaw(_strings: TemplateStringsArray, ...values: unknown[]) {

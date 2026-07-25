@@ -123,9 +123,36 @@ describe("reportLifecycle.service — createCitizenReport", () => {
     expect(stored?.districtId).toBeNull();
     expect(stored?.assignedOfficerId).toBeNull();
   });
+
+  it("403s a locked user trying to submit a normal report", async () => {
+    fakePrisma.seedLockedUser(USER_ID);
+    const { service } = buildService(fakePrisma);
+
+    await expect(
+      service.createCitizenReport({
+        userId: USER_ID,
+        category: "khac",
+        location: { lat: 12.66, lng: 108.05, source: "manual_pin" },
+        attachments: [],
+      }),
+    ).rejects.toMatchObject({ status: 403, code: "ACCOUNT_LOCKED" });
+  });
 });
 
 describe("reportLifecycle.service — createEmergencyReport", () => {
+  it("still lets a locked user submit an SOS report — locking never blocks the emergency path", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    fakePrisma.seedLockedUser(USER_ID);
+    const { service } = buildService(fakePrisma);
+
+    const { status } = await service.createEmergencyReport({
+      userId: USER_ID,
+      emergencyType: "chay_no",
+      location: { lat: 12.66, lng: 108.05 },
+    });
+    expect(status).toBe("pending");
+  });
+
   it("creates an emergency-urgency report with no attachments and notifies urgently", async () => {
     const fakePrisma = createFakeReportPrisma();
     const { service, notifyCalls } = buildService(fakePrisma);
