@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../auth/auth_gate.dart';
+import '../auth/change_password_screen.dart';
 import '../identity_verification/nfc_cccd_mock_screen.dart';
 
 /// Giai đoạn 4 — liên kết CCCD (mô phỏng) để tăng độ tin cậy tài khoản, giảm tin báo ảo.
@@ -59,6 +60,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               trailing: _cccdLinked
                   ? const Icon(Icons.check_circle, color: Colors.green)
                   : TextButton(onPressed: _linkCccd, child: const Text('Liên kết')),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.password_outlined),
+              title: const Text('Đổi mật khẩu'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+              ),
             ),
           ),
           const SizedBox(height: 12),
