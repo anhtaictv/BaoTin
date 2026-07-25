@@ -7,6 +7,7 @@ import 'features/emergency/sos_screen.dart';
 import 'features/status/my_reports_screen.dart';
 import 'features/area_safety/area_safety_screen.dart';
 import 'features/wanted/wanted_notices_screen.dart';
+import 'features/news/news_screen.dart';
 
 /// Adaptive shell: bottom nav + SOS dot on a phone-width screen, a left sidebar rail on a
 /// desktop-width browser (anh, 2026-07-22: a fixed phone-shaped layout on wide browsers
@@ -28,6 +29,7 @@ class _HomeShellState extends State<HomeShell> {
     MyReportsScreen(),
     AreaSafetyScreen(),
     WantedNoticesScreen(),
+    NewsScreen(),
   ];
 
   static const _destinations = [
@@ -39,6 +41,7 @@ class _HomeShellState extends State<HomeShell> {
     (icon: Icons.history, activeIcon: Icons.history, label: 'Tin của tôi'),
     (icon: Icons.map_outlined, activeIcon: Icons.map, label: 'Khu vực'),
     (icon: Icons.badge_outlined, activeIcon: Icons.badge, label: 'Truy nã'),
+    (icon: Icons.newspaper_outlined, activeIcon: Icons.newspaper, label: 'Tin tức'),
   ];
 
   void _openSos() {
@@ -75,6 +78,10 @@ class _HomeShellState extends State<HomeShell> {
     }
 
     return Scaffold(
+      // Nested per-tab Scaffolds (e.g. BaoTinScreen's TextField) already resize for the
+      // keyboard on their own; letting this outer Scaffold resize too made the Positioned
+      // bottom bar jump up/down every time the keyboard opened or closed.
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(
@@ -85,17 +92,26 @@ class _HomeShellState extends State<HomeShell> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: _BottomBar(
-              destinations: _destinations,
-              selectedIndex: _index,
-              onSelect: (i) => setState(() => _index = i),
+            // SOS shares this Stack with the bar (instead of its own Positioned anchored to
+            // the screen bottom) so it rides along with the same SafeArea inset the bar uses
+            // — previously it was offset from the raw screen edge, so on any phone with a
+            // bottom gesture inset it sat visibly lower than the other nav icons.
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _BottomBar(
+                  destinations: _destinations,
+                  selectedIndex: _index,
+                  onSelect: (i) => setState(() => _index = i),
+                ),
+                Positioned(
+                  top: 9,
+                  left: 0,
+                  right: 0,
+                  child: Center(child: _SosFab(onTap: _openSos)),
+                ),
+              ],
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 9,
-            child: Center(child: _SosFab(onTap: _openSos)),
           ),
         ],
       ),
