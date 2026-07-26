@@ -141,7 +141,19 @@ class _DetailsTab extends StatelessWidget {
                   onTap: () => _openFullPhoto(context, url),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network(url, width: 120, height: 120, fit: BoxFit.cover),
+                    child: Image.network(
+                      url,
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 120,
+                        height: 120,
+                        color: colors.surfaceContainerHighest,
+                        alignment: Alignment.center,
+                        child: Icon(Icons.broken_image_outlined, color: colors.onSurfaceVariant),
+                      ),
+                    ),
                   ),
                 );
               },
@@ -157,7 +169,13 @@ class _DetailsTab extends StatelessWidget {
       builder: (_) => Dialog(
         backgroundColor: Colors.black,
         insetPadding: const EdgeInsets.all(12),
-        child: InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
+        child: InteractiveViewer(
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
+          ),
+        ),
       ),
     );
   }

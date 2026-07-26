@@ -4,7 +4,7 @@ import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartC
 import { Badge } from '../../components/Badge';
 import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
-import { statusColor, statusLabel, urgencyColor } from '../../core/theme';
+import { categoryLabel, statusColor, statusLabel, urgencyColor } from '../../core/theme';
 import { useDistrictOptions } from '../dashboard/useDashboard';
 import { ReportDetailPane } from './ReportDetailPane';
 import { useReportList } from './useReports';
@@ -110,7 +110,7 @@ export function ReportsPage() {
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500 }}>
                           {report.urgency === 'emergency' && <span aria-label="khẩn cấp">⚠️ </span>}
-                          {report.category ?? 'Khác'}
+                          {report.category ? categoryLabel(report.category) : 'Khác'}
                         </span>
                         <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{formatDate(report.createdAt)}</span>
                       </span>
