@@ -66,7 +66,7 @@ function App() {
         />
         <Route path="account" element={<AccountPage />} />
         <Route
-          path="admin/accounts"
+          path="accounts"
           element={
             <AdminOnlyRoute>
               <AdminAccountsPage />

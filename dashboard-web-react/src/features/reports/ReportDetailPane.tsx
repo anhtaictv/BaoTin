@@ -1,7 +1,7 @@
 import { MapPin, User } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
-import { statusColor, statusLabel, urgencyColor, urgencyLabel } from '../../core/theme';
+import { categoryLabel, statusColor, statusLabel, urgencyColor, urgencyLabel } from '../../core/theme';
 import { NearbyCamerasSection } from '../cameras/NearbyCamerasSection';
 import { StatusUpdateAction } from './StatusUpdateAction';
 import { useReportDetail } from './useReports';
@@ -31,7 +31,7 @@ export function ReportDetailPane({ reportId }: { reportId: string }) {
       </div>
 
       <div>
-        <p style={{ fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-display)' }}>{(report.category as string) ?? 'Khác'}</p>
+        <p style={{ fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-display)' }}>{report.category ? categoryLabel(report.category as string) : 'Khác'}</p>
         {typeof report.description === 'string' && report.description && (
           <p style={{ marginTop: 6, color: 'var(--ink-muted)', lineHeight: 1.6, maxWidth: '65ch' }}>{report.description}</p>
         )}
