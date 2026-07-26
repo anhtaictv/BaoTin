@@ -32,6 +32,7 @@ async function buildTestApp() {
     notifyOfficerOfNewReport: async () => new Date(),
     notifyUserOfStatusChange: async () => new Date(),
     notifyOfficerOfAccidentAlert: async () => new Date(),
+    notifyOfficerOfChatMessage: async () => new Date(),
   };
   const service = createTrafficAccidentAlertsService({
     prisma: fakePrisma as any,

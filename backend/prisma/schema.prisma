@@ -77,6 +77,18 @@ enum ExtractionRequestStatus {
   @@map("extraction_request_status")
 }
 
+/// "general" = the one shared channel every officer account can read/write ("chat chung"),
+/// used to notify information across all units. "district" = one private channel per đơn vị
+/// (District) between that district's assigned officers and admin/senior_officer ("chat riêng
+/// từng đơn vị từ tài khoản admin") — access is gated in chat.service.ts via the same
+/// districtScope rules as everything else district-scoped (signals.service.ts, officerReports).
+enum ChatChannelType {
+  general
+  district
+
+  @@map("chat_channel_type")
+}
+
 /// Citizen accounts. phoneNumberEnc/fullNameEnc are AES-256-GCM ciphertext (iv:tag:ciphertext,
 /// base64-joined) — see src/crypto/aesGcm.ts. phoneHash is a deterministic HMAC-SHA256 blind
 /// index used only for equality lookup (OTP request/verify) — see docs/adr and src/crypto/phoneBlindIndex.ts.
@@ -146,6 +158,7 @@ model Officer {
   wantedNotices       WantedNotice[]
   assignedTrafficAccidentAlerts  TrafficAccidentAlert[] @relation("AssignedTrafficAccidentAlert")
   confirmedTrafficAccidentAlerts TrafficAccidentAlert[] @relation("ConfirmedTrafficAccidentAlert")
+  chatMessages        ChatMessage[]
 
   @@map("officers")
 }
@@ -214,6 +227,7 @@ model District {
   cameras               Camera[]
   emergencyContacts     EmergencyContact[]
   trafficAccidentAlerts TrafficAccidentAlert[]
+  chatMessages          ChatMessage[]
 
   @@map("districts")
 }
@@ -488,4 +502,25 @@ model CameraExtractionRequest {
   @@index([reportId])
   @@index([groupId])
   @@map("camera_extraction_requests")
+}
+
+/// Liên lạc giữa các đơn vị ("chat chung" + "chat riêng từng đơn vị từ tài khoản admin") —
+/// bottom-nav "Chat" tab in mobile-app-officer, purely for cross-unit notification/coordination.
+/// Deliberately separate from every citizen-facing table (Report, SocialMediaSignal, ...): a
+/// chat message is never evidence and never enters the report verification workflow.
+model ChatMessage {
+  id          String          @id @default(uuid())
+  channelType ChatChannelType @map("channel_type")
+  /// Null when channelType=general (the one shared channel). Required when channelType=
+  /// district — which đơn vị (District) this message belongs to.
+  districtId  String?         @map("district_id")
+  senderId    String          @map("sender_id")
+  content     String
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  sender   Officer   @relation(fields: [senderId], references: [id])
+  district District? @relation(fields: [districtId], references: [id])
+
+  @@index([channelType, districtId, createdAt])
+  @@map("chat_messages")
 }

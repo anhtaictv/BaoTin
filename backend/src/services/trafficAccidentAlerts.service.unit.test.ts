@@ -23,6 +23,7 @@ function buildService() {
       notifyCalls.push({ officerId, alertId });
       return new Date();
     },
+    notifyOfficerOfChatMessage: async () => new Date(),
   };
 
   const service = createTrafficAccidentAlertsService({

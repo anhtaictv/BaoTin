@@ -43,7 +43,30 @@ export function createNotificationService(sender: NotificationSender) {
     return sentAt;
   }
 
-  return { notifyOfficerOfNewReport, notifyUserOfStatusChange, notifyOfficerOfAccidentAlert };
+  /** Chat between đơn vị (bottom-nav "Chat" tab) — one push per other channel member, fired
+   * from chat.service.ts after the message row is persisted. `channelLabel` is already the
+   * Vietnamese display string ("Chung" or the district's tên xã) so this stays free of any
+   * lookup of its own. */
+  async function notifyOfficerOfChatMessage(
+    officerId: string,
+    senderName: string,
+    channelLabel: string,
+    preview: string,
+  ): Promise<Date> {
+    const { sentAt } = await sender.send(officerId, {
+      title: `💬 ${senderName} — ${channelLabel}`,
+      body: preview,
+      data: { channelLabel },
+    });
+    return sentAt;
+  }
+
+  return {
+    notifyOfficerOfNewReport,
+    notifyUserOfStatusChange,
+    notifyOfficerOfAccidentAlert,
+    notifyOfficerOfChatMessage,
+  };
 }
 
 export type NotificationService = ReturnType<typeof createNotificationService>;
