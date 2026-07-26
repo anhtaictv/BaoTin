@@ -62,6 +62,9 @@ import { createDetectorApiKeyMiddleware } from "./middleware/detectorApiKey.js";
 import { createNewsFeedService } from "./services/newsFeed.service.js";
 import { createNewsFeedController } from "./api/news/newsFeed.controller.js";
 import { createNewsFeedRoutes } from "./api/news/newsFeed.routes.js";
+import { createChatService } from "./services/chat.service.js";
+import { createChatController } from "./api/officer/chat.controller.js";
+import { createChatRoutes } from "./api/officer/chat.routes.js";
 import { createApp } from "./app.js";
 
 async function main() {
@@ -192,6 +195,15 @@ async function main() {
   const newsFeedController = createNewsFeedController(newsFeedService);
   const newsFeedRouter = createNewsFeedRoutes(newsFeedController, requireAuth);
 
+  const chatService = createChatService({
+    prisma,
+    districtScope,
+    notifications,
+    piiEncryptionKey: env.PII_ENCRYPTION_KEY,
+  });
+  const chatController = createChatController(chatService);
+  const chatRouter = createChatRoutes(chatController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -211,6 +223,7 @@ async function main() {
       trafficAccidentIngestRouter,
       trafficAccidentAlertsRouter,
       newsFeedRouter,
+      chatRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

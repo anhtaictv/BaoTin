@@ -9,6 +9,7 @@ import 'features/wanted/wanted_notices_screen.dart';
 import 'features/admin_menu/admin_menu_screen.dart';
 import 'features/traffic_accidents/traffic_accident_list_screen.dart';
 import 'features/news/news_screen.dart';
+import 'features/chat/chat_channel_list_screen.dart';
 
 /// Adaptive shell: bottom nav on a phone-width screen, a left sidebar on a desktop-width
 /// browser (same pattern/breakpoint as mobile-app-citizen's home_shell.dart — anh, 2026-07-22:
@@ -34,6 +35,7 @@ class _HomeShellState extends State<HomeShell> {
     ReportListScreen(historyMode: true),
     WantedNoticesScreen(),
     TrafficAccidentListScreen(),
+    ChatChannelListScreen(),
     AdminMenuScreen(),
     NewsScreen(),
   ];
@@ -57,6 +59,7 @@ class _HomeShellState extends State<HomeShell> {
       activeIcon: Icons.car_crash,
       label: 'Cảnh báo TNGT'
     ),
+    (icon: Icons.forum_outlined, activeIcon: Icons.forum, label: 'Chat'),
     (
       icon: Icons.admin_panel_settings_outlined,
       activeIcon: Icons.admin_panel_settings,
