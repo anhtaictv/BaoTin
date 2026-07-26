@@ -42,6 +42,9 @@ export interface AppRouters {
   trafficAccidentAlertsRouter?: Router;
   /** Tin tức bocongan.gov.vn — mounted at "/news". GET is any authenticated account. */
   newsFeedRouter?: Router;
+  /** Chat giữa các đơn vị (bottom-nav "Chat") — mounted at "/officer/chat". Channel-level
+   * access is enforced in chat.service.ts, not here. */
+  chatRouter?: Router;
 }
 
 export interface AppConfig {
@@ -110,6 +113,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.newsFeedRouter) {
     app.use("/news", routers.newsFeedRouter);
+  }
+  if (routers.chatRouter) {
+    app.use("/officer/chat", routers.chatRouter);
   }
 
   app.use(notFoundHandler);

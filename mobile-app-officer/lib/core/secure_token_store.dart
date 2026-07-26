@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Access/refresh tokens live in Keychain (iOS) / Keystore (Android) — never
@@ -19,6 +20,22 @@ class SecureTokenStore {
 
   Future<String?> readAccessToken() => _storage.read(key: _accessTokenKey);
   Future<String?> readRefreshToken() => _storage.read(key: _refreshTokenKey);
+
+  /// Decodes the `sub` claim out of the stored access token — display only (e.g. telling
+  /// "my" chat bubbles apart from everyone else's), never a security decision: every backend
+  /// endpoint still re-derives identity from the signature-verified JWT server-side.
+  Future<String?> readOfficerId() async {
+    final token = await readAccessToken();
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))));
+      return (payload as Map<String, dynamic>)['sub'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> clear() async {
     await _storage.delete(key: _accessTokenKey);

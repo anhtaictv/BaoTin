@@ -11,6 +11,7 @@ import '../features/analytics/admin_dashboard_repository.dart';
 import '../features/traffic_accidents/traffic_accident_repository.dart';
 import '../features/news/news_repository.dart';
 import '../features/admin_citizens/locked_citizens_repository.dart';
+import '../features/chat/chat_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -56,4 +57,8 @@ final trafficAccidentRepositoryProvider = Provider<TrafficAccidentRepository>(
 
 final newsRepositoryProvider = Provider<NewsRepository>(
   (ref) => NewsRepository(ref.watch(apiClientProvider)),
+);
+
+final chatRepositoryProvider = Provider<ChatRepository>(
+  (ref) => ChatRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
 );
