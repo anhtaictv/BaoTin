@@ -1,7 +1,7 @@
 import { Copy, Flame, Link2, Sparkles, Tag } from 'lucide-react';
 import { Badge } from '../../components/Badge';
 import { ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
-import { heatLevelColor, heatLevelLabel, statusColor, statusLabel, theme, trustLevelColor, trustLevelLabel, urgencyColor } from '../../core/theme';
+import { categoryLabel, heatLevelColor, heatLevelLabel, statusColor, statusLabel, theme, trustLevelColor, trustLevelLabel, urgencyColor } from '../../core/theme';
 import { useSignalDetail } from './useSignals';
 
 /** Ported from dashboard-web/lib/features/signals/widgets/signal_detail_pane.dart — read-only,
@@ -38,7 +38,7 @@ export function SignalDetailPane({ signalId }: { signalId: string }) {
           <InfoRow icon={<Link2 size={13} />} label="Liên kết" value={signal.sourceUrl} />
         )}
         {typeof signal.detectedCategory === 'string' && signal.detectedCategory && (
-          <InfoRow icon={<Tag size={13} />} label="Loại vụ việc" value={signal.detectedCategory} />
+          <InfoRow icon={<Tag size={13} />} label="Loại vụ việc" value={categoryLabel(signal.detectedCategory)} />
         )}
         {signal.duplicateOfId != null && (
           <InfoRow icon={<Copy size={13} />} label="Ghi chú" value="Có thể trùng với 1 tín hiệu khác đã ghi nhận" />
@@ -81,7 +81,7 @@ export function SignalDetailPane({ signalId }: { signalId: string }) {
               >
                 <span>
                   {report.urgency === 'emergency' && <span style={{ color: urgencyColor('emergency') }}>⚠️ </span>}
-                  {(report.category as string) || 'Khác'}
+                  {report.category ? categoryLabel(report.category as string) : 'Khác'}
                 </span>
                 <Badge color={statusColor(report.status as string)}>{statusLabel(report.status as string)}</Badge>
               </div>

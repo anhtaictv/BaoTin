@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { BarChart3, CircleCheckBig, Clock, FileDown, Timer, Video } from 'lucide-react';
 import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
+import { EmptyState } from '../../components/EmptyState';
 import { PageHeader } from '../../components/PageHeader';
 import { StatCard } from '../../components/StatCard';
 import { categoryLabel, statusColor, statusLabel } from '../../core/theme';
@@ -138,6 +139,8 @@ export function OverviewPage() {
             <ChartCardSkeleton />
           ) : responseTimeByDistrict.isError ? (
             <ChartCardError onRetry={() => responseTimeByDistrict.refetch()} />
+          ) : !responseTimeByDistrict.data?.some((d) => d.avgResponseTimeSeconds != null) ? (
+            <EmptyState icon={<Timer size={18} />} message="Chưa có dữ liệu phản hồi theo địa bàn." />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={responseTimeByDistrict.data}>
@@ -157,6 +160,8 @@ export function OverviewPage() {
             <ChartCardSkeleton />
           ) : responseTimeByOfficer.isError ? (
             <ChartCardError onRetry={() => responseTimeByOfficer.refetch()} />
+          ) : !responseTimeByOfficer.data?.some((d) => d.avgResponseTimeSeconds != null) ? (
+            <EmptyState icon={<Timer size={18} />} message="Chưa có dữ liệu phản hồi theo cán bộ." />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={responseTimeByOfficer.data}>
