@@ -67,7 +67,7 @@ class _SignalDetailScreenState extends ConsumerState<SignalDetailScreen> {
               if ((signal['sourceUrl'] as String?)?.isNotEmpty == true)
                 _InfoRow(icon: Icons.link, label: 'Liên kết', value: signal['sourceUrl'] as String),
               if (signal['detectedCategory'] != null)
-                _InfoRow(icon: Icons.category_outlined, label: 'Loại vụ việc', value: signal['detectedCategory'] as String),
+                _InfoRow(icon: Icons.category_outlined, label: 'Loại vụ việc', value: categoryLabel(signal['detectedCategory'] as String?)),
               if (signal['duplicateOfId'] != null)
                 const _InfoRow(
                   icon: Icons.copy_all_outlined,
@@ -121,7 +121,7 @@ class _SignalDetailScreenState extends ConsumerState<SignalDetailScreen> {
                       leading: report['urgency'] == 'emergency'
                           ? Icon(Icons.warning_amber_rounded, color: urgencyColor('emergency'))
                           : null,
-                      title: Text(report['category'] as String? ?? 'Khác'),
+                      title: Text(categoryLabel(report['category'] as String?)),
                       subtitle: Text(_formatDate(report['createdAt'] as String?)),
                       trailing: StatusBadge(status: report['status'] as String? ?? 'pending'),
                     ),

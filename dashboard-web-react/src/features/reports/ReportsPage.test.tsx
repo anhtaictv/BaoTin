@@ -29,7 +29,8 @@ const DETAIL_R1 = {
 function mockCommon() {
   vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
     if (url === '/admin/dashboard/districts') return { data: { data: [] } };
-    if (url === '/officer/reports') return { data: { data: REPORTS } };
+    if (url === '/officer/reports')
+      return { data: { data: { reports: REPORTS, page: 1, pageSize: 20, total: REPORTS.length, hasMore: false } } };
     if (url === '/officer/reports/r1') return { data: { data: DETAIL_R1 } };
     if (url === '/officer/reports/r1/nearby-cameras') return { data: { data: [] } };
     throw new Error(`unexpected GET ${url}`);

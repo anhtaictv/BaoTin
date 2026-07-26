@@ -62,7 +62,19 @@ class _TrafficAccidentDetailScreenState extends ConsumerState<TrafficAccidentDet
               if (thumbnailUrl != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.network(thumbnailUrl, fit: BoxFit.cover, height: 220, width: double.infinity),
+                  child: Image.network(
+                    thumbnailUrl,
+                    fit: BoxFit.cover,
+                    height: 220,
+                    width: double.infinity,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 220,
+                      width: double.infinity,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: Icon(Icons.broken_image_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                  ),
                 ),
               const SizedBox(height: 16),
               _InfoRow(icon: Icons.pin, label: 'Biển số phát hiện', value: plates?.isNotEmpty == true ? plates! : 'Chưa đọc được'),
