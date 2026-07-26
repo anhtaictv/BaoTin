@@ -10,7 +10,7 @@ export async function listReports(filters: ReportsFilters) {
   const res = await apiClient.get('/officer/reports', {
     params: { status: filters.status, urgency: filters.urgency, district_id: filters.districtId },
   });
-  return res.data.data as { id: string; category: string | null; status: string; urgency: string; createdAt: string }[];
+  return res.data.data.reports as { id: string; category: string | null; status: string; urgency: string; createdAt: string }[];
 }
 
 export async function getReportDetail(reportId: string) {

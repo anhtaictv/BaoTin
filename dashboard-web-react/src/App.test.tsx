@@ -40,9 +40,12 @@ function mockLoggedInAs(role: 'officer' | 'senior_officer' | 'admin') {
 
 function renderApp() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // basename must match main.tsx's <BrowserRouter basename="/admin"> — a route path defined
+  // without accounting for this basename silently renders a blank <Outlet/> in production
+  // while looking fine under a basename-less test router (caught for admin/accounts once already).
   return render(
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename="/admin">
         <AuthProvider>
           <App />
         </AuthProvider>
@@ -55,7 +58,7 @@ describe('App', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.mocked(apiClient.get).mockReset();
-    window.history.pushState({}, '', '/');
+    window.history.pushState({}, '', '/admin/');
   });
 
   it('redirects an unauthenticated visitor to the login page', async () => {
@@ -82,5 +85,18 @@ describe('App', () => {
 
     expect(await screen.findByRole('link', { name: 'Tổng quan' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Tìm kiếm' })).toBeInTheDocument();
+  });
+
+  it('renders Quản lý tài khoản for an admin at /admin/accounts (regression: basename+route path mismatch left this blank)', async () => {
+    mockLoggedInAs('admin');
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url === '/web-accounts/me') return { data: { data: { ...BASE_ACCOUNT, role: 'admin' } } };
+      if (url === '/admin/web-accounts') return { data: { data: [] } };
+      throw new Error(`unexpected GET ${url}`);
+    });
+    window.history.pushState({}, '', '/admin/accounts');
+    renderApp();
+
+    expect(await screen.findByText('Quản lý tài khoản')).toBeInTheDocument();
   });
 });
