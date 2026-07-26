@@ -42,6 +42,7 @@ async function buildTestApp(categorySuggester?: ReportCategorySuggester) {
     },
     notifyUserOfStatusChange: async () => new Date(),
     notifyOfficerOfAccidentAlert: async () => new Date(),
+    notifyOfficerOfChatMessage: async () => new Date(),
   };
 
   const reportLifecycle = createReportLifecycleService({

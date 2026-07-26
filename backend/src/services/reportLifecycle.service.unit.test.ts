@@ -41,6 +41,7 @@ function buildService(
     },
     notifyUserOfStatusChange: async () => new Date(),
     notifyOfficerOfAccidentAlert: async () => new Date(),
+    notifyOfficerOfChatMessage: async () => new Date(),
   };
 
   const service = createReportLifecycleService({
