@@ -34,7 +34,7 @@ function fakePrisma() {
       },
       async findMany({ where, orderBy }: any) {
         const filterLocked = where?.lockedAt && "not" in where.lockedAt;
-        let results = [...users.values()].filter((u) => !filterLocked || u.lockedAt != null);
+        const results = [...users.values()].filter((u) => !filterLocked || u.lockedAt != null);
         if (orderBy?.lockedAt === "desc") results.sort((a, b) => b.lockedAt.getTime() - a.lockedAt.getTime());
         return results;
       },
