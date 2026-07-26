@@ -58,7 +58,13 @@ class _WantedNoticesScreenState extends ConsumerState<WantedNoticesScreen> {
       builder: (_) => Dialog(
         backgroundColor: Colors.black,
         insetPadding: const EdgeInsets.all(12),
-        child: InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
+        child: InteractiveViewer(
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
+          ),
+        ),
       ),
     );
   }
@@ -147,7 +153,15 @@ class _WantedNoticesScreenState extends ConsumerState<WantedNoticesScreen> {
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(url, fit: BoxFit.cover),
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: colors.surfaceContainerHighest,
+                              alignment: Alignment.center,
+                              child: Icon(Icons.broken_image_outlined, color: colors.onSurfaceVariant),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
