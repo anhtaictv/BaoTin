@@ -1,0 +1,37 @@
+name: Promote officer role (production)
+
+# Manual only, same self-hosted runner as deploy-windows.yml / seed-demo-data.yml. Never takes
+# a password as input — only a username to promote and (optionally) a phone number to demote —
+# so no credential ever appears in a workflow run or git history.
+on:
+  workflow_dispatch:
+    inputs:
+      promote_username:
+        description: "Officer username to promote to role=admin"
+        required: true
+      demote_phone:
+        description: "Phone number of an officer to demote to role=officer (optional)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-windows
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: [self-hosted, baotin-vps]
+    environment: production
+    steps:
+      - name: Run promote-officer-role
+        shell: powershell
+        env:
+          PROMOTE_USERNAME: ${{ github.event.inputs.promote_username }}
+          DEMOTE_PHONE: ${{ github.event.inputs.demote_phone }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:Path = "C:\node20;$env:Path"
+          Set-Location C:\baotin\backend
+          node --env-file=.env dist\scripts\promote-officer-role.js
