@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,12 +36,22 @@ class LocationResolver {
     return resolveFromDevice();
   }
 
+  /// Bounded so the SOS path (CLAUDE.md: must prioritize speed/stability above all else) never
+  /// hangs indefinitely on weak GPS signal — falls back to the device's last known fix, which is
+  /// still useful for routing an officer, rather than blocking the emergency send forever.
   Future<ResolvedLocation?> resolveFromDevice() async {
     if (!await _ensureLocationPermission()) return null;
-    final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-    return ResolvedLocation(lat: position.latitude, lng: position.longitude, source: 'device_gps');
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 8),
+      );
+      return ResolvedLocation(lat: position.latitude, lng: position.longitude, source: 'device_gps');
+    } on TimeoutException {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last == null) return null;
+      return ResolvedLocation(lat: last.latitude, lng: last.longitude, source: 'device_gps');
+    }
   }
 
   Future<bool> _ensureLocationPermission() async {

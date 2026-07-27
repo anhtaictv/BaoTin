@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../core/AuthContext';
 import { apiClient } from '../../core/apiClient';
+import { tokenStore } from '../../core/tokenStore';
 import { AccountPage } from './AccountPage';
 
 vi.mock('../../core/apiClient', () => ({
@@ -24,8 +25,7 @@ describe('AccountPage', () => {
   beforeEach(() => {
     vi.mocked(apiClient.get).mockReset();
     vi.mocked(apiClient.patch).mockReset();
-    localStorage.setItem('bao_tin_dashboard_access_token', 'access-1');
-    localStorage.setItem('bao_tin_dashboard_refresh_token', 'refresh-1');
+    tokenStore.saveTokens('access-1', 'refresh-1');
   });
 
   it('shows the account info read-only fields', async () => {

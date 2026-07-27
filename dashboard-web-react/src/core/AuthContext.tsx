@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { apiClient, setOnSessionExpired } from './apiClient';
+import { apiClient, refreshAccessToken, setOnSessionExpired } from './apiClient';
 import { tokenStore } from './tokenStore';
 
 export interface District {
@@ -47,9 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      // The access token lives in memory only (see tokenStore.ts), so it's always gone after a
+      // reload — exchange the persisted refresh token for a new one before deciding the user is
+      // logged out.
       if (!tokenStore.readAccessToken()) {
-        setLoading(false);
-        return;
+        if (!tokenStore.readRefreshToken()) {
+          setLoading(false);
+          return;
+        }
+        try {
+          await refreshAccessToken();
+        } catch {
+          tokenStore.clear();
+          setLoading(false);
+          return;
+        }
       }
       try {
         setAccount(await fetchMyAccount());

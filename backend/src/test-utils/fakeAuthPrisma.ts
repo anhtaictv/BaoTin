@@ -66,6 +66,15 @@ export function createFakeAuthPrisma() {
         if ("consumedAt" in data) row.consumedAt = data.consumedAt;
         return row;
       },
+      async updateMany({ where, data }: any) {
+        const row = otpChallenges.get(where.id);
+        if (!row) return { count: 0 };
+        if (where.attemptCount?.lt !== undefined && !(row.attemptCount < where.attemptCount.lt)) {
+          return { count: 0 };
+        }
+        if (data.attemptCount?.increment) row.attemptCount += data.attemptCount.increment;
+        return { count: 1 };
+      },
     },
     refreshToken: {
       async create({ data }: any) {
@@ -82,6 +91,12 @@ export function createFakeAuthPrisma() {
         return row;
       },
       async updateMany({ where, data }: any) {
+        if (where.id) {
+          const row = refreshTokens.get(where.id);
+          if (!row || (where.revokedAt === null && row.revokedAt !== null)) return { count: 0 };
+          Object.assign(row, data);
+          return { count: 1 };
+        }
         let count = 0;
         for (const row of refreshTokens.values()) {
           const matchesSubject = where.userId ? row.userId === where.userId : row.officerId === where.officerId;

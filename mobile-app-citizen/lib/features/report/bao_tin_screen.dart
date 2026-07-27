@@ -59,6 +59,7 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
     final photo = await ref.read(cameraGpsCaptureProvider).captureFromCamera();
     if (photo == null) return;
     final bytes = await photo.readAsBytes();
+    if (!mounted) return;
     setState(() {
       _photoBytes = bytes;
       _photoFilename = photo.name;

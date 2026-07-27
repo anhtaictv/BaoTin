@@ -62,6 +62,11 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
   bool _isLoadingMore = false;
   bool _hasError = false;
 
+  // Bumped on every _loadInitial (filter change or pull-to-refresh) so a response for a
+  // superseded query — reordered by the network, e.g. two filter chips tapped in quick
+  // succession — can't overwrite results for the filter that's actually selected now.
+  int _requestId = 0;
+
   @override
   void initState() {
     super.initState();
@@ -100,13 +105,15 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
   }
 
   Future<void> _loadInitial() async {
+    final requestId = ++_requestId;
     setState(() {
       _isLoadingInitial = true;
+      _isLoadingMore = false;
       _hasError = false;
     });
     try {
       final result = await _fetchPage(1);
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _reports = result.reports;
         _hasMore = result.hasMore;
@@ -114,7 +121,7 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
         _isLoadingInitial = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _hasError = true;
         _isLoadingInitial = false;
@@ -123,11 +130,12 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
   }
 
   Future<void> _loadMore() async {
+    final requestId = _requestId;
     setState(() => _isLoadingMore = true);
     try {
       final nextPage = _page + 1;
       final result = await _fetchPage(nextPage);
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() {
         _reports = [..._reports, ...result.reports];
         _hasMore = result.hasMore;
@@ -137,7 +145,7 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
     } catch (_) {
       // Load-more failing silently keeps the already-loaded list intact — the next scroll
       // tick or pull-to-refresh retries; no need to nag with a SnackBar for a background fetch.
-      if (!mounted) return;
+      if (!mounted || requestId != _requestId) return;
       setState(() => _isLoadingMore = false);
     }
   }

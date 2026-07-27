@@ -1,16 +1,22 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './core/AuthContext';
 import { canAccessDashboard, defaultRouteForRole } from './core/theme';
-import { LoginPage } from './features/auth/LoginPage';
 import { ChangePasswordGate } from './features/auth/ChangePasswordGate';
-import { AccountPage } from './features/accounts/AccountPage';
-import { AdminAccountsPage } from './features/accounts/AdminAccountsPage';
-import { OverviewPage } from './features/dashboard/OverviewPage';
-import { ReportsPage } from './features/reports/ReportsPage';
-import { SignalsPage } from './features/signals/SignalsPage';
-import { SearchPage } from './features/search/SearchPage';
 import { AppLayout } from './layout/AppLayout';
+
+// Route-level code splitting: OverviewPage alone pulls in recharts + leaflet (react-leaflet),
+// which used to ship in the single ~1.5MB main bundle even for an officer who only ever opens
+// /reports — every page below now loads its JS on first visit instead of on every login.
+const LoginPage = lazy(() => import('./features/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const AccountPage = lazy(() => import('./features/accounts/AccountPage').then((m) => ({ default: m.AccountPage })));
+const AdminAccountsPage = lazy(() =>
+  import('./features/accounts/AdminAccountsPage').then((m) => ({ default: m.AdminAccountsPage })),
+);
+const OverviewPage = lazy(() => import('./features/dashboard/OverviewPage').then((m) => ({ default: m.OverviewPage })));
+const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const SignalsPage = lazy(() => import('./features/signals/SignalsPage').then((m) => ({ default: m.SignalsPage })));
+const SearchPage = lazy(() => import('./features/search/SearchPage').then((m) => ({ default: m.SearchPage })));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { account, loading } = useAuth();
@@ -37,7 +43,14 @@ function DashboardOnlyRoute({ children }: { children: ReactNode }) {
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/login"
+        element={
+          <Suspense fallback={<p>Đang tải...</p>}>
+            <LoginPage />
+          </Suspense>
+        }
+      />
       <Route
         path="/*"
         element={
