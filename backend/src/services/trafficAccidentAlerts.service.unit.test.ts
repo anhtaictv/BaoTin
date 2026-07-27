@@ -15,6 +15,7 @@ function buildService() {
       storedObjects.push({ key, mimetype });
     },
     getPresignedGetUrl: async (key: string) => `https://minio.local/${key}`,
+    removeObject: async () => {},
   };
   const notifications = {
     notifyOfficerOfNewReport: async () => new Date(),

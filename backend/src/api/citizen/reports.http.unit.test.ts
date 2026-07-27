@@ -34,6 +34,7 @@ async function buildTestApp(categorySuggester?: ReportCategorySuggester) {
   const storage: StorageClient = {
     putObject: async () => {},
     getPresignedGetUrl: async (key) => `https://minio.local/${key}`,
+    removeObject: async () => {},
   };
   const notifications: NotificationService = {
     notifyOfficerOfNewReport: async (o, r, u) => {

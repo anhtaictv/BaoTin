@@ -33,6 +33,7 @@ function buildService(
       putObjectCalls.push({ key, mimetype });
     },
     getPresignedGetUrl: async (key) => `https://minio.local/${key}`,
+    removeObject: async () => {},
   };
   const notifications: NotificationService = {
     notifyOfficerOfNewReport: async (officerId, reportId, urgent) => {

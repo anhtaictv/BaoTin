@@ -20,6 +20,7 @@ class WantedNoticesScreen extends ConsumerStatefulWidget {
 class _WantedNoticesScreenState extends ConsumerState<WantedNoticesScreen> {
   late Future<List<Map<String, dynamic>>> _future;
   bool _uploading = false;
+  String? _busyNoticeId;
 
   @override
   void initState() {
@@ -49,6 +50,78 @@ class _WantedNoticesScreenState extends ConsumerState<WantedNoticesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _editNotice(String id) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Chụp ảnh mới'),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Chọn ảnh mới từ thư viện'),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final photo = await ImagePicker().pickImage(source: source);
+    if (photo == null) return;
+    final bytes = await photo.readAsBytes();
+
+    setState(() => _busyNoticeId = id);
+    try {
+      await ref.read(wantedNoticesRepositoryProvider).update(id: id, bytes: bytes, filename: photo.name);
+      if (!mounted) return;
+      _refresh();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message = e.response?.statusCode == 403
+          ? 'Chỉ quản trị viên mới được sửa lệnh truy nã.'
+          : 'Sửa lệnh truy nã thất bại, thử lại sau.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _busyNoticeId = null);
+    }
+  }
+
+  Future<void> _deleteNotice(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Xóa lệnh truy nã?'),
+        content: const Text('Ảnh sẽ bị xóa vĩnh viễn, không thể khôi phục.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Xóa')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _busyNoticeId = id);
+    try {
+      await ref.read(wantedNoticesRepositoryProvider).delete(id);
+      if (!mounted) return;
+      _refresh();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final message = e.response?.statusCode == 403
+          ? 'Chỉ quản trị viên mới được xóa lệnh truy nã.'
+          : 'Xóa lệnh truy nã thất bại, thử lại sau.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _busyNoticeId = null);
     }
   }
 
@@ -143,39 +216,91 @@ class _WantedNoticesScreenState extends ConsumerState<WantedNoticesScreen> {
               itemCount: notices.length,
               itemBuilder: (context, index) {
                 final notice = notices[index];
+                final id = notice['id'] as String;
                 final url = notice['photoUrl'] as String;
-                return InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _openFullPhoto(url),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: colors.surfaceContainerHighest,
-                              alignment: Alignment.center,
-                              child: Icon(Icons.broken_image_outlined, color: colors.onSurfaceVariant),
+                final busy = _busyNoticeId == id;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: busy ? null : () => _openFullPhoto(url),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  url,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: colors.surfaceContainerHighest,
+                                    alignment: Alignment.center,
+                                    child: Icon(Icons.broken_image_outlined, color: colors.onSurfaceVariant),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          // Always visible — same "backend enforces via 403" convention as the
+                          // FAB above; a non-admin tapping these gets a clear snackbar instead.
+                          if (busy)
+                            const Positioned.fill(
+                              child: ColoredBox(
+                                color: Colors.black26,
+                                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                            )
+                          else
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Row(
+                                children: [
+                                  _TileIconButton(icon: Icons.edit_outlined, onTap: () => _editNotice(id)),
+                                  const SizedBox(width: 4),
+                                  _TileIconButton(icon: Icons.delete_outline, onTap: () => _deleteNotice(id)),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDate(notice['createdAt'] as String?),
-                        style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatDate(notice['createdAt'] as String?),
+                      style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 );
               },
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _TileIconButton extends StatelessWidget {
+  const _TileIconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black45,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, color: Colors.white, size: 16),
         ),
       ),
     );

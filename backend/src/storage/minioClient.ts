@@ -57,7 +57,11 @@ export function createStorageClient(config: MinioConfig) {
     return presigningClient.presignedGetObject(config.bucket, key, config.presignedUrlTtlSeconds);
   }
 
-  return { putObject, getPresignedGetUrl };
+  async function removeObject(key: string): Promise<void> {
+    await client.removeObject(config.bucket, key);
+  }
+
+  return { putObject, getPresignedGetUrl, removeObject };
 }
 
 export type StorageClient = ReturnType<typeof createStorageClient>;
