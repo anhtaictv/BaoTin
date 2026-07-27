@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.18.0 · dashboard-web-react 0.3.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.10.0+12 · mobile-app-citizen 1.9.0+12`
+`Phiên bản hiện tại: backend 1.22.0 · dashboard-web-react 0.3.1 · dashboard-web 1.6.1+6 · mobile-app-officer 1.13.0+17 · mobile-app-citizen 1.9.1+13`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
@@ -54,8 +54,8 @@ lý; Báo Tin là phản ứng tức thời, tại chỗ, cấp cơ sở.
 
 - **Database:** PostgreSQL + PostGIS · **Object storage:** MinIO (chỉ lưu path trong Postgres)
 - **Backend:** Node.js + TypeScript + Express, Prisma ORM, Zod, JWT RS256 + refresh rotation, vitest
-- **3 app Flutter riêng biệt, versioned độc lập, dùng chung backend:** `mobile-app-citizen` (người dân), `mobile-app-officer` (cán bộ phụ trách địa bàn, biểu đồ thống kê dùng `fl_chart`), `dashboard-web` (admin/senior_officer, chạy trình duyệt) — Riverpod, Dio, flutter_secure_storage, flutter_map/OpenStreetMap
-- **`dashboard-web-react`:** phiên bản React song song của web quản lý, dùng chung backend/database — Vite + React + TypeScript, react-router-dom, @tanstack/react-query, axios, recharts. Đăng nhập bằng tài khoản username/password riêng (102 xã/phường) thay vì OTP.
+- **3 app Flutter riêng biệt, versioned độc lập, dùng chung backend:** `mobile-app-citizen` (người dân), `mobile-app-officer` (cán bộ phụ trách địa bàn **và** admin/senior_officer — từ v1.20 đã gộp đủ mọi màn quản trị: thống kê, duyệt/quản lý tài khoản, trợ lý tìm kiếm, chat liên đơn vị — nên admin không bắt buộc phải dùng `dashboard-web-react` nữa), `dashboard-web` (bản Flutter Web cũ hơn, vẫn chạy song song) — Riverpod, Dio, flutter_secure_storage, flutter_map/OpenStreetMap
+- **`dashboard-web-react`:** phiên bản React của web quản lý, dùng chung backend/database — Vite + React + TypeScript, react-router-dom, @tanstack/react-query, axios, recharts. Đăng nhập bằng tài khoản username/password riêng (102 xã/phường) thay vì OTP. Vẫn giữ song song, không bắt buộc sau khi `mobile-app-officer` đạt parity.
 - **AI hỗ trợ (tùy chọn, opt-in):** [Ollama](https://ollama.com) chạy local — tóm tắt tin MXH, lọc liên quan, gộp trùng ngữ nghĩa, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên. Tắt hoàn toàn nếu không cấu hình `LLM_PROVIDER=ollama`.
 
 ## Cấu trúc
@@ -82,8 +82,9 @@ cp ../infra/.env.example .env   # rồi điền giá trị thật (không commit
 
 ```bash
 npx tsc --noEmit         # kiểm tra type
-npx vitest run           # 315+ test: crypto, validation, geo-matching, auth/report/officer/
-                          # camera/dashboard/signals/search/web-account service logic + HTTP wiring
+npx vitest run           # 735+ test: crypto, validation, geo-matching, auth/report/officer/
+                          # camera/dashboard/signals/search/web-account/wanted-notice/traffic-
+                          # accident service logic + HTTP wiring + seed-data specs
 ```
 
 Đầy đủ (cần Docker): `docker compose -f infra/docker-compose.yml up -d` → `cd backend && npx prisma db push && npm run seed` → chạy lại `npx vitest run` để test chạm DB/MinIO thật. Seed cũng in ra danh sách tài khoản username/password tạm cho 102 xã (`dashboard-web-react`).
@@ -132,6 +133,10 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.16** | Tab "TK bị khóa" mới cho admin trong app cán bộ — xem danh sách tài khoản dân bị tự động khóa (kèm số tin báo bị xác nhận sai) và mở khóa trực tiếp, không cần sửa DB nữa |
 | **v1.17** | Gộp 3 tab admin-only (Thống kê, Duyệt TK, TK bị khóa) vào 1 mục "Quản trị" trong app cán bộ — bottom nav từ 10 tab rút còn 8, không đổi màu sắc/giao diện; thêm chức năng đổi mật khẩu tự phục vụ cho mọi tài khoản cán bộ (không chỉ admin) |
 | **v1.18** | Thêm chức năng đổi mật khẩu tự phục vụ cho app người dân (mục "Hồ sơ") — cùng cơ chế với officer ở v1.17, hoạt động cả với tài khoản đang bị khóa do báo tin sai (khóa chỉ chặn gửi tin thường, không chặn quản lý tài khoản) |
+| **v1.19** | Chat nội bộ liên đơn vị cho cán bộ — kênh chung toàn hệ thống + kênh riêng từng đơn vị (không phải chat với dân, vẫn dừng ở thông báo 1 chiều như v1.6 cho phía người dân) |
+| **v1.20** | Gộp trang quản lý admin vào `mobile-app-officer`: port Trợ lý tìm kiếm (AI cục bộ) và Quản lý tài khoản (102 xã, `web_accounts`) sang app cán bộ, hỗ trợ đăng nhập cả 3 loại tài khoản (OTP/tự đăng ký/admin cấp sẵn) — admin không còn bắt buộc dùng `dashboard-web-react`; vá lỗi layout Row bị vỡ do `FilledButtonTheme`/`OutlinedButtonTheme` ép chiều rộng nút tối thiểu = vô hạn (dùng cho nút full-width như "Đăng nhập") khi đặt cạnh ô nhập trong cùng hàng |
+| **v1.21** | Dữ liệu demo mới: 8 tài khoản cán bộ hoạt động + 4 tài khoản chờ duyệt trải khắp vùng Phú Yên cũ (sáp nhập vào Đắk Lắk 2025) để demo geo-matching/duyệt tài khoản toàn tỉnh; 5 tin cảnh báo tai nạn giao thông demo (đủ 3 trạng thái); 1 tài khoản dân demo bị khóa tự động sau 4 tin báo sai — đi qua đúng luồng thật (reportLifecycle + auto-lock), không chèn thẳng vào DB |
+| **v1.22** | Thêm sửa (thay ảnh) và xóa cho "Lệnh truy nã" (trước chỉ đăng được, không sửa/xóa được) — admin-only, tự dọn ảnh cũ khỏi MinIO khi thay/xóa |
 
 ## Những gì còn thiếu / cố ý chưa làm
 
