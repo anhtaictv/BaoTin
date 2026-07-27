@@ -6,7 +6,7 @@ Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán b�
 tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
 thông thường.
 
-`Phiên bản hiện tại: backend 1.22.0 · dashboard-web-react 0.3.1 · dashboard-web 1.6.1+6 · mobile-app-officer 1.13.0+17 · mobile-app-citizen 1.9.1+13`
+`Phiên bản hiện tại: backend 1.22.1 · dashboard-web-react 0.3.1 · dashboard-web 1.6.1+6 · mobile-app-officer 1.13.0+17 · mobile-app-citizen 1.9.1+13`
 
 > Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
 > ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
