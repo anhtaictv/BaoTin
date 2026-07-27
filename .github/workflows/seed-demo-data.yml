@@ -36,3 +36,19 @@ jobs:
           $env:Path = "C:\node20;$env:Path"
           Set-Location C:\baotin\backend
           node --env-file=.env dist\prisma\seed\run-seed-demo-reports.js
+
+      - name: Run traffic-accidents seed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:Path = "C:\node20;$env:Path"
+          Set-Location C:\baotin\backend
+          node --env-file=.env dist\prisma\seed\run-seed-traffic-accidents.js
+
+      - name: Run locked-citizen seed
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:Path = "C:\node20;$env:Path"
+          Set-Location C:\baotin\backend
+          node --env-file=.env dist\prisma\seed\run-seed-locked-citizen.js
