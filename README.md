@@ -1,4 +1,8 @@
-# 🛡️ Báo Tin
+<p align="center">
+  <img src="landing/logo.png" alt="Báo Tin" width="160">
+</p>
+
+# Báo Tin
 
 **Hệ thống tiếp nhận & xử lý tin báo an ninh trật tự cấp cơ sở**
 
