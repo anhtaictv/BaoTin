@@ -23,8 +23,16 @@ class ApiClient {
         },
         onError: (error, handler) async {
           final isUnauthorized = error.response?.statusCode == 401;
+          final hadToken = error.requestOptions.headers['Authorization'] != null;
           final alreadyRetried = error.requestOptions.extra['retried'] == true;
-          if (isUnauthorized && !alreadyRetried) {
+          // A 401 with no Authorization header on the original request (any login flow, OTP
+          // verify, register...) can only mean wrong credentials, never an expired session —
+          // attempting a refresh here fails immediately (no refresh token yet) and replaces the
+          // real INVALID_CREDENTIALS/APPROVAL_PENDING response with a bare
+          // SessionExpiredException that has no `response`, which the login screens then show
+          // as "can't connect to server" instead of the real error. Only authenticated calls
+          // (a real token was sent) are eligible for refresh-and-retry.
+          if (isUnauthorized && hadToken && !alreadyRetried) {
             try {
               // The refresh token rotates server-side (single-use — old one invalidated the
               // instant a new one is issued, see backend auth.service.ts rotateRefreshToken).

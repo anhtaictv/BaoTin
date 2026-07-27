@@ -26,8 +26,16 @@ class ApiClient {
         },
         onError: (error, handler) async {
           final isUnauthorized = error.response?.statusCode == 401;
+          final hadToken = error.requestOptions.headers['Authorization'] != null;
           final alreadyRetried = error.requestOptions.extra['retried'] == true;
-          if (isUnauthorized && !alreadyRetried) {
+          // A 401 with no Authorization header on the original request (login, OTP verify,
+          // register...) can only mean wrong credentials, never an expired session — attempting
+          // a refresh here fails immediately (no refresh token yet) and replaces the real
+          // INVALID_CREDENTIALS response with a bare SessionExpiredException that has no
+          // `response`, which login_screen.dart then shows as "can't connect to server"
+          // instead of "wrong password". Only authenticated calls (a real token was sent) are
+          // eligible for refresh-and-retry.
+          if (isUnauthorized && hadToken && !alreadyRetried) {
             try {
               await _refreshAccessToken();
               final retryOptions = error.requestOptions..extra['retried'] = true;

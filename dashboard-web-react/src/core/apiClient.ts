@@ -38,9 +38,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const isUnauthorized = error.response?.status === 401;
+    const hadToken = Boolean(error.config?.headers?.Authorization);
     const alreadyRetried = error.config?.__retried === true;
 
-    if (isUnauthorized && !alreadyRetried) {
+    // A 401 with no Authorization header on the original request (login itself) can only mean
+    // wrong credentials, never an expired session — attempting a refresh here fails immediately
+    // (no refresh token yet) and replaces the real INVALID_CREDENTIALS response with a bare
+    // SessionExpiredError, masking the actual error. Only authenticated calls are eligible for
+    // refresh-and-retry.
+    if (isUnauthorized && hadToken && !alreadyRetried) {
       try {
         await refreshAccessToken();
         error.config.__retried = true;
