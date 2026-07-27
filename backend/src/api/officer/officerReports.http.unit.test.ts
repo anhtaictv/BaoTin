@@ -23,7 +23,11 @@ async function buildTestApp() {
   const districtScope = createDistrictScopeService(fakePrisma as any);
   const officialCaseLink = { pushToOfficialCase: async () => {} };
   const auditLog = { record: async () => {} };
-  const storage = { putObject: async () => {}, getPresignedGetUrl: async (key: string) => `https://minio.local/${key}` };
+  const storage = {
+    putObject: async () => {},
+    getPresignedGetUrl: async (key: string) => `https://minio.local/${key}`,
+    removeObject: async () => {},
+  };
   const notifications = {
     notifyOfficerOfNewReport: async () => new Date(),
     notifyUserOfStatusChange: async () => new Date(),

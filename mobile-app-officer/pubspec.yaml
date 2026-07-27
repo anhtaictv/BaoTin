@@ -1,7 +1,7 @@
 name: bao_tin_officer
 description: "Báo Tin — ứng dụng cho cán bộ phụ trách địa bàn."
 publish_to: "none"
-version: 1.12.1+16
+version: 1.13.0+17
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

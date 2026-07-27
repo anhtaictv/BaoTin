@@ -18,7 +18,11 @@ function buildService(fakePrisma: FakeOfficerPrisma) {
       auditLogCalls.push({ officerId, action, target, metadata });
     },
   };
-  const storage = { putObject: async () => {}, getPresignedGetUrl: async (key: string) => `https://minio.local/${key}` };
+  const storage = {
+    putObject: async () => {},
+    getPresignedGetUrl: async (key: string) => `https://minio.local/${key}`,
+    removeObject: async () => {},
+  };
   const notifications = {
     notifyOfficerOfNewReport: async () => new Date(),
     notifyUserOfStatusChange: async (userId: string, reportId: string, status: string) => {

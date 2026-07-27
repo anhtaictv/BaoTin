@@ -19,6 +19,9 @@ function fakeStorage() {
     async getPresignedGetUrl(key) {
       return `https://minio.example/${key}?presigned=1`;
     },
+    async removeObject(key) {
+      objects.delete(key);
+    },
   };
   return { storage, objects };
 }
@@ -31,10 +34,25 @@ function fakePrisma() {
       async findMany() {
         return [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       },
+      async findUnique({ where: { id } }: { where: { id: string } }) {
+        return rows.find((r) => r.id === id) ?? null;
+      },
       async create({ data }: { data: { photoUrl: string; postedById: string } }) {
         clockMs += 1;
         const row = { id: randomUUID(), createdAt: new Date(clockMs), ...data };
         rows.push(row);
+        return row;
+      },
+      async update({ where: { id }, data }: { where: { id: string }; data: { photoUrl: string } }) {
+        const row = rows.find((r) => r.id === id);
+        if (!row) throw new Error("not found");
+        row.photoUrl = data.photoUrl;
+        return row;
+      },
+      async delete({ where: { id } }: { where: { id: string } }) {
+        const index = rows.findIndex((r) => r.id === id);
+        if (index === -1) throw new Error("not found");
+        const [row] = rows.splice(index, 1);
         return row;
       },
     },
@@ -86,5 +104,60 @@ describe("wantedNotices.service", () => {
 
     const list = await service.list();
     expect(list.map((n) => n.id)).toEqual([second.id, first.id]);
+  });
+
+  it("update() replaces the photo and removes the old object from storage", async () => {
+    const { storage, objects } = fakeStorage();
+    const prisma = fakePrisma();
+    const service = createWantedNoticesService({ prisma: prisma as any, storage });
+
+    const created = await service.create({ postedById: randomUUID(), buffer: await makeTestJpeg(), mimetype: "image/jpeg" });
+    expect(objects.size).toBe(1);
+
+    const updated = await service.update(created.id, { buffer: await makeTestJpeg(), mimetype: "image/jpeg" });
+    expect(updated.id).toBe(created.id);
+    expect(objects.size).toBe(1); // old object removed, new one uploaded — never both at once
+  });
+
+  it("update() rejects a non-image buffer without touching storage", async () => {
+    const { storage, objects } = fakeStorage();
+    const prisma = fakePrisma();
+    const service = createWantedNoticesService({ prisma: prisma as any, storage });
+    const created = await service.create({ postedById: randomUUID(), buffer: await makeTestJpeg(), mimetype: "image/jpeg" });
+
+    await expect(
+      service.update(created.id, { buffer: Buffer.from("not an image"), mimetype: "image/jpeg" }),
+    ).rejects.toThrow();
+    expect(objects.size).toBe(1); // unchanged
+  });
+
+  it("update() 404s for a notice that doesn't exist", async () => {
+    const { storage } = fakeStorage();
+    const prisma = fakePrisma();
+    const service = createWantedNoticesService({ prisma: prisma as any, storage });
+
+    await expect(
+      service.update(randomUUID(), { buffer: await makeTestJpeg(), mimetype: "image/jpeg" }),
+    ).rejects.toThrow();
+  });
+
+  it("remove() deletes both the row and the storage object", async () => {
+    const { storage, objects } = fakeStorage();
+    const prisma = fakePrisma();
+    const service = createWantedNoticesService({ prisma: prisma as any, storage });
+    const created = await service.create({ postedById: randomUUID(), buffer: await makeTestJpeg(), mimetype: "image/jpeg" });
+
+    await service.remove(created.id);
+
+    expect(objects.size).toBe(0);
+    expect(await prisma.wantedNotice.findMany()).toHaveLength(0);
+  });
+
+  it("remove() 404s for a notice that doesn't exist", async () => {
+    const { storage } = fakeStorage();
+    const prisma = fakePrisma();
+    const service = createWantedNoticesService({ prisma: prisma as any, storage });
+
+    await expect(service.remove(randomUUID())).rejects.toThrow();
   });
 });

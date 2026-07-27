@@ -53,7 +53,35 @@ export function createWantedNoticesService(deps: WantedNoticesDeps) {
     return { id: row.id, photoUrl: await deps.storage.getPresignedGetUrl(key), createdAt: row.createdAt };
   }
 
-  return { list, create };
+  /** Replaces the photo in place (the only editable content — no other field exists on this
+   * record). Uploads the new object and repoints the row before removing the old object, so a
+   * failure mid-upload never leaves the row referencing nothing. */
+  async function update(id: string, input: { buffer: Buffer; mimetype: string }): Promise<WantedNoticeSummary> {
+    const existing = await deps.prisma.wantedNotice.findUnique({ where: { id } });
+    if (!existing) throw new HttpError(404, "NOTICE_NOT_FOUND", "Không tìm thấy lệnh truy nã.");
+
+    const validation = await validateImageBuffer(input.buffer);
+    if (!validation.valid) {
+      throw new HttpError(400, "INVALID_IMAGE", validation.reason ?? "Ảnh không hợp lệ.");
+    }
+
+    const newKey = `wanted-notices/${randomUUID()}`;
+    await deps.storage.putObject(newKey, input.buffer, input.mimetype);
+    const row = await deps.prisma.wantedNotice.update({ where: { id }, data: { photoUrl: newKey } });
+    await deps.storage.removeObject(existing.photoUrl);
+
+    return { id: row.id, photoUrl: await deps.storage.getPresignedGetUrl(newKey), createdAt: row.createdAt };
+  }
+
+  async function remove(id: string): Promise<void> {
+    const existing = await deps.prisma.wantedNotice.findUnique({ where: { id } });
+    if (!existing) throw new HttpError(404, "NOTICE_NOT_FOUND", "Không tìm thấy lệnh truy nã.");
+
+    await deps.prisma.wantedNotice.delete({ where: { id } });
+    await deps.storage.removeObject(existing.photoUrl);
+  }
+
+  return { list, create, update, remove };
 }
 
 export type WantedNoticesService = ReturnType<typeof createWantedNoticesService>;

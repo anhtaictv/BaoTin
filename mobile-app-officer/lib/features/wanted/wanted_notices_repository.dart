@@ -18,4 +18,16 @@ class WantedNoticesRepository {
     formData.files.add(MapEntry('photo', MultipartFile.fromBytes(bytes, filename: filename)));
     await _apiClient.dio.post('/wanted-notices', data: formData);
   }
+
+  /// Admin only — replaces the photo in place (the only editable field on a notice).
+  Future<void> update({required String id, required Uint8List bytes, required String filename}) async {
+    final formData = FormData();
+    formData.files.add(MapEntry('photo', MultipartFile.fromBytes(bytes, filename: filename)));
+    await _apiClient.dio.patch('/wanted-notices/$id', data: formData);
+  }
+
+  /// Admin only — backend returns 403 for a plain "officer" account.
+  Future<void> delete(String id) async {
+    await _apiClient.dio.delete('/wanted-notices/$id');
+  }
 }
