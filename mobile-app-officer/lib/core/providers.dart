@@ -3,6 +3,7 @@ import 'api_client.dart';
 import 'secure_token_store.dart';
 import '../features/auth/officer_auth_repository.dart';
 import '../features/auth/officer_registration_repository.dart';
+import '../features/auth/web_account_repository.dart';
 import '../features/reports_list/officer_reports_repository.dart';
 import '../features/cameras/camera_repository.dart';
 import '../features/signals/signals_repository.dart';
@@ -12,6 +13,7 @@ import '../features/traffic_accidents/traffic_accident_repository.dart';
 import '../features/news/news_repository.dart';
 import '../features/admin_citizens/locked_citizens_repository.dart';
 import '../features/chat/chat_repository.dart';
+import '../features/search/search_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -25,6 +27,10 @@ final officerAuthRepositoryProvider = Provider<OfficerAuthRepository>(
 
 final officerRegistrationRepositoryProvider = Provider<OfficerRegistrationRepository>(
   (ref) => OfficerRegistrationRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
+);
+
+final webAccountRepositoryProvider = Provider<WebAccountRepository>(
+  (ref) => WebAccountRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
 );
 
 final officerReportsRepositoryProvider = Provider<OfficerReportsRepository>(
@@ -61,4 +67,8 @@ final newsRepositoryProvider = Provider<NewsRepository>(
 
 final chatRepositoryProvider = Provider<ChatRepository>(
   (ref) => ChatRepository(ref.watch(apiClientProvider), ref.watch(secureTokenStoreProvider)),
+);
+
+final searchRepositoryProvider = Provider<SearchRepository>(
+  (ref) => SearchRepository(ref.watch(apiClientProvider)),
 );

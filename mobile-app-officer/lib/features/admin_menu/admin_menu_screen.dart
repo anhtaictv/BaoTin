@@ -3,6 +3,8 @@ import '../analytics/admin_analytics_screen.dart';
 import '../auth/pending_officers_screen.dart';
 import '../auth/change_password_screen.dart';
 import '../admin_citizens/locked_citizens_screen.dart';
+import '../search/search_screen.dart';
+import '../admin_web_accounts/admin_web_accounts_screen.dart';
 
 /// Groups the 3 admin/senior_officer-only screens (previously 3 separate bottom-nav tabs,
 /// crowding it to 10 alongside the 7 everyone-uses tabs) behind one "Quản trị" entry point.
@@ -42,6 +44,22 @@ class AdminMenuScreen extends StatelessWidget {
             subtitle: 'Mở khóa tài khoản dân bị khóa do báo tin sai nhiều lần',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LockedCitizensScreen()),
+            ),
+          ),
+          _AdminMenuTile(
+            icon: Icons.travel_explore_outlined,
+            title: 'Trợ lý tìm kiếm',
+            subtitle: 'Tìm tin báo/tín hiệu bằng câu hỏi tiếng Việt tự nhiên (AI cục bộ)',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+          ),
+          _AdminMenuTile(
+            icon: Icons.groups_2_outlined,
+            title: 'Quản lý tài khoản (102 xã)',
+            subtitle: 'Danh sách tài khoản admin cấp sẵn, đặt lại mật khẩu',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AdminWebAccountsScreen()),
             ),
           ),
           _AdminMenuTile(

@@ -45,6 +45,56 @@ export const SEED_OFFICERS: SeedOfficerSpec[] = [
     wardTenXa: "Buôn Ma Thuột",
     role: "admin",
   },
+  // Vùng Phú Yên cũ (sáp nhập vào Đắk Lắk 2025) — trải theo địa hình: đô thị ven biển,
+  // đồng bằng, miền núi, để demo geo-matching hoạt động đúng trên toàn bộ tỉnh mới.
+  {
+    fullName: "[DEMO] Hoàng Văn E",
+    phoneNumber: "0900000005",
+    unitName: "Công an phường Tuy Hòa",
+    wardTenXa: "Tuy Hòa",
+  },
+  {
+    fullName: "[DEMO] Ngô Thị F",
+    phoneNumber: "0900000006",
+    unitName: "Công an phường Sông Cầu",
+    wardTenXa: "Sông Cầu",
+  },
+  {
+    fullName: "[DEMO] Đặng Văn G",
+    phoneNumber: "0900000007",
+    unitName: "Công an phường Đông Hòa",
+    wardTenXa: "Đông Hòa",
+  },
+  {
+    fullName: "[DEMO] Bùi Thị H",
+    phoneNumber: "0900000008",
+    unitName: "Công an xã Tuy An Đông",
+    wardTenXa: "Tuy An Đông",
+  },
+  {
+    fullName: "[DEMO] Võ Văn I",
+    phoneNumber: "0900000009",
+    unitName: "Công an xã Sơn Hòa",
+    wardTenXa: "Sơn Hòa",
+  },
+  {
+    fullName: "[DEMO] Lý Thị K",
+    phoneNumber: "0900000010",
+    unitName: "Công an xã Sông Hinh",
+    wardTenXa: "Sông Hinh",
+  },
+  {
+    fullName: "[DEMO] Trương Văn L",
+    phoneNumber: "0900000011",
+    unitName: "Công an xã Đồng Xuân",
+    wardTenXa: "Đồng Xuân",
+  },
+  {
+    fullName: "[DEMO] Phan Thị M",
+    phoneNumber: "0900000012",
+    unitName: "Công an xã Phú Hòa 1",
+    wardTenXa: "Phú Hòa 1",
+  },
 ];
 
 export interface SeedOfficersDeps {
