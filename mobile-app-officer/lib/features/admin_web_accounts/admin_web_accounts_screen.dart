@@ -134,6 +134,10 @@ class _AccountTile extends StatelessWidget {
                 ),
                 OutlinedButton(
                   onPressed: resetting ? null : onReset,
+                  // See search_screen.dart's FilledButton override for why this is needed —
+                  // OutlinedButtonTheme has the same Size.fromHeight(52) (infinite width)
+                  // default, which breaks this Row's Expanded sibling.
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)),
                   child: resetting
                       ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Text('Đặt lại mật khẩu'),

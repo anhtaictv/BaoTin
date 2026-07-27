@@ -69,6 +69,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 const SizedBox(width: 12),
                 FilledButton.icon(
                   onPressed: _runSearch,
+                  // Override the app-wide FilledButtonTheme, whose minimumSize is
+                  // Size.fromHeight(52) (width: double.infinity — built for full-width
+                  // buttons like "Đăng nhập"). Left unset here, that infinite-width demand
+                  // breaks this Row's layout (the Expanded TextField collapses to ~0).
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
                   icon: const Icon(Icons.search),
                   label: const Text('Tìm kiếm'),
                 ),
