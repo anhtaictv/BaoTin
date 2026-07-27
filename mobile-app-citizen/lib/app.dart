@@ -1,13 +1,45 @@
 import 'package:flutter/material.dart';
+import 'core/api_client.dart';
 import 'core/theme.dart';
 import 'features/auth/auth_gate.dart';
+import 'features/auth/citizen_login_screen.dart';
 
-class BaoTinCitizenApp extends StatelessWidget {
+/// Lets code outside the widget tree (ApiClient, on a failed token refresh) redirect to login
+/// even when the user is several screens deep — rebuilding AuthGate alone wouldn't be visible
+/// once other routes are pushed on top of it.
+final navigatorKey = GlobalKey<NavigatorState>();
+
+class BaoTinCitizenApp extends StatefulWidget {
   const BaoTinCitizenApp({super.key});
+
+  @override
+  State<BaoTinCitizenApp> createState() => _BaoTinCitizenAppState();
+}
+
+class _BaoTinCitizenAppState extends State<BaoTinCitizenApp> {
+  @override
+  void initState() {
+    super.initState();
+    sessionExpiredTick.addListener(_onSessionExpired);
+  }
+
+  @override
+  void dispose() {
+    sessionExpiredTick.removeListener(_onSessionExpired);
+    super.dispose();
+  }
+
+  void _onSessionExpired() {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const CitizenLoginScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Báo Tin',
       debugShowCheckedModeBanner: false,
       theme: BaoTinTheme.light(),

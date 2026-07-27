@@ -84,16 +84,18 @@ export function createAuthService(deps: AuthServiceDeps) {
     });
     if (!challenge) throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");
 
-    if (challenge.attemptCount >= 5) {
+    // Atomically claim an attempt slot (guarded on attemptCount < 5) before verifying, so two
+    // concurrent guesses can't both read attemptCount < 5 and slip past the 5-attempt cap.
+    const claimed = await deps.prisma.otpChallenge.updateMany({
+      where: { id: challenge.id, attemptCount: { lt: 5 } },
+      data: { attemptCount: { increment: 1 } },
+    });
+    if (claimed.count === 0) {
       throw new HttpError(429, "OTP_LOCKED", "Đã nhập sai quá nhiều lần, yêu cầu OTP mới.");
     }
 
     const ok = verifyOtp(otp, challenge.codeHash, deps.otpPepper);
     if (!ok) {
-      await deps.prisma.otpChallenge.update({
-        where: { id: challenge.id },
-        data: { attemptCount: { increment: 1 } },
-      });
       throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");
     }
 
@@ -132,16 +134,17 @@ export function createAuthService(deps: AuthServiceDeps) {
       orderBy: { createdAt: "desc" },
     });
     if (!challenge) throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");
-    if (challenge.attemptCount >= 5) {
+
+    const claimed = await deps.prisma.otpChallenge.updateMany({
+      where: { id: challenge.id, attemptCount: { lt: 5 } },
+      data: { attemptCount: { increment: 1 } },
+    });
+    if (claimed.count === 0) {
       throw new HttpError(429, "OTP_LOCKED", "Đã nhập sai quá nhiều lần, yêu cầu OTP mới.");
     }
 
     const ok = verifyOtp(otp, challenge.codeHash, deps.otpPepper);
     if (!ok) {
-      await deps.prisma.otpChallenge.update({
-        where: { id: challenge.id },
-        data: { attemptCount: { increment: 1 } },
-      });
       throw new HttpError(401, "INVALID_OTP", "Mã OTP không đúng hoặc đã hết hạn.");
     }
     await deps.prisma.otpChallenge.update({ where: { id: challenge.id }, data: { consumedAt: new Date() } });
@@ -188,21 +191,26 @@ export function createAuthService(deps: AuthServiceDeps) {
       throw new HttpError(401, "INVALID_REFRESH_TOKEN", "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
     }
 
+    // Consume the token atomically (guarded on revokedAt: null) before issuing a new pair, so two
+    // concurrent refresh requests presenting the same token can't both succeed — only the request
+    // that wins this update proceeds; the loser sees INVALID_REFRESH_TOKEN instead of getting a
+    // second, unnecessary valid session.
+    const consumed = await deps.prisma.refreshToken.updateMany({
+      where: { id: existing.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (consumed.count === 0) {
+      throw new HttpError(401, "INVALID_REFRESH_TOKEN", "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+    }
+
     const role = existing.subjectType === "officer" ? await officerRole(existing.officerId!) : "citizen";
 
-    const next = await issueTokenPair({
+    return issueTokenPair({
       subjectType: existing.subjectType as "user" | "officer",
       userId: existing.userId ?? undefined,
       officerId: existing.officerId ?? undefined,
       role,
     });
-
-    await deps.prisma.refreshToken.update({
-      where: { id: existing.id },
-      data: { revokedAt: new Date() },
-    });
-
-    return next;
   }
 
   async function officerRole(officerId: string): Promise<string> {

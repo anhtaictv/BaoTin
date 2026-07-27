@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../core/AuthContext';
 import { apiClient } from '../../core/apiClient';
+import { tokenStore } from '../../core/tokenStore';
 import { LoginPage } from './LoginPage';
 
 vi.mock('../../core/apiClient', () => ({
@@ -25,7 +26,7 @@ describe('LoginPage', () => {
   beforeEach(() => {
     vi.mocked(apiClient.get).mockReset();
     vi.mocked(apiClient.post).mockReset();
-    localStorage.clear();
+    tokenStore.clear();
   });
 
   it('shows an error message on invalid credentials, without crashing', async () => {
@@ -67,7 +68,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/Mật khẩu/), 'Correct-Horse-1');
     await user.click(screen.getByRole('button', { name: /Đăng nhập/ }));
 
-    await waitFor(() => expect(localStorage.getItem('bao_tin_dashboard_access_token')).toBe('access-1'));
+    await waitFor(() => expect(tokenStore.readAccessToken()).toBe('access-1'));
     expect(apiClient.post).toHaveBeenCalledWith('/auth/web/login', {
       username: '0900001111',
       password: 'Correct-Horse-1',

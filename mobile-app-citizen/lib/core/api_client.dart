@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'secure_token_store.dart';
 
 /// Base URL is injected at build time so dev/staging/prod never share a hardcoded value:
@@ -10,6 +11,11 @@ const _apiBaseUrl = String.fromEnvironment(
 
 /// Thrown when a refresh attempt itself fails — callers should route to the OTP login screen.
 class SessionExpiredException implements Exception {}
+
+/// Bumped whenever tokens are cleared after a failed refresh, so the UI can route back to
+/// login without every screen needing to catch [SessionExpiredException] individually
+/// (see auth_gate.dart, which listens to this).
+final sessionExpiredTick = ValueNotifier<int>(0);
 
 class ApiClient {
   ApiClient({required SecureTokenStore tokenStore})
@@ -37,13 +43,17 @@ class ApiClient {
           // eligible for refresh-and-retry.
           if (isUnauthorized && hadToken && !alreadyRetried) {
             try {
-              await _refreshAccessToken();
+              // Shared across concurrent 401s so two requests racing the same expired access
+              // token don't each present the same refresh token to the backend — only one
+              // refresh happens; the other awaits its result instead of getting rotated out.
+              await (_refreshFuture ??= _refreshAccessToken().whenComplete(() => _refreshFuture = null));
               final retryOptions = error.requestOptions..extra['retried'] = true;
               final response = await _dio.fetch(retryOptions);
               handler.resolve(response);
               return;
             } catch (_) {
               await _tokenStore.clear();
+              sessionExpiredTick.value++;
               handler.reject(DioException(requestOptions: error.requestOptions, error: SessionExpiredException()));
               return;
             }
@@ -56,6 +66,7 @@ class ApiClient {
 
   final Dio _dio;
   final SecureTokenStore _tokenStore;
+  Future<void>? _refreshFuture;
 
   Dio get dio => _dio;
 

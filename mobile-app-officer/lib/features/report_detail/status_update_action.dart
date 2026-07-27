@@ -46,6 +46,7 @@ class _StatusUpdateActionState extends ConsumerState<StatusUpdateAction> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã cập nhật trạng thái.')));
       widget.onUpdated();
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'Cập nhật thất bại. Vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _submitting = false);

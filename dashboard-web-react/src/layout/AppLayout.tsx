@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { LayoutGrid, LogOut, RadioTower, RefreshCw, Search, Siren, UsersRound } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
@@ -92,7 +93,7 @@ export function AppLayout() {
         {account?.role === 'admin' && (
           <>
             <hr style={{ border: 'none', borderTop: '1px solid var(--sidebar-border)', margin: '10px 4px' }} />
-            <SidebarLink to="/admin/accounts" label="Quản lý tài khoản" icon={UsersRound} end={false} />
+            <SidebarLink to="/accounts" label="Quản lý tài khoản" icon={UsersRound} end={false} />
           </>
         )}
 
@@ -178,7 +179,11 @@ export function AppLayout() {
           </button>
         </header>
         <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>
-          <Outlet />
+          {/* Only the routed page (App.tsx's lazy() imports) suspends here — the sidebar/header
+              shell above stays mounted across page navigations instead of flashing away. */}
+          <Suspense fallback={<p>Đang tải...</p>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

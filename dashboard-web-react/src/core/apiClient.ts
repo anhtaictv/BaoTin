@@ -25,7 +25,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-async function refreshAccessToken(): Promise<void> {
+export async function refreshAccessToken(): Promise<void> {
   const refreshToken = tokenStore.readRefreshToken();
   if (!refreshToken) throw new SessionExpiredError();
 

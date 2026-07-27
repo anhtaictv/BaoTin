@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from './core/AuthContext';
 import { apiClient } from './core/apiClient';
+import { tokenStore } from './core/tokenStore';
 import App from './App';
 
 vi.mock('./core/apiClient', () => ({
@@ -21,8 +22,7 @@ const BASE_ACCOUNT = {
 };
 
 function mockLoggedInAs(role: 'officer' | 'senior_officer' | 'admin') {
-  localStorage.setItem('bao_tin_dashboard_access_token', 'access-1');
-  localStorage.setItem('bao_tin_dashboard_refresh_token', 'refresh-1');
+  tokenStore.saveTokens('access-1', 'refresh-1');
   vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
     if (url === '/web-accounts/me') return { data: { data: { ...BASE_ACCOUNT, role } } };
     if (url === '/admin/dashboard/districts') return { data: { data: [] } };
@@ -56,7 +56,7 @@ function renderApp() {
 
 describe('App', () => {
   beforeEach(() => {
-    localStorage.clear();
+    tokenStore.clear();
     vi.mocked(apiClient.get).mockReset();
     window.history.pushState({}, '', '/admin/');
   });
