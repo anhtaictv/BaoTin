@@ -6,14 +6,16 @@ import '../../core/providers.dart';
 import '../../core/responsive.dart';
 import '../../core/theme.dart';
 import '../../home_shell.dart';
+import 'change_password_screen.dart';
 import 'officer_login_screen.dart';
 import 'officer_register_screen.dart';
 
-/// App entry point when no token is stored — username/password login (the new self-
-/// registration flow), with an escape hatch to the pre-existing OTP login for
-/// already-provisioned officers. Adaptive: stacked hero-over-form on a phone, split
-/// hero-beside-form on a desktop browser (same pattern as mobile-app-citizen's
-/// citizen_login_screen.dart).
+/// App entry point when no token is stored — username/password login. Supports 2 of the
+/// app's 3 credential systems (the 3rd, OTP, has its own escape-hatch screen below):
+/// self-registration (admin approves individually) and `web_accounts` (admin provisions in
+/// bulk for all 102 xã/phường — see web_account_repository.dart). Adaptive: stacked
+/// hero-over-form on a phone, split hero-beside-form on a desktop browser (same pattern as
+/// mobile-app-citizen's citizen_login_screen.dart).
 class OfficerPasswordLoginScreen extends ConsumerStatefulWidget {
   const OfficerPasswordLoginScreen({super.key});
 
@@ -28,6 +30,7 @@ class _OfficerPasswordLoginScreenState
   final _passwordController = TextEditingController();
   bool _submitting = false;
   String? _error;
+  bool _webAccountMode = false;
 
   @override
   void dispose() {
@@ -50,12 +53,23 @@ class _OfficerPasswordLoginScreenState
       _error = null;
     });
     try {
-      await ref
-          .read(officerRegistrationRepositoryProvider)
-          .loginOfficer(username: username, password: password);
+      bool mustChangePassword = false;
+      if (_webAccountMode) {
+        mustChangePassword = await ref
+            .read(webAccountRepositoryProvider)
+            .login(username: username, password: password);
+      } else {
+        await ref
+            .read(officerRegistrationRepositoryProvider)
+            .loginOfficer(username: username, password: password);
+      }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeShell()),
+        MaterialPageRoute(
+          builder: (_) => mustChangePassword
+              ? const ChangePasswordScreen(forWebAccount: true, forced: true)
+              : const HomeShell(),
+        ),
         (route) => false,
       );
     } on DioException catch (e) {
@@ -78,6 +92,8 @@ class _OfficerPasswordLoginScreenState
             'Tài khoản đã bị từ chối. Vui lòng liên hệ quản trị viên.',
           'LOGIN_RATE_LIMITED' =>
             'Đăng nhập sai quá nhiều lần, thử lại sau.',
+          'ACCOUNT_LOCKED' =>
+            'Tài khoản tạm khoá do nhập sai quá nhiều lần. Vui lòng thử lại sau.',
           _ => 'Sai tên đăng nhập hoặc mật khẩu.',
         };
       });
@@ -133,6 +149,20 @@ class _OfficerPasswordLoginScreenState
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('Tự đăng ký')),
+            ButtonSegment(value: true, label: Text('Admin cấp (102 xã)')),
+          ],
+          selected: {_webAccountMode},
+          onSelectionChanged: _submitting
+              ? null
+              : (selection) => setState(() {
+                    _webAccountMode = selection.first;
+                    _error = null;
+                  }),
+        ),
+        const SizedBox(height: 16),
         TextField(
           controller: _usernameController,
           decoration: const InputDecoration(
@@ -161,13 +191,14 @@ class _OfficerPasswordLoginScreenState
                       strokeWidth: 2, color: Colors.white))
               : const Text('Đăng nhập'),
         ),
-        TextButton(
-          onPressed: _submitting
-              ? null
-              : () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const OfficerRegisterScreen())),
-          child: const Text('Chưa có tài khoản? Đăng ký (chờ admin duyệt)'),
-        ),
+        if (!_webAccountMode)
+          TextButton(
+            onPressed: _submitting
+                ? null
+                : () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const OfficerRegisterScreen())),
+            child: const Text('Chưa có tài khoản? Đăng ký (chờ admin duyệt)'),
+          ),
         const Divider(height: 32),
         TextButton(
           onPressed: _submitting

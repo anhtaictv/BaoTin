@@ -120,5 +120,40 @@ export async function seedAccountRegistrationDemo(deps: SeedAccountRegistrationD
     console.log("[seed-account-registration] demo_officer_pending already exists — skipping");
   }
 
-  console.log(`[seed-account-registration] password for all 3 demo accounts: ${DEMO_PASSWORD}`);
+  // Thêm vài cán bộ "chờ duyệt" ở vùng Phú Yên cũ — chỉ để demo trực tiếp luồng đăng ký +
+  // duyệt tài khoản (khác với seed-officers.ts: các tài khoản đó tạo thẳng ở trạng thái đã
+  // duyệt để geo-matching hoạt động ngay, không đi qua hàng chờ). Ward mong muốn gán được ghi
+  // ngay trong fullName/address vì registerOfficer không có trường unit — admin chọn địa bàn
+  // tương ứng khi bấm duyệt trên dashboard.
+  const PENDING_OFFICERS_PHU_YEN = [
+    { ward: "Tuy Hòa", phoneNumber: "0900000094", cccdNumber: "064099000094" },
+    { ward: "Sông Cầu", phoneNumber: "0900000095", cccdNumber: "064099000095" },
+    { ward: "Sơn Hòa", phoneNumber: "0900000096", cccdNumber: "064099000096" },
+    { ward: "Tuy An Đông", phoneNumber: "0900000097", cccdNumber: "064099000097" },
+  ];
+  for (const { ward, phoneNumber, cccdNumber } of PENDING_OFFICERS_PHU_YEN) {
+    const asciiWard = ward
+      .replace(/[đĐ]/g, "d")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/\s+/g, "")
+      .toLowerCase();
+    const username = `demo_officer_pending_${asciiWard}`;
+    try {
+      await service.registerOfficer({
+        username,
+        password: DEMO_PASSWORD,
+        fullName: `[DEMO] Cán bộ chờ duyệt — ${ward}`,
+        phoneNumber,
+        cccdNumber,
+        address: `[DEMO] Công an ${ward}, tỉnh Đắk Lắk`,
+      });
+      console.log(`[seed-account-registration] ${username} (pending admin approval — ${ward})`);
+    } catch (err: any) {
+      if (err?.code !== "PHONE_ALREADY_REGISTERED" && err?.code !== "USERNAME_TAKEN") throw err;
+      console.log(`[seed-account-registration] ${username} already exists — skipping`);
+    }
+  }
+
+  console.log(`[seed-account-registration] password for all demo accounts: ${DEMO_PASSWORD}`);
 }
