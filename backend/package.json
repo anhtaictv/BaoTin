@@ -1,6 +1,6 @@
 {
   "name": "baotin-backend",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,6 +17,8 @@
     "seed": "tsx prisma/seed/index.ts",
     "seed:demo-accounts": "tsx prisma/seed/seed-demo-accounts.ts",
     "seed:demo-reports": "tsx prisma/seed/run-seed-demo-reports.ts",
+    "seed:traffic-accidents": "tsx prisma/seed/run-seed-traffic-accidents.ts",
+    "seed:locked-citizen": "tsx prisma/seed/run-seed-locked-citizen.ts",
     "crawl:rss": "tsx src/crawler/runCrawler.ts",
     "test": "vitest run",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
