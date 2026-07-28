@@ -39,13 +39,21 @@ export function createWebAccountAuthService(deps: WebAccountAuthDeps) {
 
     const ok = await verifyPassword(password, account.passwordHash);
     if (!ok) {
-      const failedLoginCount = account.failedLoginCount + 1;
-      const lockedUntil =
-        failedLoginCount >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) : null;
-      await deps.prisma.webAccount.update({
+      // `{ increment: 1 }` compiles to `SET failed_login_count = failed_login_count + 1` —
+      // atomic at the DB row level, unlike reading account.failedLoginCount and writing back
+      // `+1` in JS (concurrent guesses could all read the same stale count and clobber each
+      // other, undercounting attempts and blunting the lockout). Same race class the OTP path
+      // in auth.service.ts guards against for attemptCount.
+      const updated = await deps.prisma.webAccount.update({
         where: { id: account.id },
-        data: { failedLoginCount, lockedUntil },
+        data: { failedLoginCount: { increment: 1 } },
       });
+      if (updated.failedLoginCount >= MAX_FAILED_ATTEMPTS) {
+        await deps.prisma.webAccount.update({
+          where: { id: account.id },
+          data: { lockedUntil: new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) },
+        });
+      }
       throw new HttpError(401, "INVALID_CREDENTIALS", "Sai tên đăng nhập hoặc mật khẩu.");
     }
 

@@ -97,6 +97,31 @@ describe("webAccountAuth.service — login", () => {
     expect(account?.lockedUntil).not.toBeNull();
   });
 
+  it("counts every concurrent wrong-password attempt exactly once (no lost updates)", async () => {
+    // Regression test for a race where failedLoginCount was read once then written back
+    // `+1` in JS — concurrent requests could all read the same stale count and clobber each
+    // other's write, undercounting attempts and blunting the 5-attempt lockout. Fixed via
+    // Prisma's atomic `{ increment: 1 }`. verifyPassword's scrypt call genuinely yields the
+    // event loop, so Promise.all here interleaves real concurrent login() calls, not just
+    // sequential awaits — this would have failed (count < 5) before the fix.
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+    });
+    const { service } = buildService(fakePrisma);
+
+    await Promise.all(
+      Array.from({ length: 5 }, () => service.login("0900001111", "wrong").catch((e) => e)),
+    );
+
+    const account = [...fakePrisma.store.webAccounts.values()][0];
+    expect(account?.failedLoginCount).toBe(5);
+    expect(account?.lockedUntil).not.toBeNull();
+  });
+
   it("resets the failed-attempt counter on a successful login", async () => {
     const fakePrisma = createFakeWebAccountPrisma();
     const passwordHash = await hashPassword("Correct-Horse-1");

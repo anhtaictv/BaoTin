@@ -85,7 +85,14 @@ export function createFakeWebAccountPrisma() {
       async update({ where, data }: any) {
         const row = webAccounts.get(where.id);
         if (!row) throw new Error("web account not found");
-        const updated = { ...row, ...data };
+        // Mirrors Prisma's `{ increment: N }` numeric-field operator (used by
+        // webAccountAuth.service.ts's login() for an atomic failedLoginCount bump) — the real
+        // client compiles it to `SET x = x + N` at the DB, not a JS-side read-then-write.
+        const resolved =
+          data.failedLoginCount && typeof data.failedLoginCount === "object" && "increment" in data.failedLoginCount
+            ? { ...data, failedLoginCount: row.failedLoginCount + data.failedLoginCount.increment }
+            : data;
+        const updated = { ...row, ...resolved };
         webAccounts.set(where.id, updated);
         return { ...updated, officer: hydrateOfficer(updated.officerId) };
       },
