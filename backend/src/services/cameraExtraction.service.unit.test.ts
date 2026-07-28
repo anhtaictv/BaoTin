@@ -30,6 +30,7 @@ describe("cameraExtraction.service — nearbyCameras", () => {
 
     expect(result.map((c) => c.id)).toEqual([near.id]);
     expect(result[0]?.distanceMeters).toBeLessThan(1000);
+    expect(result[0]).toMatchObject({ lat: near.lat, lng: near.lng });
   });
 
   it("returns no video/stream field on any suggested camera (CLAUDE.md #8)", async () => {

@@ -40,7 +40,7 @@ function parseCategory(modelText: string): ReportCategory | null {
 export class OllamaReportCategorySuggester implements ReportCategorySuggester {
   constructor(
     private readonly baseUrl: string = "http://localhost:11434",
-    private readonly model: string = "qwen2.5:1.5b",
+    private readonly model: string = "qwen2.5:7b",
   ) {}
 
   async suggestCategory(description: string): Promise<ReportCategory | null> {

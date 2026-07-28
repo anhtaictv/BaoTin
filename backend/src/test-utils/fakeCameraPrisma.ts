@@ -108,6 +108,8 @@ export function createFakeCameraPrisma() {
         .map((c) => ({
           id: c.id,
           name: c.name,
+          lat: c.lat,
+          lng: c.lng,
           managingUnitName: c.managingUnitName,
           managingUnitContact: c.managingUnitContact,
           distanceMeters: distanceMeters(report, c),

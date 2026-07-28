@@ -54,7 +54,7 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: z.string().default(""),
   GEMINI_API_KEY: z.string().default(""),
   OLLAMA_BASE_URL: z.string().min(1).default("http://localhost:11434"),
-  OLLAMA_MODEL: z.string().min(1).default("qwen2.5:1.5b"),
+  OLLAMA_MODEL: z.string().min(1).default("qwen2.5:7b"),
 
   /** Shared secret the traffic-accident detector worker sends as X-Detector-Api-Key when
    * posting a detected accident (object-detection + plate OCR only, see TrafficAccidentAlert

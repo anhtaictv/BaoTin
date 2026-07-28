@@ -101,7 +101,7 @@ export class GeminiSummarizer implements Summarizer {
 export class OllamaSummarizer implements Summarizer {
   constructor(
     private readonly baseUrl: string = "http://localhost:11434",
-    private readonly model: string = "qwen2.5:1.5b",
+    private readonly model: string = "qwen2.5:7b",
   ) {}
 
   async summarize(input: SummarizeInput): Promise<string> {

@@ -45,7 +45,7 @@ function parseKeepDecision(modelText: string): boolean {
 export class OllamaRelevanceClassifier implements RelevanceClassifier {
   constructor(
     private readonly baseUrl: string = "http://localhost:11434",
-    private readonly model: string = "qwen2.5:1.5b",
+    private readonly model: string = "qwen2.5:7b",
   ) {}
 
   async isRelevant(input: RelevanceInput): Promise<boolean> {

@@ -8,6 +8,8 @@ const DEFAULT_RADIUS_METERS = 500;
 export interface NearbyCamera {
   id: string;
   name: string;
+  lat: number;
+  lng: number;
   managingUnitName: string | null;
   managingUnitContact: string | null;
   distanceMeters: number;
@@ -66,6 +68,8 @@ export function createCameraExtractionService(deps: CameraExtractionDeps) {
       SELECT
         c.id AS "id",
         c.name AS "name",
+        ST_Y(c.location) AS "lat",
+        ST_X(c.location) AS "lng",
         c.managing_unit_name AS "managingUnitName",
         c.managing_unit_contact AS "managingUnitContact",
         ST_Distance(c.location::geography, r.location::geography) AS "distanceMeters"

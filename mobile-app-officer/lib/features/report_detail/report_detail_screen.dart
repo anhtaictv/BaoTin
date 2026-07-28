@@ -295,7 +295,7 @@ class _LocationTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        NearbyCamerasSection(reportId: reportId),
+        NearbyCamerasSection(reportId: reportId, reportLocation: point),
       ],
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart' as latlong;
 import '../../core/providers.dart';
 import 'extraction_request_dialog.dart';
 
@@ -15,9 +17,10 @@ import 'extraction_request_dialog.dart';
 /// cameras would be biometric surveillance, which needs its own legal basis and belongs in a
 /// purpose-built police operational system, not this citizen-facing app (CLAUDE.md #8).
 class NearbyCamerasSection extends ConsumerStatefulWidget {
-  const NearbyCamerasSection({super.key, required this.reportId});
+  const NearbyCamerasSection({super.key, required this.reportId, required this.reportLocation});
 
   final String reportId;
+  final latlong.LatLng reportLocation;
 
   @override
   ConsumerState<NearbyCamerasSection> createState() => _NearbyCamerasSectionState();
@@ -109,6 +112,49 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
                 }
                 return Column(
                   children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        height: 200,
+                        child: FlutterMap(
+                          options: MapOptions(initialCenter: widget.reportLocation, initialZoom: 16),
+                          children: [
+                            TileLayer(
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'vn.baotin.officer',
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                Marker(
+                                  point: widget.reportLocation,
+                                  width: 32,
+                                  height: 32,
+                                  child: const Icon(Icons.location_on, color: Color(0xFFD32F2F), size: 32),
+                                ),
+                                for (final camera in cameras)
+                                  if (camera['lat'] != null && camera['lng'] != null)
+                                    Marker(
+                                      point: latlong.LatLng(
+                                        (camera['lat'] as num).toDouble(),
+                                        (camera['lng'] as num).toDouble(),
+                                      ),
+                                      width: 32,
+                                      height: 32,
+                                      child: Icon(
+                                        Icons.videocam,
+                                        color: _selected.contains(camera['id'])
+                                            ? Theme.of(context).colorScheme.primary
+                                            : const Color(0xFF1976D2),
+                                        size: 28,
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     for (final camera in cameras)
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,

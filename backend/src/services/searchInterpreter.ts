@@ -72,7 +72,7 @@ function extractJsonObject(text: string): unknown | null {
 export class OllamaQueryInterpreter implements QueryInterpreter {
   constructor(
     private readonly baseUrl: string = "http://localhost:11434",
-    private readonly model: string = "qwen2.5:1.5b",
+    private readonly model: string = "qwen2.5:7b",
   ) {}
 
   async interpret(query: string, knownDistrictNames: string[]): Promise<SearchInterpretation | null> {
