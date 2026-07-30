@@ -43,6 +43,8 @@ class _BaoTinCitizenAppState extends State<BaoTinCitizenApp> {
       title: 'Báo Tin',
       debugShowCheckedModeBanner: false,
       theme: BaoTinTheme.light(),
+      darkTheme: BaoTinTheme.dark(),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
       // Individual screens (home_shell.dart, citizen_login_screen.dart, ...) adapt their own
       // layout at kWideBreakpoint (side nav rail, split hero+form) — this only stops content

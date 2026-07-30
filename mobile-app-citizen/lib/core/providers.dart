@@ -5,6 +5,7 @@ import '../features/auth/auth_repository.dart';
 import '../features/auth/registration_repository.dart';
 import '../features/report/report_repository.dart';
 import '../features/report/camera_gps_capture.dart';
+import '../features/report/pending_reports_queue.dart';
 import '../features/emergency/emergency_repository.dart';
 import '../features/area_safety/area_safety_repository.dart';
 import '../features/wanted/wanted_notices_repository.dart';
@@ -33,6 +34,10 @@ final emergencyRepositoryProvider = Provider<EmergencyRepository>(
 );
 
 final locationResolverProvider = Provider<LocationResolver>((ref) => LocationResolver());
+
+final pendingReportsQueueProvider = Provider<PendingReportsQueue>(
+  (ref) => PendingReportsQueue(ref.watch(reportRepositoryProvider)),
+);
 
 final areaSafetyRepositoryProvider = Provider<AreaSafetyRepository>(
   (ref) => AreaSafetyRepository(ref.watch(apiClientProvider)),

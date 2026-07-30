@@ -21,6 +21,16 @@ class BaoTinTheme {
   /// SOS's distinctiveness comes from shape/position, not a reserved hue.
   static const Color emergency = primary;
 
+  // Dark variant — warm near-black surfaces (pairs with the cream/red brand rather than a
+  // neutral Material grey), same `primary` red reused everywhere a filled shape (button, SOS
+  // dot) provides its own contrast regardless of page background.
+  static const Color scaffoldDark = Color(0xFF17110F);
+  static const Color surfaceDark = Color(0xFF241C1A);
+  static const Color borderDark = Color(0xFF3D322D);
+  // Lighter red for things drawn directly on the dark background (text buttons, outline
+  // labels) where the base `primary` red is too close in luminance to read clearly.
+  static const Color primaryOnDark = Color(0xFFEF9A9A);
+
   static ThemeData light() {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: primary,
@@ -88,6 +98,82 @@ class BaoTinTheme {
           borderSide: const BorderSide(color: primary, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+
+  /// Its own steps against the dark surface, not an automatic light-mode inversion — same
+  /// approach as dashboard-web/lib/core/theme.dart.
+  static ThemeData dark() {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.dark,
+      surface: surfaceDark,
+    );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: scaffoldDark,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: surfaceDark,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(54),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(54),
+          shape: const StadiumBorder(),
+          side: const BorderSide(color: primaryOnDark),
+          foregroundColor: primaryOnDark,
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: primaryOnDark),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: borderDark),
+        ),
+        color: surfaceDark,
+      ),
+      chipTheme: ChipThemeData(
+        shape:
+            StadiumBorder(side: BorderSide(color: colorScheme.outlineVariant)),
+        selectedColor: colorScheme.primaryContainer,
+        backgroundColor: surfaceDark,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceDark,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: borderDark),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: borderDark),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: primaryOnDark, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }
@@ -160,6 +246,8 @@ const _categoryIcons = <String, IconData>{
 /// Falls back to the raw code itself for anything not in the map yet, rather than silently
 /// showing "Khác" — a backend addition stays visible instead of hidden (same convention as
 /// mobile-app-officer's core/theme.dart categoryLabel).
-String categoryLabel(String? category) => categoryOptions[category] ?? category ?? 'Khác';
+String categoryLabel(String? category) =>
+    categoryOptions[category] ?? category ?? 'Khác';
 
-IconData categoryIcon(String? category) => _categoryIcons[category] ?? Icons.report_outlined;
+IconData categoryIcon(String? category) =>
+    _categoryIcons[category] ?? Icons.report_outlined;

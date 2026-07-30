@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/bao_tin_badge.dart';
+import 'core/providers.dart';
 import 'core/responsive.dart';
 import 'core/theme.dart';
 import 'features/report/bao_tin_screen.dart';
@@ -14,15 +18,36 @@ import 'features/news/news_screen.dart';
 /// "trông như app mobile" — a sidebar is the standard "this is a real website" pattern,
 /// same idea Notion/Linear/Gmail use). SOS is pushed as its own full-screen route either way
 /// — it's a one-shot action, not a section you browse.
-class HomeShell extends StatefulWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+
+  @override
+  void initState() {
+    super.initState();
+    // App-foreground sync only (no background service/WorkManager) — good enough for a
+    // citizen app: flush whatever's queued as soon as the app starts, then again any time
+    // connectivity comes back while it's open.
+    ref.read(pendingReportsQueueProvider).flush();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
+      if (results.any((r) => r != ConnectivityResult.none)) {
+        ref.read(pendingReportsQueueProvider).flush();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySub?.cancel();
+    super.dispose();
+  }
 
   static const _screens = [
     BaoTinScreen(),

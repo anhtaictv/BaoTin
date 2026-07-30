@@ -7,10 +7,27 @@ import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../profile/profile_screen.dart';
 import 'camera_gps_capture.dart';
+import 'pending_reports_queue.dart';
 
 /// How long to wait after the last keystroke before asking for a category suggestion — avoids
 /// firing a request per character while the person is still typing.
 const _classifyDebounce = Duration(milliseconds: 800);
+
+/// True only for failures that mean "the request never reached/heard back from the server"
+/// (no signal, DNS failure, timeout) — never for a real HTTP response (4xx validation, 401,
+/// ACCOUNT_LOCKED, ...), which should still surface to the user as a real error instead of
+/// being silently queued.
+bool _isConnectivityError(DioException e) {
+  switch (e.type) {
+    case DioExceptionType.connectionError:
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+    case DioExceptionType.receiveTimeout:
+      return true;
+    default:
+      return false;
+  }
+}
 
 class BaoTinScreen extends ConsumerStatefulWidget {
   const BaoTinScreen({super.key});
@@ -24,6 +41,10 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
   String _category = categoryOptions.keys.first;
   Uint8List? _photoBytes;
   String? _photoFilename;
+  // Kept alongside the bytes/filename above purely so a failed submit can enqueue the report
+  // for later retry without holding the bytes in the JSON queue file (see
+  // pending_reports_queue.dart) — the camera/picker already wrote the file to disk.
+  String? _photoPath;
   ResolvedLocation? _location;
   bool _resolvingLocation = false;
   bool _submitting = false;
@@ -63,6 +84,7 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
     setState(() {
       _photoBytes = bytes;
       _photoFilename = photo.name;
+      _photoPath = photo.path;
       _resolvingLocation = true;
       _error = null;
     });
@@ -116,6 +138,7 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
       setState(() {
         _photoBytes = null;
         _photoFilename = null;
+        _photoPath = null;
         _location = null;
         _descriptionController.clear();
         _category = categoryOptions.keys.first;
@@ -123,6 +146,44 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
         _categoryJustSuggested = false;
       });
     } on DioException catch (e) {
+      // No connectivity (or the request never made it out) — don't lose the report the person
+      // just filled in, queue it locally instead and retry automatically once we're back
+      // online (see pending_reports_queue.dart / home_shell.dart's connectivity listener).
+      // A real 4xx/5xx from the server (validation, ACCOUNT_LOCKED, ...) always has a
+      // `response` and falls through to the branches below instead.
+      if (_isConnectivityError(e)) {
+        await ref.read(pendingReportsQueueProvider).enqueue(
+              PendingReport(
+                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                category: _category,
+                description: _descriptionController.text,
+                lat: location.lat,
+                lng: location.lng,
+                locationSource: location.source,
+                photoPath: _photoPath,
+                createdAt: DateTime.now(),
+              ),
+            );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Không có kết nối mạng — tin báo đã được lưu trên máy và sẽ tự động gửi khi có mạng trở lại.',
+            ),
+          ),
+        );
+        setState(() {
+          _photoBytes = null;
+          _photoFilename = null;
+          _photoPath = null;
+          _location = null;
+          _descriptionController.clear();
+          _category = categoryOptions.keys.first;
+          _categoryManuallySet = false;
+          _categoryJustSuggested = false;
+        });
+        return;
+      }
       // ACCOUNT_LOCKED (4+ reports an officer confirmed as false) is a permanent block, not a
       // transient failure — the generic "thử lại" message below would just send the citizen
       // into an endless retry loop instead of explaining why. Same code/message pattern as

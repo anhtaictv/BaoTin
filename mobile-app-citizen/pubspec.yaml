@@ -22,6 +22,11 @@ dependencies:
   flutter_map: ^8.3.1
   latlong2: ^0.10.1
   url_launcher: ^6.3.2
+  # Connectivity change detection for the offline report queue (report/pending_reports_queue.dart).
+  connectivity_plus: ^6.0.5
+  # Already a transitive dep (image_picker/geolocator pull it in); declared directly so
+  # pending_reports_queue.dart can import it for the queue's JSON file location.
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:
