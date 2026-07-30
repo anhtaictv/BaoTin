@@ -1,68 +1,92 @@
 <p align="center">
-  <img src="landing/logo.png" alt="Báo Tin" width="160">
+  <img src="landing/logo.png" alt="Báo Tin" width="140">
 </p>
 
-# Báo Tin
+<h1 align="center">Báo Tin</h1>
+<p align="center"><b>Hệ thống tiếp nhận &amp; xử lý tin báo an ninh trật tự cấp cơ sở</b></p>
 
-**Hệ thống tiếp nhận & xử lý tin báo an ninh trật tự cấp cơ sở**
+<p align="center">
+  <code>backend 1.23.0</code> ·
+  <code>dashboard-web-react 0.4.0</code> ·
+  <code>dashboard-web 1.6.1+6</code> ·
+  <code>mobile-app-officer 1.14.0+21</code> ·
+  <code>mobile-app-citizen 1.10.0+16</code>
+</p>
 
-Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán bộ phụ trách địa bàn — định
-tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với các kênh hành chính
-thông thường.
+<p align="center">
+  Kênh phản ứng nhanh cho người dân báo tin trực tiếp tới cán bộ phụ trách địa bàn —<br/>
+  định tuyến tức thời theo vị trí GPS, rút ngắn thời gian xác minh so với kênh hành chính thông thường.
+</p>
 
-`Phiên bản hiện tại: backend 1.23.0 · dashboard-web-react 0.4.0 · dashboard-web 1.6.1+6 · mobile-app-officer 1.14.0+20 · mobile-app-citizen 1.10.0+16`
-
-> Tài liệu thiết kế chi tiết (SECURITY.md, ARCHITECTURE.md, API_SPEC.md, DATABASE_SCHEMA.md,
-> ROADMAP.md, CHANGELOG.md, ADR...) được lưu và duy trì cục bộ trên máy phát triển, không
-> publish lên remote repo này — chỉ `README.md` và [`CLAUDE.md`](CLAUDE.md) (quy tắc thiết
-> kế bắt buộc) được đưa lên. README này tóm tắt đủ để ai đọc từ remote cũng nắm được bức
-> tranh tổng thể.
+> Tài liệu thiết kế đầy đủ (`SECURITY.md`, `ARCHITECTURE.md`, `API_SPEC.md`, `DATABASE_SCHEMA.md`,
+> `ROADMAP.md`, `CHANGELOG.md`, ADR...) được lưu cục bộ trên máy phát triển, không publish lên
+> remote — chỉ `README.md` này và [`CLAUDE.md`](CLAUDE.md) (quy tắc thiết kế bắt buộc) được đưa
+> lên, đủ để ai đọc từ remote cũng nắm được bức tranh tổng thể.
 
 ---
 
-## Giới thiệu
+## Mục lục
 
-Khi có sự việc xảy ra ngoài đời, kênh báo tin hành chính thông thường (kể cả VNeID) đúng
-nhưng chậm — nhiều bước, không định vị được ngay tin đó thuộc địa bàn nào, không tự động
-tới đúng người phụ trách. **Báo Tin** thu hẹp khoảng đó ở lớp phản ứng đầu tiên: người dân
-báo tin **kèm định vị GPS thật** (ảnh/video chụp trực tiếp trong app, giữ nguyên EXIF —
-không qua trung gian Zalo/Messenger vì các nền tảng đó thường xóa EXIF), hệ thống dùng
-PostGIS khoanh vùng địa bàn ngay lập tức và đẩy thẳng tới cán bộ phụ trách xã/phường đó,
-không cần chờ luân chuyển qua nhiều cấp.
+- [Vì sao có Báo Tin](#vì-sao-có-báo-tin)
+- [Nguyên tắc thiết kế bắt buộc](#nguyên-tắc-thiết-kế-bắt-buộc)
+- [Kiến trúc và tech stack](#kiến-trúc-và-tech-stack)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Bắt đầu nhanh](#bắt-đầu-nhanh)
+- [Tính năng chính](#tính-năng-chính)
+- [Trạng thái và việc còn thiếu](#trạng-thái-và-việc-còn-thiếu)
+- [Lịch sử phiên bản](#lịch-sử-phiên-bản)
+- [Người đóng góp](#người-đóng-góp)
 
-Mọi tin đều đi qua một cán bộ con người trước khi trở thành "đã xác thực" — không có bước
-AI nào tự kết luận đúng/sai. Tín hiệu từ mạng xã hội/báo chí (giai đoạn 2) được xử lý và
-hiển thị hoàn toàn tách biệt khỏi tin dân báo, không bao giờ trộn lẫn hay tự động nâng cấp
-thành hồ sơ chính thức.
+---
 
-**Định vị:** bổ trợ VNeID, không thay thế. VNeID là kênh tố cáo chính thức có giá trị pháp
-lý; Báo Tin là phản ứng tức thời, tại chỗ, cấp cơ sở.
+## Vì sao có Báo Tin
 
-## Nguyên tắc thiết kế bắt buộc (chi tiết ở [`CLAUDE.md`](CLAUDE.md))
+Khi có sự việc xảy ra ngoài đời, kênh báo tin hành chính thông thường (kể cả VNeID) đúng nhưng
+chậm — nhiều bước, không định vị được ngay tin đó thuộc địa bàn nào, không tự động tới đúng
+người phụ trách. **Báo Tin** thu hẹp khoảng đó ở lớp phản ứng đầu tiên: người dân báo tin **kèm
+định vị GPS thật** (chụp/chọn ảnh trực tiếp trong app, giữ nguyên EXIF — không qua trung gian
+Zalo/Messenger vì các nền tảng đó thường xóa EXIF), hệ thống dùng PostGIS khoanh vùng địa bàn
+ngay lập tức và đẩy thẳng tới cán bộ phụ trách xã/phường đó, không cần chờ luân chuyển qua
+nhiều cấp.
 
-1. Tin từ mạng xã hội/báo chí **không bao giờ** hiển thị lẫn hoặc gắn nhãn giống tin dân
-   báo đã xác thực — luôn tách UI, luôn gắn nhãn nguồn + độ tin cậy.
-2. **Không có workflow nào tự động** kết luận đúng/sai hay tự đẩy tin sang hồ sơ chính
-   thức — mọi tin đều cần cán bộ phụ trách địa bàn chọn trạng thái xác minh (human-in-the-loop).
-3. Không crawl trực tiếp khi demo — module crawler dùng seed data mẫu, crawler thật chạy
-   tách biệt qua script riêng.
-4. Không tự viết code đọc chip NFC CCCD — chỉ mock UI, tích hợp thật (nếu làm) phải qua
-   VNeID/SDK chính thức của Bộ Công an.
-5. Giữ nguyên EXIF GPS ảnh gốc — người dân phải chụp/chọn ảnh trực tiếp trong app.
-6. Bảo mật là yêu cầu từ đầu — mã hoá AES-256-GCM cho dữ liệu định danh, JWT RS256 + refresh
-   rotation, rate-limit OTP, không phải hạng mục "làm sau khi có thời gian".
-7. Các tính năng AI hỗ trợ (Ollama, xem mục bên dưới) **chỉ gợi ý**, không có bước nào tự
-   động kết luận thay con người.
+Mọi tin đều đi qua một cán bộ con người trước khi trở thành "đã xác thực" — không có bước AI nào
+tự kết luận đúng/sai. Tín hiệu từ mạng xã hội/báo chí được xử lý và hiển thị hoàn toàn tách biệt
+khỏi tin dân báo, không bao giờ trộn lẫn hay tự động nâng cấp thành hồ sơ chính thức.
 
-## Tech stack
+**Định vị:** bổ trợ VNeID, không thay thế. VNeID là kênh tố cáo chính thức có giá trị pháp lý;
+Báo Tin là phản ứng tức thời, tại chỗ, cấp cơ sở.
 
-- **Database:** PostgreSQL + PostGIS · **Object storage:** MinIO (chỉ lưu path trong Postgres) · **Cache:** Redis (tùy chọn — geo-matching, fail-open nếu Redis chưa chạy/chết)
-- **Backend:** Node.js + TypeScript + Express, Prisma ORM, Zod, JWT RS256 + refresh rotation, vitest
-- **3 app Flutter riêng biệt, versioned độc lập, dùng chung backend:** `mobile-app-citizen` (người dân), `mobile-app-officer` (cán bộ phụ trách địa bàn **và** admin/senior_officer — từ v1.20 đã gộp đủ mọi màn quản trị: thống kê, duyệt/quản lý tài khoản, trợ lý tìm kiếm, chat liên đơn vị — nên admin không bắt buộc phải dùng `dashboard-web-react` nữa), `dashboard-web` (bản Flutter Web cũ hơn, vẫn chạy song song) — Riverpod, Dio, flutter_secure_storage, flutter_map/OpenStreetMap. Từ v1.23: dark mode theo hệ thống cho cả 2 app, offline queue cho `mobile-app-citizen` khi mất mạng.
-- **`dashboard-web-react`:** phiên bản React của web quản lý, dùng chung backend/database — Vite + React + TypeScript, react-router-dom, @tanstack/react-query, axios, recharts. Đăng nhập bằng tài khoản username/password riêng (102 xã/phường) thay vì OTP, từ v1.23 hỗ trợ MFA/TOTP + dark mode toggle thủ công. Vẫn giữ song song, không bắt buộc sau khi `mobile-app-officer` đạt parity.
-- **AI hỗ trợ (tùy chọn, opt-in):** [Ollama](https://ollama.com) chạy local, hoặc từ v1.23 bất kỳ endpoint kiểu OpenAI-compatible qua `LLM_PROVIDER=openai` + `OPENAI_BASE_URL` (ví dụ NVIDIA NIM) — tóm tắt tin MXH, lọc liên quan, gộp trùng ngữ nghĩa, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên. Tắt hoàn toàn nếu `LLM_PROVIDER=none`.
+## Nguyên tắc thiết kế bắt buộc
 
-## Cấu trúc
+Chi tiết đầy đủ ở [`CLAUDE.md`](CLAUDE.md) — đây là quy tắc bắt buộc, không phải gợi ý:
+
+| # | Nguyên tắc |
+|---|---|
+| 1 | Tin từ mạng xã hội/báo chí **không bao giờ** hiển thị lẫn hoặc gắn nhãn giống tin dân báo đã xác thực — luôn tách UI, luôn gắn nhãn nguồn + độ tin cậy. |
+| 2 | **Không workflow nào tự động** kết luận đúng/sai hay đẩy tin sang hồ sơ chính thức — mọi tin cần cán bộ phụ trách địa bàn chọn trạng thái xác minh (human-in-the-loop). |
+| 3 | Không crawl trực tiếp khi demo — module crawler dùng seed data mẫu, crawler thật chạy tách biệt qua script riêng. |
+| 4 | Không tự viết code đọc chip NFC CCCD — chỉ mock UI, tích hợp thật phải qua VNeID/SDK chính thức của Bộ Công an. |
+| 5 | Giữ nguyên EXIF GPS ảnh gốc — người dân phải chụp/chọn ảnh trực tiếp trong app. |
+| 6 | Bảo mật là yêu cầu từ đầu — mã hoá AES-256-GCM cho dữ liệu định danh, JWT RS256 + refresh rotation, rate-limit OTP, không phải hạng mục "làm sau khi có thời gian". |
+| 7 | Tính năng AI hỗ trợ **chỉ gợi ý**, không có bước nào tự động kết luận thay con người. |
+
+## Kiến trúc và tech stack
+
+| Lớp | Công nghệ |
+|---|---|
+| Database | PostgreSQL + PostGIS |
+| Object storage | MinIO (chỉ lưu path trong Postgres) |
+| Cache | Redis — tùy chọn, dùng cho geo-matching, fail-open nếu Redis chưa chạy/chết |
+| Backend | Node.js + TypeScript + Express, Prisma ORM, Zod, JWT RS256 + refresh rotation, vitest |
+| `mobile-app-citizen` | Flutter — người dân: báo tin + nút Cấp cứu, dark mode theo hệ thống, offline queue khi mất mạng |
+| `mobile-app-officer` | Flutter — cán bộ phụ trách địa bàn **và** admin/senior_officer (từ v1.20: gộp đủ màn quản trị — thống kê, duyệt/quản lý tài khoản, trợ lý tìm kiếm, chat liên đơn vị), dark mode theo hệ thống |
+| `dashboard-web` | Flutter Web — bản dashboard cũ hơn, vẫn chạy song song, đã có dark mode từ trước |
+| `dashboard-web-react` | Vite + React + TypeScript, react-router-dom, @tanstack/react-query, axios, recharts — đăng nhập username/password riêng cho 102 xã/phường, dark mode toggle thủ công, MFA/TOTP |
+| AI hỗ trợ (opt-in) | [Ollama](https://ollama.com) local, hoặc bất kỳ endpoint OpenAI-compatible (`LLM_PROVIDER=openai` + `OPENAI_BASE_URL`, ví dụ NVIDIA NIM) — tóm tắt tin, lọc liên quan, gộp trùng, gợi ý phân loại, trợ lý tìm kiếm ngôn ngữ tự nhiên. Tắt hoàn toàn nếu `LLM_PROVIDER=none`. |
+
+Mobile/web dùng chung 1 backend, versioned độc lập với nhau.
+
+## Cấu trúc thư mục
 
 ```
 bao-tin/
@@ -71,50 +95,110 @@ bao-tin/
 ├── mobile-app-officer/    App Flutter cho cán bộ phụ trách địa bàn — xác minh tin báo
 ├── dashboard-web/         App Flutter Web — dashboard trung tâm điều hành (admin/senior_officer)
 ├── dashboard-web-react/   Phiên bản React của dashboard-web — đăng nhập username/password
-├── infra/                 docker-compose (PostgreSQL+PostGIS, MinIO)
+├── infra/                 docker-compose (PostgreSQL+PostGIS, MinIO, Redis)
 └── data/raw/              Dữ liệu nguồn thô (Daklak.geojson — ranh giới hành chính thật)
 ```
 
-## Setup — Backend
+## Bắt đầu nhanh
+
+### Backend
 
 ```bash
 cd backend
 npm install
-npm run gen:keys        # sinh keypair RS256 dev (backend/keys/*.pem, gitignored)
-cp ../infra/.env.example .env   # rồi điền giá trị thật (không commit .env)
+npm run gen:keys                       # sinh keypair RS256 dev (backend/keys/*.pem, gitignored)
+cp ../infra/.env.example .env          # rồi điền giá trị thật (không commit .env)
+
+npx tsc --noEmit                       # kiểm tra type
+npx vitest run                         # 782+ test: crypto, validation, geo-matching, auth/report/
+                                        # officer/camera/dashboard/signals/search/web-account/
+                                        # wanted-notice/traffic-accident + HTTP wiring + seed specs
 ```
+
+Đầy đủ (cần Docker):
 
 ```bash
-npx tsc --noEmit         # kiểm tra type
-npx vitest run           # 775+ test: crypto, validation, geo-matching, auth/report/officer/
-                          # camera/dashboard/signals/search/web-account/wanted-notice/traffic-
-                          # accident service logic + HTTP wiring + seed-data specs
+docker compose -f infra/docker-compose.yml up -d
+cd backend && npx prisma db push && npm run seed
+npx vitest run   # test chạm DB/MinIO thật
 ```
 
-Đầy đủ (cần Docker): `docker compose -f infra/docker-compose.yml up -d` → `cd backend && npx prisma db push && npm run seed` → chạy lại `npx vitest run` để test chạm DB/MinIO thật. Seed cũng in ra danh sách tài khoản username/password tạm cho 102 xã (`dashboard-web-react`).
+Seed cũng in ra danh sách tài khoản username/password tạm cho 102 xã (`dashboard-web-react`).
 
-Bật AI hỗ trợ (tùy chọn): cài [Ollama](https://ollama.com), `ollama pull qwen2.5:1.5b`, set `LLM_PROVIDER=ollama` trong `.env`.
+Bật AI hỗ trợ (tùy chọn): cài [Ollama](https://ollama.com), `ollama pull qwen2.5:1.5b`, set
+`LLM_PROVIDER=ollama` trong `.env`.
 
-## Mobile & Web
+### Mobile (Flutter)
 
 ```bash
 cd mobile-app-citizen && flutter analyze && flutter test
 cd mobile-app-officer && flutter analyze && flutter test
-cd dashboard-web && flutter analyze && flutter test
+cd dashboard-web        && flutter analyze && flutter test
 ```
 
-Máy giả lập Android hoặc thiết bị thật để `flutter run` 2 app mobile; `dashboard-web` chạy
-trực tiếp trên Chrome (`flutter run -d chrome`), không cần giả lập. Chạy `mobile-app-citizen`/
-`mobile-app-officer` trên Chrome (`flutter run -d chrome`) cũng dùng được để soi UI nhanh —
-chỉ cần trỏ đúng backend qua `--dart-define=API_BASE_URL=http://localhost:3000` (mặc định
-`10.0.2.2:3000` chỉ dùng được cho Android emulator).
+Cần máy giả lập Android/thiết bị thật để `flutter run` 2 app mobile; `dashboard-web` chạy trực
+tiếp trên Chrome (`flutter run -d chrome`), không cần giả lập. Chạy `mobile-app-citizen`/
+`mobile-app-officer` trên Chrome cũng dùng được để soi UI nhanh — trỏ đúng backend qua
+`--dart-define=API_BASE_URL=http://localhost:3000` (mặc định `10.0.2.2:3000` chỉ dùng được cho
+Android emulator).
+
+### Dashboard web (React)
 
 ```bash
-cd dashboard-web-react && npm install && npm run typecheck && npm run test
+cd dashboard-web-react
+npm install && npm run typecheck && npm run test
 npm run dev   # http://localhost:5173, cần backend đang chạy
 ```
 
-## Đã xây dựng gì — theo phiên bản
+## Tính năng chính
+
+**Báo tin & xác minh**
+- Báo tin thường (giữ EXIF GPS) + báo tin khẩn cấp (SOS) — geo-matching PostGIS thật, định
+  tuyến ngay tới cán bộ phụ trách địa bàn.
+- Xác minh trạng thái bắt buộc qua cán bộ (human-in-the-loop), audit log mọi hành động nhạy cảm.
+- Kênh tình báo mở (crawler RSS + AI hỗ trợ tùy chọn) tách biệt hoàn toàn khỏi tin dân báo.
+- Module camera an ninh (yêu cầu trích xuất hành chính, không xem/tải video), cảnh báo tai nạn
+  giao thông (YOLO + OCR biển số, không nhận diện khuôn mặt), "Lệnh truy nã", chat nội bộ liên
+  đơn vị.
+
+**Xác thực & bảo mật**
+- OTP + JWT RS256/refresh rotation cho công dân; username/password + MFA/TOTP cho officer/admin.
+- Mã hoá AES-256-GCM dữ liệu định danh, rate-limit + account lockout, RBAC theo `district_id`.
+- Push notification qua Firebase Cloud Messaging (fallback console nếu chưa cấu hình).
+
+**Vận hành**
+- CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux.
+- Redis cache cho dữ liệu ít đổi (fail-open), dark mode toàn bộ 4 app/web.
+
+## Trạng thái và việc còn thiếu
+
+| Mục | Trạng thái |
+|---|---|
+| Push notification (FCM) | Backend xong — cần tạo service account Firebase thật (`FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY`) để kích hoạt; chưa có key thì fallback console như cũ. SMS/Zalo OA chưa làm. |
+| MFA/TOTP officer/admin | Backend xong — `dashboard-web-react` và app cán bộ chưa có UI để tự bật/quét QR/nhập mã. |
+| Crawler MXH (Facebook/Zalo) | Chưa làm — rủi ro vi phạm điều khoản dịch vụ nếu scrape ngoài API chính thức. |
+| Đồng bộ ranh giới địa bàn | Chưa đồng bộ với hệ thống tin bài chính. |
+| Số điện thoại khẩn cấp | Dữ liệu `[DEMO]` theo địa bàn, chưa xác minh số thật. |
+| NFC CCCD | Mock UI, chưa tích hợp VNeID/SDK chính thức. |
+| Chat 2 chiều dân ↔ cán bộ | Cố ý không làm — chỉ thông báo 1 chiều. |
+| Certificate pinning mobile | Chưa làm — cần chốt domain/cert TLS thật đang deploy trước khi hardcode pin. |
+| Độ chính xác AI (Ollama) | Phụ thuộc model — model nhỏ có thể đánh giá sai, cân nhắc model lớn hơn nếu dùng ngoài mục đích demo. |
+| `dashboard-web-react` trên browser thật | Đã xác minh qua 33 test Vitest + luồng API sống qua curl, chưa quan sát trực tiếp UI vì môi trường dev hiện tại không có công cụ tự động hoá trình duyệt. |
+
+## Lịch sử phiên bản
+
+**Gần đây nhất:**
+
+| Version | Nội dung |
+|---|---|
+| **v1.23** | Push notification FCM thật; Redis cache geo-matching; MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode 4 app; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ); vá lỗ hổng dependency mức high (`sharp`, `fast-xml-parser`); scaffold ký release Android thật |
+| **v1.22** | Sửa (thay ảnh) và xóa cho "Lệnh truy nã" — admin-only, tự dọn ảnh cũ khỏi MinIO |
+| **v1.21** | Dữ liệu demo mới trải khắp vùng Phú Yên cũ (sáp nhập Đắk Lắk 2025) để demo geo-matching/duyệt tài khoản toàn tỉnh |
+| **v1.20** | Gộp trang quản lý admin vào `mobile-app-officer` (Trợ lý tìm kiếm + Quản lý tài khoản) — admin không còn bắt buộc dùng `dashboard-web-react` |
+| **v1.19** | Chat nội bộ liên đơn vị cho cán bộ (kênh chung + kênh riêng từng đơn vị) |
+
+<details>
+<summary><b>Toàn bộ lịch sử từ v1.0</b> (bấm để xem)</summary>
 
 | Version | Nội dung |
 |---|---|
@@ -127,34 +211,23 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.6** | Thông báo 2 chiều khi cán bộ đổi trạng thái tin báo — dừng ở mức thông báo đơn giản, không phải chat |
 | **v1.7** | Tích hợp Ollama (model AI chạy local, không cần API key) làm tùy chọn tóm tắt tin cho crawler |
 | **v1.8** | 4 tính năng AI hỗ trợ dùng Ollama: lọc tín hiệu MXH liên quan, gộp trùng theo ngữ nghĩa, diễn giải độ nóng khu vực, gợi ý phân loại tin báo, trợ lý tìm kiếm ngôn ngữ tự nhiên trên dashboard — tất cả opt-in, chỉ gợi ý, không tự kết luận |
-| **v1.9** | Yêu cầu trích xuất nhiều camera theo tuyến đường (chọn nhiều camera, gộp 1 hành động gửi) phân tích phương hướng và vẽ đường chạy|
+| **v1.9** | Yêu cầu trích xuất nhiều camera theo tuyến đường (chọn nhiều camera, gộp 1 hành động gửi) phân tích phương hướng và vẽ đường chạy |
 | **v1.10** | `dashboard-web-react` — phiên bản React song song của web quản lý, đăng nhập username/password riêng cho 102 xã (bảng `web_accounts` tách biệt khỏi `officers`), tự đổi thông tin/mật khẩu, admin quản lý/reset tài khoản |
 | **v1.11** | CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux; trang chọn vai trò tĩnh ở site root trỏ `/admin`·`/citizen`·`/officer`; redesign toàn bộ UI `dashboard-web-react` bằng design token thật + role-gated nav; `mobile-app-citizen` build được cho Flutter Web (đổi `native_exif` sang package `exif` thuần Dart); vá 3 lỗ hổng bảo mật (rate-limit `/auth/refresh`, bắt buộc `OTP_HASH_PEPPER` ở production, audit log hành động admin trên tài khoản web) |
-| **v1.12** | Đăng ký/đăng nhập bằng username/password song song với OTP (citizen active ngay, officer cần admin duyệt + gán địa bàn); dashboard thống kê admin (biểu đồ phân loại, xếp hạng địa bàn, bản đồ, xu hướng theo ngày/tuần/tháng, xuất PDF) trên cả web và app cán bộ; đổi logo chính thức toàn hệ thống; tách rõ 3 loại lỗi đăng nhập (mất mạng/giới hạn thử lại/sai thật) thay vì gộp chung "sai mật khẩu"; vá lỗi bản APK release thiếu quyền `INTERNET` (chỉ có ở biến thể debug, khiến app không kết nối được mạng khi cài thật); tab "Cảnh báo tai nạn giao thông" cho app cán bộ — nhận cảnh báo từ 1 bộ phát hiện đối tượng (YOLO) + OCR biển số riêng biệt, **không** nhận diện khuôn mặt hay theo dõi người xuyên camera, mọi cảnh báo đều cần cán bộ xác nhận thủ công |
-| **v1.13** | Trang tin tức trong app (RSS bocongan.gov.vn) cho cả `mobile-app-citizen` và `mobile-app-officer`; thay biểu đồ tự vẽ bằng `fl_chart` (pie + line có tooltip) trong tab Thống kê của app cán bộ; viết lại thanh điều hướng dưới của `mobile-app-citizen` dùng đúng slot `bottomNavigationBar` (sửa lỗi giật khi bật/tắt bàn phím) và polish thanh điều hướng app cán bộ; thêm index còn thiếu (bao gồm GiST cho 3 cột PostGIS) sau khi rà lại hiệu năng backend |
-| **v1.14** | Phân trang thật cho danh sách tin báo của app cán bộ (trước đây không giới hạn, tải hết rồi sắp xếp ở client) — thứ tự ưu tiên (khẩn cấp trước) đẩy xuống DB để phân trang không làm tin khẩn cấp bị "chôn" ở trang sau; tab Thống kê đổi sang endpoint tổng hợp riêng thay vì tải hết tin rồi đếm ở client; tin khẩn cấp (SOS) giờ cũng đẩy thông báo tới admin, không chỉ cán bộ phụ trách địa bàn; vá lỗi giới hạn đăng nhập officer chỉ tính theo IP (nhiều cán bộ cùng mạng cơ quan có thể tự khóa lẫn nhau) — nay tính theo IP + số điện thoại đúng yêu cầu SECURITY.md |
-| **v1.15** | Tự động khóa tài khoản dân báo tin sau khi có 4 tin bị cán bộ xác nhận là sai (vẫn human-in-the-loop — hệ thống chỉ đếm các xác nhận officer đã tự đưa ra, không tự kết luận tin nào sai) — tài khoản bị khóa vẫn gửi được báo tin khẩn cấp (SOS) bình thường, chỉ chặn báo tin thường; hiện chưa có API/UI mở khóa, cần sửa trực tiếp DB |
-| **v1.16** | Tab "TK bị khóa" mới cho admin trong app cán bộ — xem danh sách tài khoản dân bị tự động khóa (kèm số tin báo bị xác nhận sai) và mở khóa trực tiếp, không cần sửa DB nữa |
-| **v1.17** | Gộp 3 tab admin-only (Thống kê, Duyệt TK, TK bị khóa) vào 1 mục "Quản trị" trong app cán bộ — bottom nav từ 10 tab rút còn 8, không đổi màu sắc/giao diện; thêm chức năng đổi mật khẩu tự phục vụ cho mọi tài khoản cán bộ (không chỉ admin) |
-| **v1.18** | Thêm chức năng đổi mật khẩu tự phục vụ cho app người dân (mục "Hồ sơ") — cùng cơ chế với officer ở v1.17, hoạt động cả với tài khoản đang bị khóa do báo tin sai (khóa chỉ chặn gửi tin thường, không chặn quản lý tài khoản) |
-| **v1.19** | Chat nội bộ liên đơn vị cho cán bộ — kênh chung toàn hệ thống + kênh riêng từng đơn vị (không phải chat với dân, vẫn dừng ở thông báo 1 chiều như v1.6 cho phía người dân) |
-| **v1.20** | Gộp trang quản lý admin vào `mobile-app-officer`: port Trợ lý tìm kiếm (AI cục bộ) và Quản lý tài khoản (102 xã, `web_accounts`) sang app cán bộ, hỗ trợ đăng nhập cả 3 loại tài khoản (OTP/tự đăng ký/admin cấp sẵn) — admin không còn bắt buộc dùng `dashboard-web-react`; vá lỗi layout Row bị vỡ do `FilledButtonTheme`/`OutlinedButtonTheme` ép chiều rộng nút tối thiểu = vô hạn (dùng cho nút full-width như "Đăng nhập") khi đặt cạnh ô nhập trong cùng hàng |
-| **v1.21** | Dữ liệu demo mới: 8 tài khoản cán bộ hoạt động + 4 tài khoản chờ duyệt trải khắp vùng Phú Yên cũ (sáp nhập vào Đắk Lắk 2025) để demo geo-matching/duyệt tài khoản toàn tỉnh; 5 tin cảnh báo tai nạn giao thông demo (đủ 3 trạng thái); 1 tài khoản dân demo bị khóa tự động sau 4 tin báo sai — đi qua đúng luồng thật (reportLifecycle + auto-lock), không chèn thẳng vào DB |
-| **v1.22** | Thêm sửa (thay ảnh) và xóa cho "Lệnh truy nã" (trước chỉ đăng được, không sửa/xóa được) — admin-only, tự dọn ảnh cũ khỏi MinIO khi thay/xóa |
-| **v1.23** | Push notification qua Firebase Cloud Messaging thật (fallback console nếu chưa cấu hình service account); Redis cache cho geo-matching (fail-open); MFA/TOTP + password policy 12 ký tự phức tạp + session ngắn hơn riêng cho tài khoản officer/admin; dark mode theo hệ thống cho `mobile-app-citizen`/`mobile-app-officer`, toggle thủ công cho `dashboard-web-react`; offline queue cho `mobile-app-citizen` — lưu tin nháp khi mất mạng, tự đồng bộ lại; hỗ trợ thêm endpoint AI kiểu OpenAI-compatible bất kỳ (không chỉ OpenAI/Gemini/Ollama); vá 2 lỗ hổng bảo mật high-severity trong dependency (`sharp`, `fast-xml-parser`); scaffold ký release Android thật (minify/shrink + `key.properties`) cho cả 2 app di động |
+| **v1.12** | Đăng ký/đăng nhập bằng username/password song song với OTP (citizen active ngay, officer cần admin duyệt + gán địa bàn); dashboard thống kê admin (biểu đồ phân loại, xếp hạng địa bàn, bản đồ, xu hướng theo ngày/tuần/tháng, xuất PDF) trên cả web và app cán bộ; đổi logo chính thức toàn hệ thống; tách rõ 3 loại lỗi đăng nhập (mất mạng/giới hạn thử lại/sai thật) thay vì gộp chung "sai mật khẩu"; vá lỗi bản APK release thiếu quyền `INTERNET`; tab "Cảnh báo tai nạn giao thông" cho app cán bộ — nhận cảnh báo từ 1 bộ phát hiện đối tượng (YOLO) + OCR biển số riêng biệt, **không** nhận diện khuôn mặt hay theo dõi người xuyên camera, mọi cảnh báo đều cần cán bộ xác nhận thủ công |
+| **v1.13** | Trang tin tức trong app (RSS bocongan.gov.vn) cho cả `mobile-app-citizen` và `mobile-app-officer`; thay biểu đồ tự vẽ bằng `fl_chart` (pie + line có tooltip) trong tab Thống kê của app cán bộ; viết lại thanh điều hướng dưới của `mobile-app-citizen` dùng đúng slot `bottomNavigationBar`; thêm index còn thiếu (bao gồm GiST cho 3 cột PostGIS) sau khi rà lại hiệu năng backend |
+| **v1.14** | Phân trang thật cho danh sách tin báo của app cán bộ; ưu tiên khẩn cấp đẩy xuống DB; tab Thống kê đổi sang endpoint tổng hợp riêng; SOS đẩy thông báo tới admin; vá lỗi giới hạn đăng nhập officer chỉ tính theo IP — nay tính theo IP + số điện thoại đúng SECURITY.md |
+| **v1.15** | Tự động khóa tài khoản dân báo tin sau 4 tin bị cán bộ xác nhận là sai (vẫn human-in-the-loop) — tài khoản bị khóa vẫn gửi được SOS, chỉ chặn báo tin thường |
+| **v1.16** | Tab "TK bị khóa" cho admin trong app cán bộ — xem + mở khóa trực tiếp, không cần sửa DB |
+| **v1.17** | Gộp 3 tab admin-only vào 1 mục "Quản trị" trong app cán bộ; thêm đổi mật khẩu tự phục vụ cho mọi tài khoản cán bộ |
+| **v1.18** | Đổi mật khẩu tự phục vụ cho app người dân — hoạt động cả với tài khoản đang bị khóa do báo tin sai |
+| **v1.19** | Chat nội bộ liên đơn vị cho cán bộ — kênh chung toàn hệ thống + kênh riêng từng đơn vị |
+| **v1.20** | Gộp trang quản lý admin vào `mobile-app-officer`: Trợ lý tìm kiếm (AI cục bộ) + Quản lý tài khoản (102 xã) sang app cán bộ, hỗ trợ đăng nhập cả 3 loại tài khoản |
+| **v1.21** | Dữ liệu demo mới trải khắp vùng Phú Yên cũ (sáp nhập Đắk Lắk 2025); 5 tin cảnh báo tai nạn giao thông demo; 1 tài khoản dân demo bị khóa tự động, đi qua đúng luồng thật |
+| **v1.22** | Sửa (thay ảnh) và xóa cho "Lệnh truy nã" — admin-only, tự dọn ảnh cũ khỏi MinIO khi thay/xóa |
+| **v1.23** | Push notification FCM thật; Redis cache geo-matching (fail-open); MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode theo hệ thống cho `mobile-app-citizen`/`mobile-app-officer`, toggle thủ công cho `dashboard-web-react`; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ, không chỉ OpenAI/Gemini/Ollama); vá 2 lỗ hổng bảo mật high-severity (`sharp`, `fast-xml-parser`); scaffold ký release Android thật (minify/shrink + `key.properties`) |
 
-## Những gì còn thiếu / cố ý chưa làm
-
-- Push notification đã nối Firebase Cloud Messaging thật — **cần tạo service account Firebase thật** để kích hoạt (`FCM_PROJECT_ID`/`FCM_CLIENT_EMAIL`/`FCM_PRIVATE_KEY`), chưa có key thì tự fallback về log console như trước. SMS/Zalo OA vẫn chưa làm.
-- MFA/TOTP cho officer/admin mới xong phần backend — `dashboard-web-react` và app cán bộ chưa có UI để tự bật/quét QR/nhập mã.
-- Crawler MXH (Facebook/Zalo) chưa làm — rủi ro vi phạm điều khoản dịch vụ nếu scrape ngoài API chính thức.
-- Chưa đồng bộ danh mục địa bàn giữa Báo Tin và hệ thống tin bài chính.
-- Số điện thoại khẩn cấp theo địa bàn cụ thể hiện là dữ liệu `[DEMO]`, chưa xác minh số thật.
-- NFC CCCD mới dừng ở mock UI, chưa tích hợp VNeID/SDK chính thức.
-- Chat/nhắn tin 2 chiều đầy đủ giữa dân và cán bộ — cố ý không làm.
-- Certificate pinning trên mobile — cần chốt domain/cert TLS thật đang deploy trước khi hardcode pin, chưa làm.
-- Độ chính xác của các tính năng AI (Ollama) phụ thuộc model — model nhỏ có thể đánh giá sai đôi lúc, cần cân nhắc model lớn hơn nếu dùng nghiêm túc ngoài mục đích demo.
-- **`dashboard-web-react` chưa được kiểm tra bằng trình duyệt thật** — đã xác minh qua 33 test Vitest + toàn bộ luồng API sống qua curl, nhưng môi trường phát triển hiện tại không có công cụ tự động hoá trình duyệt để quan sát trực tiếp giao diện.
+</details>
 
 ## Người đóng góp
 
