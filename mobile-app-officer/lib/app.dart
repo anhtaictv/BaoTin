@@ -11,6 +11,8 @@ class BaoTinOfficerApp extends StatelessWidget {
       title: 'Báo Tin — Cán bộ',
       debugShowCheckedModeBanner: false,
       theme: BaoTinOfficerTheme.light(),
+      darkTheme: BaoTinOfficerTheme.dark(),
+      themeMode: ThemeMode.system,
       home: const OfficerAuthGate(),
       // Individual screens (home_shell.dart, officer_password_login_screen.dart, ...) adapt
       // their own layout at kWideBreakpoint (side nav, split hero+form) — this only stops

@@ -135,7 +135,7 @@ class _AnimatedNavBar extends StatelessWidget {
       child: Container(
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withValues(alpha: 0.06),
@@ -227,8 +227,8 @@ class _SideNav extends StatelessWidget {
     return Container(
       width: 240,
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(right: BorderSide(color: Colors.grey.shade200)),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(right: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: SafeArea(
         child: Column(

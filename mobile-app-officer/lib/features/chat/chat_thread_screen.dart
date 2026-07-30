@@ -217,13 +217,13 @@ class _MessageBubble extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isMine ? BaoTinOfficerTheme.primary : Colors.white,
+                    color: isMine ? BaoTinOfficerTheme.primary : Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(14),
-                    border: isMine ? null : Border.all(color: Colors.grey.shade200),
+                    border: isMine ? null : Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: Text(
                     message['content'] as String? ?? '',
-                    style: TextStyle(color: isMine ? Colors.white : Colors.black87),
+                    style: TextStyle(color: isMine ? Colors.white : Theme.of(context).colorScheme.onSurface),
                   ),
                 ),
               ),
