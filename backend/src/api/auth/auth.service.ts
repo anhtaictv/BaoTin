@@ -152,19 +152,29 @@ export function createAuthService(deps: AuthServiceDeps) {
     return issueTokenPair({ subjectType: "officer", officerId: officer.id, role: officer.role });
   }
 
-  async function issueTokenPair(subject: {
-    subjectType: "user" | "officer";
-    userId?: string;
-    officerId?: string;
-    role: string;
-  }): Promise<TokenPair> {
+  /**
+   * accessTtlMinutesOverride lets a caller with its own hardening requirement (currently only
+   * webAccountAuth.service.ts, for the dashboard-web-react officer/admin login) issue a shorter
+   * access token than the shared deps.jwtAccessTtlMinutes, without a second TokenPair type or a
+   * second refresh-token code path. Omitted => identical behavior to before this param existed.
+   */
+  async function issueTokenPair(
+    subject: {
+      subjectType: "user" | "officer";
+      userId?: string;
+      officerId?: string;
+      role: string;
+    },
+    accessTtlMinutesOverride?: number,
+  ): Promise<TokenPair> {
     const sub = subject.userId ?? subject.officerId;
     if (!sub) throw new Error("issueTokenPair requires userId or officerId");
 
+    const accessTtlMinutes = accessTtlMinutesOverride ?? deps.jwtAccessTtlMinutes;
     const accessToken = await signAccessToken(
       { sub, role: subject.role, subjectType: subject.subjectType },
       deps.jwtPrivateKey,
-      deps.jwtAccessTtlMinutes,
+      accessTtlMinutes,
     );
 
     const refreshToken = generateOpaqueToken();
@@ -179,7 +189,7 @@ export function createAuthService(deps: AuthServiceDeps) {
       },
     });
 
-    return { accessToken, refreshToken, expiresInMinutes: deps.jwtAccessTtlMinutes };
+    return { accessToken, refreshToken, expiresInMinutes: accessTtlMinutes };
   }
 
   /** Rotates a refresh token: the old one is invalidated the instant a new one is issued. */
@@ -218,6 +228,21 @@ export function createAuthService(deps: AuthServiceDeps) {
     return officer.role;
   }
 
+  /** Registers/updates the FCM device token for a logged-in citizen/officer, so
+   * FirebaseNotificationSender (notifications/FirebaseNotificationSender.ts) can find where to
+   * push. Called after login/app-open, not part of the auth flow itself. */
+  async function registerDeviceToken(
+    subjectType: "user" | "officer",
+    subjectId: string,
+    fcmToken: string,
+  ): Promise<void> {
+    if (subjectType === "user") {
+      await deps.prisma.user.update({ where: { id: subjectId }, data: { fcmToken } });
+    } else {
+      await deps.prisma.officer.update({ where: { id: subjectId }, data: { fcmToken } });
+    }
+  }
+
   /** "Logout everywhere" — SECURITY.md §1.3. Revokes every active refresh token for the subject. */
   async function revokeAllSessions(subjectType: "user" | "officer", subjectId: string): Promise<void> {
     const where = subjectType === "user" ? { userId: subjectId } : { officerId: subjectId };
@@ -237,6 +262,7 @@ export function createAuthService(deps: AuthServiceDeps) {
     verifyOtpForUser,
     officerLogin,
     rotateRefreshToken,
+    registerDeviceToken,
     revokeAllSessions,
     decryptPhoneNumber,
     /** Exposed so webAccountAuth.service.ts's username/password login (dashboard-web-react)

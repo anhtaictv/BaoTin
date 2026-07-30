@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { PrismaClient } from "@prisma/client";
 import { loadEnv } from "./config/env.js";
 import { prisma } from "./db/prisma.js";
 import { loadJwtKeys } from "./crypto/jwtKeys.js";
@@ -10,7 +11,10 @@ import { createGeoMatchService } from "./geo/geoMatch.service.js";
 import { createAssignOfficerService } from "./geo/assignOfficer.service.js";
 import { createStorageClient } from "./storage/minioClient.js";
 import { ConsoleNotificationSender } from "./notifications/ConsoleNotificationSender.js";
+import { FirebaseNotificationSender } from "./notifications/FirebaseNotificationSender.js";
+import type { NotificationSender } from "./notifications/NotificationSender.js";
 import { createNotificationService } from "./notifications/notification.service.js";
+import { createCache } from "./cache/cache.js";
 import { createReportLifecycleService } from "./services/reportLifecycle.service.js";
 import { createReportCategorySuggester } from "./services/reportClassifier.js";
 import { createReportsController } from "./api/citizen/reports.controller.js";
@@ -67,6 +71,25 @@ import { createChatController } from "./api/officer/chat.controller.js";
 import { createChatRoutes } from "./api/officer/chat.routes.js";
 import { createApp } from "./app.js";
 
+/** FCM env vars are all-or-nothing — anything short of all three configured falls back to the
+ * console stub (dev/demo default) rather than crashing startup. */
+function createNotificationSender(env: ReturnType<typeof loadEnv>, prisma: PrismaClient): NotificationSender {
+  if (!env.FCM_PROJECT_ID || !env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY) {
+    return new ConsoleNotificationSender();
+  }
+  try {
+    return new FirebaseNotificationSender(prisma, {
+      projectId: env.FCM_PROJECT_ID,
+      clientEmail: env.FCM_CLIENT_EMAIL,
+      privateKey: env.FCM_PRIVATE_KEY,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[fcm] failed to initialize Firebase Admin, falling back to console sender:", err);
+    return new ConsoleNotificationSender();
+  }
+}
+
 async function main() {
   const env = loadEnv();
 
@@ -87,7 +110,8 @@ async function main() {
   const requireAuth = createAuthMiddleware(publicKey);
   const authRouter = createAuthRoutes(authController, requireAuth);
 
-  const geoMatch = createGeoMatchService(prisma);
+  const cache = createCache(env.REDIS_URL);
+  const geoMatch = createGeoMatchService(prisma, cache);
   const assignOfficer = createAssignOfficerService(prisma);
   const storage = createStorageClient({
     endPoint: env.MINIO_ENDPOINT,
@@ -101,7 +125,7 @@ async function main() {
     publicPort: env.MINIO_PUBLIC_PORT,
     publicUseSSL: env.MINIO_PUBLIC_USE_SSL,
   });
-  const notifications = createNotificationService(new ConsoleNotificationSender());
+  const notifications = createNotificationService(createNotificationSender(env, prisma));
   const reportLifecycle = createReportLifecycleService({ prisma, geoMatch, assignOfficer, storage, notifications });
   const categorySuggester = createReportCategorySuggester(env);
   const reportsController = createReportsController(reportLifecycle, categorySuggester);
@@ -153,6 +177,7 @@ async function main() {
     authService,
     piiEncryptionKey: env.PII_ENCRYPTION_KEY,
     auditLog,
+    webAccountAccessTtlMinutes: env.WEB_ACCOUNT_ACCESS_TTL_MINUTES,
   });
   const webAccountController = createWebAccountController(webAccountAuthService);
   const webAccountRouter = createWebAccountRoutes(webAccountController, requireAuth);

@@ -11,6 +11,8 @@ import {
 const BASE_ENV: SummarizerEnv = {
   LLM_PROVIDER: "none",
   OPENAI_API_KEY: "",
+  OPENAI_BASE_URL: "https://api.openai.com/v1",
+  OPENAI_MODEL: "gpt-4o-mini",
   GEMINI_API_KEY: "",
   OLLAMA_BASE_URL: "http://localhost:11434",
   OLLAMA_MODEL: "qwen2.5:1.5b",

@@ -7,6 +7,20 @@ const usernameSchema = z
 
 const passwordSchema = z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự");
 
+/** Officer/admin-only — stricter than the shared passwordSchema above, which stays min-8
+ * because it's also reachable from /auth/register/citizen and /auth/citizen/change-password
+ * (citizens are OTP-first per docs/SECURITY.md §1.1, but this codebase already has a citizen
+ * username/password path too — see registerCitizenSchema below — so tightening passwordSchema
+ * in place would silently change citizen behavior). baomat.txt's hardening pass asks for
+ * 12+ chars + complexity specifically for cán bộ/admin accounts. */
+export const officerPasswordSchema = z
+  .string()
+  .min(12, "Mật khẩu phải có ít nhất 12 ký tự")
+  .regex(/[a-z]/, "Mật khẩu phải chứa ít nhất 1 chữ thường")
+  .regex(/[A-Z]/, "Mật khẩu phải chứa ít nhất 1 chữ hoa")
+  .regex(/[0-9]/, "Mật khẩu phải chứa ít nhất 1 chữ số")
+  .regex(/[^a-zA-Z0-9]/, "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt");
+
 // Vietnamese CCCD is 12 digits; older CMND (still valid, not yet replaced for everyone) is 9.
 const cccdNumberSchema = z.string().regex(/^\d{9}$|^\d{12}$/, "Số CCCD/CMND không hợp lệ");
 
@@ -31,7 +45,7 @@ export const registerCitizenSchema = z.object({
 
 export const registerOfficerSchema = z.object({
   username: usernameSchema,
-  password: passwordSchema,
+  password: officerPasswordSchema,
   fullName: fullNameSchema,
   phoneNumber: phoneNumberSchema,
   cccdNumber: cccdNumberSchema,
@@ -46,11 +60,17 @@ export const approveOfficerSchema = z.object({
   districtId: z.string().uuid(),
 });
 
-/** Same shape as webAccount.schema.ts's changePasswordSchema — shared by both
- * /auth/officer/change-password and /auth/citizen/change-password, which each verify against
- * their own row's password_hash (officers.password_hash / users.password_hash respectively,
- * separate mechanisms from WebAccount's dashboard-web-react accounts). */
+/** Citizen-only now (/auth/citizen/change-password) — kept at the shared min-8 passwordSchema.
+ * Used to also back /auth/officer/change-password, but that route now uses
+ * changeOfficerPasswordSchema below (officerPasswordSchema's 12+/complexity rule) instead, so
+ * tightening officer passwords doesn't reach into the citizen flow. */
 export const changePasswordSchema = z.object({
   oldPassword: z.string().min(1).max(200),
   newPassword: passwordSchema,
+});
+
+/** Officer/admin-only — /auth/officer/change-password. See officerPasswordSchema's comment. */
+export const changeOfficerPasswordSchema = z.object({
+  oldPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại").max(200),
+  newPassword: officerPasswordSchema,
 });

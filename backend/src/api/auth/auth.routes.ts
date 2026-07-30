@@ -8,6 +8,7 @@ import {
   otpRequestSchema,
   otpVerifySchema,
   refreshTokenSchema,
+  registerDeviceTokenSchema,
 } from "../../validation/schemas/auth.schema.js";
 import {
   officerLoginLimiter,
@@ -48,6 +49,13 @@ export function createAuthRoutes(controller: AuthController, requireAuth: Requir
   );
 
   router.post("/sessions/revoke-all", requireAuth([]), asyncHandler(controller.revokeAllSessions));
+
+  router.post(
+    "/device-token",
+    requireAuth([]),
+    validateRequest(registerDeviceTokenSchema),
+    asyncHandler(controller.registerDeviceToken),
+  );
 
   return router;
 }

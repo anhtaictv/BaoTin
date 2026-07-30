@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createHeatNarrator, NoopHeatNarrator, OllamaHeatNarrator } from "./heatNarrative.js";
+import { createHeatNarrator, NoopHeatNarrator, OllamaHeatNarrator, OpenAiHeatNarrator } from "./heatNarrative.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -71,22 +71,54 @@ describe("OllamaHeatNarrator", () => {
   });
 });
 
-describe("createHeatNarrator", () => {
-  it("returns NoopHeatNarrator when LLM_PROVIDER is not 'ollama'", () => {
-    const narrator = createHeatNarrator({
-      LLM_PROVIDER: "none",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
+describe("OpenAiHeatNarrator", () => {
+  it("returns the model's narrative on success", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: "Khu vực đang có nhiều tin về cháy nổ." } }] }),
+      })),
+    );
+    const narrator = new OpenAiHeatNarrator("fake-key");
+    const result = await narrator.generate({
+      districtName: "Buôn Ma Thuột",
+      signals: [{ summary: "Cháy nhỏ gần chợ", detectedCategory: "chay_no" }],
     });
+    expect(result).toBe("Khu vực đang có nhiều tin về cháy nổ.");
+  });
+
+  it("returns null immediately when there are no signals, without calling fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const narrator = new OpenAiHeatNarrator("fake-key");
+    const result = await narrator.generate({ districtName: "Buôn Ma Thuột", signals: [] });
+    expect(result).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("createHeatNarrator", () => {
+  const BASE_ENV = {
+    OPENAI_API_KEY: "",
+    OPENAI_BASE_URL: "https://api.openai.com/v1",
+    OPENAI_MODEL: "gpt-4o-mini",
+    OLLAMA_BASE_URL: "http://localhost:11434",
+    OLLAMA_MODEL: "qwen2.5:1.5b",
+  };
+
+  it("returns NoopHeatNarrator when LLM_PROVIDER is 'none'", () => {
+    const narrator = createHeatNarrator({ ...BASE_ENV, LLM_PROVIDER: "none" });
     expect(narrator).toBeInstanceOf(NoopHeatNarrator);
   });
 
   it("returns OllamaHeatNarrator when LLM_PROVIDER is 'ollama'", () => {
-    const narrator = createHeatNarrator({
-      LLM_PROVIDER: "ollama",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
-    });
+    const narrator = createHeatNarrator({ ...BASE_ENV, LLM_PROVIDER: "ollama" });
     expect(narrator).toBeInstanceOf(OllamaHeatNarrator);
+  });
+
+  it("returns OpenAiHeatNarrator when LLM_PROVIDER is 'openai' and a key is set", () => {
+    const narrator = createHeatNarrator({ ...BASE_ENV, LLM_PROVIDER: "openai", OPENAI_API_KEY: "sk-fake" });
+    expect(narrator).toBeInstanceOf(OpenAiHeatNarrator);
   });
 });

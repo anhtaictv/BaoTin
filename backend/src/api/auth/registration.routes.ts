@@ -5,6 +5,7 @@ import { validateRequest } from "../../middleware/validateRequest.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { uploadCccdPhotos } from "./cccdUpload.middleware.js";
 import {
+  changeOfficerPasswordSchema,
   changePasswordSchema,
   loginPasswordSchema,
   registerCitizenSchema,
@@ -66,7 +67,7 @@ export function createRegistrationRoutes(controller: RegistrationController, req
   router.post(
     "/officer/change-password",
     requireAuth([...OFFICER_ROLES]),
-    validateRequest(changePasswordSchema),
+    validateRequest(changeOfficerPasswordSchema),
     asyncHandler(controller.changeOfficerPassword),
   );
 

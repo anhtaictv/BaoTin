@@ -72,15 +72,51 @@ export class OllamaRelevanceClassifier implements RelevanceClassifier {
   }
 }
 
+/** Same as OllamaRelevanceClassifier but against any OpenAI-compatible chat-completions
+ * endpoint (OpenAI itself, or e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1). */
+export class OpenAiRelevanceClassifier implements RelevanceClassifier {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string = "gpt-4o-mini",
+    private readonly baseUrl: string = "https://api.openai.com/v1",
+  ) {}
+
+  async isRelevant(input: RelevanceInput): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: RELEVANCE_PROMPT.replace("{category}", input.category) },
+            { role: "user", content: `${input.title}\n\n${input.content}` },
+          ],
+        }),
+      });
+      if (!res.ok) return true;
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      return text ? parseKeepDecision(text) : true;
+    } catch {
+      return true;
+    }
+  }
+}
+
 export interface RelevanceClassifierEnv {
   LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
+  OPENAI_API_KEY: string;
+  OPENAI_BASE_URL: string;
+  OPENAI_MODEL: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
 }
 
-/** Only "ollama" wires in the AI second-pass — openai/gemini/none keep keyword-only behavior
- * (this feature is specifically about the local-model capability, not a general-purpose hook). */
+/** "gemini"/"none" keep keyword-only behavior — no Gemini implementation of this feature exists. */
 export function createRelevanceClassifier(env: RelevanceClassifierEnv): RelevanceClassifier {
   if (env.LLM_PROVIDER === "ollama") return new OllamaRelevanceClassifier(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
+  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY)
+    return new OpenAiRelevanceClassifier(env.OPENAI_API_KEY, env.OPENAI_MODEL, env.OPENAI_BASE_URL);
   return new AlwaysRelevantClassifier();
 }

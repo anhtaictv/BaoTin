@@ -7,6 +7,9 @@ import { webLoginLimiter } from "../../middleware/rateLimiters.js";
 import {
   changePasswordSchema,
   officerIdParamsSchema,
+  totpConfirmSchema,
+  totpDisableSchema,
+  totpLoginSchema,
   updateAccountInfoSchema,
   webLoginSchema,
 } from "../../validation/schemas/webAccount.schema.js";
@@ -28,7 +31,38 @@ export function createWebAccountRoutes(controller: WebAccountController, require
     asyncHandler(controller.login),
   );
 
+  // 2nd step of login for an account with TOTP 2FA enabled — same IP/username-shaped rate
+  // limit as the password step above (webLoginLimiter keys on req.body.username, which this
+  // request doesn't have, so it effectively falls back to per-IP; the per-account 5-attempt
+  // lockout already happened at the password step).
+  router.post(
+    "/auth/web/login/totp",
+    webLoginLimiter,
+    validateRequest(totpLoginSchema),
+    asyncHandler(controller.loginTotp),
+  );
+
   router.get("/web-accounts/me", requireAuth([...OFFICER_ROLES]), asyncHandler(controller.getMyAccount));
+
+  router.post(
+    "/web-accounts/me/totp/setup",
+    requireAuth([...OFFICER_ROLES]),
+    asyncHandler(controller.setupTotp),
+  );
+
+  router.post(
+    "/web-accounts/me/totp/confirm",
+    requireAuth([...OFFICER_ROLES]),
+    validateRequest(totpConfirmSchema),
+    asyncHandler(controller.confirmTotp),
+  );
+
+  router.post(
+    "/web-accounts/me/totp/disable",
+    requireAuth([...OFFICER_ROLES]),
+    validateRequest(totpDisableSchema),
+    asyncHandler(controller.disableTotp),
+  );
 
   router.patch(
     "/web-accounts/me/password",

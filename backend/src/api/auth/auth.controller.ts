@@ -34,6 +34,14 @@ export function createAuthController(authService: AuthService) {
       await authService.revokeAllSessions(subjectType, req.user.id);
       res.status(200).json({ success: true, data: { revoked: true }, error: null });
     },
+
+    async registerDeviceToken(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const { fcmToken } = req.body as { fcmToken: string };
+      const subjectType = req.user.role === "citizen" ? "user" : "officer";
+      await authService.registerDeviceToken(subjectType, req.user.id, fcmToken);
+      res.status(200).json({ success: true, data: { registered: true }, error: null });
+    },
   };
 }
 

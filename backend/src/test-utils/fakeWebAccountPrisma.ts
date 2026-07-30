@@ -29,6 +29,8 @@ export interface FakeWebAccountRow {
   lockedUntil: Date | null;
   lastLoginAt: Date | null;
   createdAt: Date;
+  totpSecret: string | null;
+  totpEnabled: boolean;
 }
 
 /** Fake Prisma covering webAccountAuth.service.ts's needs: web_accounts, officers (read +
@@ -107,6 +109,8 @@ export function createFakeWebAccountPrisma() {
           lockedUntil: null,
           lastLoginAt: null,
           createdAt: new Date(),
+          totpSecret: null,
+          totpEnabled: false,
         };
         webAccounts.set(row.id, row);
         return { ...row, officer: hydrateOfficer(row.officerId) };
@@ -149,6 +153,8 @@ export function seedFullAccount(
     districtId?: string;
     districtName?: string;
     mustChangePassword?: boolean;
+    totpSecret?: string | null;
+    totpEnabled?: boolean;
   },
 ) {
   const officerId = input.officerId ?? randomUUID();
@@ -172,6 +178,8 @@ export function seedFullAccount(
     lockedUntil: null,
     lastLoginAt: null,
     createdAt: new Date(),
+    totpSecret: input.totpSecret ?? null,
+    totpEnabled: input.totpEnabled ?? false,
   });
   return officerId;
 }

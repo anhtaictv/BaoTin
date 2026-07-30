@@ -3,6 +3,7 @@ import {
   AlwaysRelevantClassifier,
   createRelevanceClassifier,
   OllamaRelevanceClassifier,
+  OpenAiRelevanceClassifier,
 } from "./relevanceClassifier.js";
 
 afterEach(() => {
@@ -83,31 +84,65 @@ describe("OllamaRelevanceClassifier", () => {
   });
 });
 
+describe("OpenAiRelevanceClassifier", () => {
+  it("returns false when the model clearly says KHONG", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: "KHONG" } }] }) })),
+    );
+    const classifier = new OpenAiRelevanceClassifier("fake-key");
+    const result = await classifier.isRelevant({ title: "t", content: "c", category: "trom_cap" });
+    expect(result).toBe(false);
+  });
+
+  it("fails open when the API call fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+    const classifier = new OpenAiRelevanceClassifier("fake-key");
+    const result = await classifier.isRelevant({ title: "t", content: "c", category: "trom_cap" });
+    expect(result).toBe(true);
+  });
+
+  it("sends the Authorization header", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "CO" } }] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const classifier = new OpenAiRelevanceClassifier("fake-key", "some-model", "https://integrate.api.nvidia.com/v1");
+    await classifier.isRelevant({ title: "t", content: "c", category: "trom_cap" });
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
+    expect((init as RequestInit).headers).toMatchObject({ Authorization: "Bearer fake-key" });
+  });
+});
+
 describe("createRelevanceClassifier", () => {
+  const BASE_ENV = {
+    OPENAI_API_KEY: "",
+    OPENAI_BASE_URL: "https://api.openai.com/v1",
+    OPENAI_MODEL: "gpt-4o-mini",
+    OLLAMA_BASE_URL: "http://localhost:11434",
+    OLLAMA_MODEL: "qwen2.5:1.5b",
+  };
+
   it("returns AlwaysRelevantClassifier when LLM_PROVIDER is 'none'", () => {
-    const classifier = createRelevanceClassifier({
-      LLM_PROVIDER: "none",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
-    });
+    const classifier = createRelevanceClassifier({ ...BASE_ENV, LLM_PROVIDER: "none" });
     expect(classifier).toBeInstanceOf(AlwaysRelevantClassifier);
   });
 
-  it("returns AlwaysRelevantClassifier for openai/gemini — this feature is Ollama-specific", () => {
-    const classifier = createRelevanceClassifier({
-      LLM_PROVIDER: "openai",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
-    });
+  it("returns AlwaysRelevantClassifier for openai when no key is set", () => {
+    const classifier = createRelevanceClassifier({ ...BASE_ENV, LLM_PROVIDER: "openai" });
     expect(classifier).toBeInstanceOf(AlwaysRelevantClassifier);
+  });
+
+  it("returns OpenAiRelevanceClassifier when LLM_PROVIDER is 'openai' and a key is set", () => {
+    const classifier = createRelevanceClassifier({ ...BASE_ENV, LLM_PROVIDER: "openai", OPENAI_API_KEY: "sk-fake" });
+    expect(classifier).toBeInstanceOf(OpenAiRelevanceClassifier);
   });
 
   it("returns OllamaRelevanceClassifier when LLM_PROVIDER is 'ollama'", () => {
-    const classifier = createRelevanceClassifier({
-      LLM_PROVIDER: "ollama",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
-    });
+    const classifier = createRelevanceClassifier({ ...BASE_ENV, LLM_PROVIDER: "ollama" });
     expect(classifier).toBeInstanceOf(OllamaRelevanceClassifier);
   });
 });

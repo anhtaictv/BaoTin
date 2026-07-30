@@ -110,15 +110,62 @@ export class OllamaQueryInterpreter implements QueryInterpreter {
   }
 }
 
+/** Same as OllamaQueryInterpreter but against any OpenAI-compatible chat-completions endpoint
+ * (OpenAI itself, or e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1). */
+export class OpenAiQueryInterpreter implements QueryInterpreter {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string = "gpt-4o-mini",
+    private readonly baseUrl: string = "https://api.openai.com/v1",
+  ) {}
+
+  async interpret(query: string, knownDistrictNames: string[]): Promise<SearchInterpretation | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: buildPrompt(knownDistrictNames) },
+            { role: "user", content: query },
+          ],
+        }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) return null;
+
+      const parsed = extractJsonObject(text);
+      if (!parsed) return null;
+      const result = InterpretationSchema.safeParse(parsed);
+      if (!result.success) return null;
+
+      return {
+        districtName: result.data.districtName ?? null,
+        sinceDays: result.data.sinceDays ?? null,
+        keyword: result.data.keyword ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+}
+
 export interface SearchInterpreterEnv {
   LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
+  OPENAI_API_KEY: string;
+  OPENAI_BASE_URL: string;
+  OPENAI_MODEL: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
 }
 
-/** Only "ollama" wires in the interpreter — see relevanceClassifier.ts for why this feature
- * set is scoped to the local-model provider specifically. */
+/** "gemini"/"none" leave search unavailable — no Gemini implementation of this feature exists. */
 export function createQueryInterpreter(env: SearchInterpreterEnv): QueryInterpreter {
   if (env.LLM_PROVIDER === "ollama") return new OllamaQueryInterpreter(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
+  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY)
+    return new OpenAiQueryInterpreter(env.OPENAI_API_KEY, env.OPENAI_MODEL, env.OPENAI_BASE_URL);
   return new NoopQueryInterpreter();
 }

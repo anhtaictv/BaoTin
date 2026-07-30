@@ -10,6 +10,32 @@ export function createWebAccountController(service: WebAccountAuthService) {
       res.status(200).json({ success: true, data: result, error: null });
     },
 
+    async loginTotp(req: Request, res: Response) {
+      const { challengeToken, code } = req.body as { challengeToken: string; code: string };
+      const result = await service.loginWithTotp(challengeToken, code);
+      res.status(200).json({ success: true, data: result, error: null });
+    },
+
+    async setupTotp(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const result = await service.setupTotp(req.user.id);
+      res.status(200).json({ success: true, data: result, error: null });
+    },
+
+    async confirmTotp(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const { code } = req.body as { code: string };
+      await service.confirmTotp(req.user.id, code);
+      res.status(200).json({ success: true, data: { totpEnabled: true }, error: null });
+    },
+
+    async disableTotp(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const { password } = req.body as { password: string };
+      await service.disableTotp(req.user.id, password);
+      res.status(200).json({ success: true, data: { totpEnabled: false }, error: null });
+    },
+
     async getMyAccount(req: Request, res: Response) {
       if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
       const account = await service.getMyAccount(req.user.id);

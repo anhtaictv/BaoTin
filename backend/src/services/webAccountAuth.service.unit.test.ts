@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { authenticator } from "otplib";
 import { describe, expect, it } from "vitest";
 import { createWebAccountAuthService } from "./webAccountAuth.service.js";
 import { hashPassword } from "../crypto/passwordHash.js";
@@ -26,6 +27,7 @@ function buildService(fakePrisma: FakeWebAccountPrisma) {
     authService: authService as any,
     piiEncryptionKey: PII_KEY,
     auditLog: auditLog as any,
+    webAccountAccessTtlMinutes: 15,
   });
   return { service, issueTokenPairCalls, auditLogCalls };
 }
@@ -42,7 +44,7 @@ describe("webAccountAuth.service — login", () => {
     });
 
     const { service, issueTokenPairCalls } = buildService(fakePrisma);
-    const result = await service.login("0900001111", "Correct-Horse-1");
+    const result = (await service.login("0900001111", "Correct-Horse-1")) as { accessToken: string; mustChangePassword: boolean };
 
     expect(result.accessToken).toBe("fake-access");
     expect(result.mustChangePassword).toBe(true);
@@ -247,11 +249,186 @@ describe("webAccountAuth.service — admin listWebAccounts / resetPassword", () 
 
     // Old password no longer works; new temp password does, and login flags mustChangePassword.
     await expect(service.login("0900001111", "Old-Password-1")).rejects.toMatchObject({ status: 401 });
-    const result = await service.login("0900001111", tempPassword);
+    const result = (await service.login("0900001111", tempPassword)) as { mustChangePassword: boolean };
     expect(result.mustChangePassword).toBe(true);
 
     expect(auditLogCalls).toEqual([
       { officerId: adminId, action: "reset_web_account_password", target: { type: "officer", id: officerId } },
     ]);
+  });
+});
+
+describe("webAccountAuth.service — TOTP setup/confirm/disable", () => {
+  it("stages a secret without enabling 2FA", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const officerId = seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+    });
+    const { service } = buildService(fakePrisma);
+
+    const { secret, otpauthUrl } = await service.setupTotp(officerId);
+
+    expect(secret).toHaveLength(16);
+    expect(otpauthUrl).toContain("otpauth://totp/");
+    expect(otpauthUrl).toContain("0900001111");
+    const account = [...fakePrisma.store.webAccounts.values()][0];
+    expect(account?.totpEnabled).toBe(false);
+    expect(account?.totpSecret).not.toBeNull();
+  });
+
+  it("confirms with a valid code and flips totpEnabled on", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const officerId = seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+    });
+    const { service } = buildService(fakePrisma);
+    const { secret } = await service.setupTotp(officerId);
+
+    await service.confirmTotp(officerId, authenticator.generate(secret));
+
+    const account = [...fakePrisma.store.webAccounts.values()][0];
+    expect(account?.totpEnabled).toBe(true);
+  });
+
+  it("401s confirm with a wrong code, leaving totpEnabled false", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const officerId = seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+    });
+    const { service } = buildService(fakePrisma);
+    await service.setupTotp(officerId);
+
+    await expect(service.confirmTotp(officerId, "000000")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_TOTP_CODE",
+    });
+    const account = [...fakePrisma.store.webAccounts.values()][0];
+    expect(account?.totpEnabled).toBe(false);
+  });
+
+  it("disables 2FA with the correct current password", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const secret = authenticator.generateSecret();
+    const officerId = seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+      totpSecret: encryptField(secret, PII_KEY),
+      totpEnabled: true,
+    });
+    const { service } = buildService(fakePrisma);
+
+    await service.disableTotp(officerId, "Correct-Horse-1");
+
+    const account = [...fakePrisma.store.webAccounts.values()][0];
+    expect(account?.totpEnabled).toBe(false);
+    expect(account?.totpSecret).toBeNull();
+  });
+
+  it("401s disable with the wrong password, leaving 2FA enabled", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const secret = authenticator.generateSecret();
+    const officerId = seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+      totpSecret: encryptField(secret, PII_KEY),
+      totpEnabled: true,
+    });
+    const { service } = buildService(fakePrisma);
+
+    await expect(service.disableTotp(officerId, "wrong-password")).rejects.toMatchObject({ status: 401 });
+    const account = [...fakePrisma.store.webAccounts.values()][0];
+    expect(account?.totpEnabled).toBe(true);
+  });
+});
+
+describe("webAccountAuth.service — login with TOTP enabled", () => {
+  it("returns requiresTotp + a challengeToken instead of tokens on correct password", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const secret = authenticator.generateSecret();
+    seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+      totpSecret: encryptField(secret, PII_KEY),
+      totpEnabled: true,
+    });
+    const { service, issueTokenPairCalls } = buildService(fakePrisma);
+
+    const result: any = await service.login("0900001111", "Correct-Horse-1");
+
+    expect(result.requiresTotp).toBe(true);
+    expect(typeof result.challengeToken).toBe("string");
+    expect(result.accessToken).toBeUndefined();
+    expect(issueTokenPairCalls).toEqual([]);
+  });
+
+  it("loginWithTotp issues tokens on the correct code and consumes the challenge (single-use)", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const secret = authenticator.generateSecret();
+    seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+      totpSecret: encryptField(secret, PII_KEY),
+      totpEnabled: true,
+    });
+    const { service, issueTokenPairCalls } = buildService(fakePrisma);
+    const { challengeToken } = (await service.login("0900001111", "Correct-Horse-1")) as any;
+
+    const tokens = await service.loginWithTotp(challengeToken, authenticator.generate(secret));
+
+    expect(tokens.accessToken).toBe("fake-access");
+    expect(issueTokenPairCalls).toHaveLength(1);
+    // The same challengeToken can't be replayed.
+    await expect(service.loginWithTotp(challengeToken, authenticator.generate(secret))).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_TOTP_CHALLENGE",
+    });
+  });
+
+  it("401s loginWithTotp on a wrong code, without issuing tokens", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const secret = authenticator.generateSecret();
+    seedFullAccount(fakePrisma, {
+      username: "0900001111",
+      passwordHash,
+      fullNameEnc: encryptField("A", PII_KEY),
+      totpSecret: encryptField(secret, PII_KEY),
+      totpEnabled: true,
+    });
+    const { service, issueTokenPairCalls } = buildService(fakePrisma);
+    const { challengeToken } = (await service.login("0900001111", "Correct-Horse-1")) as any;
+
+    await expect(service.loginWithTotp(challengeToken, "000000")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_TOTP_CODE",
+    });
+    expect(issueTokenPairCalls).toEqual([]);
+  });
+
+  it("401s loginWithTotp on an unknown/expired challengeToken", async () => {
+    const fakePrisma = createFakeWebAccountPrisma();
+    const { service } = buildService(fakePrisma);
+
+    await expect(service.loginWithTotp("unknown-token", "123456")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_TOTP_CHALLENGE",
+    });
   });
 });

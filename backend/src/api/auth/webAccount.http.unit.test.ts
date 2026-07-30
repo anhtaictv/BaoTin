@@ -39,6 +39,7 @@ async function buildTestApp() {
     authService: authService as any,
     piiEncryptionKey: PII_KEY,
     auditLog: auditLog as any,
+    webAccountAccessTtlMinutes: 15,
   });
   const controller = createWebAccountController(service);
   const requireAuth = createAuthMiddleware(publicKey);
@@ -139,6 +140,15 @@ describe("PATCH /web-accounts/me/password", () => {
       .set("Authorization", `Bearer ${await tokenFor("officer", officerId)}`)
       .send({ oldPassword: "Old-Password-1", newPassword: "New-Password-1" });
     expect(res.status).toBe(200);
+  });
+
+  it("400s a 12+ char newPassword that lacks complexity (no uppercase/special char)", async () => {
+    const { app, tokenFor } = await buildTestApp();
+    const res = await request(app)
+      .patch("/web-accounts/me/password")
+      .set("Authorization", `Bearer ${await tokenFor("officer")}`)
+      .send({ oldPassword: "x", newPassword: "lowercaseonly123" });
+    expect(res.status).toBe(400);
   });
 });
 

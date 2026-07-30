@@ -5,6 +5,7 @@ import {
   findDuplicateSemantic,
   NoopSemanticDuplicateChecker,
   OllamaSemanticDuplicateChecker,
+  OpenAiSemanticDuplicateChecker,
   similarity,
 } from "./dedup.js";
 
@@ -86,6 +87,23 @@ describe("OllamaSemanticDuplicateChecker", () => {
   });
 });
 
+describe("OpenAiSemanticDuplicateChecker", () => {
+  it("returns true when the model says CUNG (same event)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: "CUNG" } }] }) })),
+    );
+    const checker = new OpenAiSemanticDuplicateChecker("fake-key");
+    expect(await checker.isSameEvent("a", "b")).toBe(true);
+  });
+
+  it("fails closed (not a duplicate) when the API call fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+    const checker = new OpenAiSemanticDuplicateChecker("fake-key");
+    expect(await checker.isSameEvent("a", "b")).toBe(false);
+  });
+});
+
 describe("findDuplicateSemantic", () => {
   const FIRE_A = "Cháy lớn tại chợ trung tâm Buôn Ma Thuột trong đêm";
   const FIRE_B = "Hỏa hoạn xảy ra tại khu chợ trung tâm thành phố Buôn Ma Thuột";
@@ -133,21 +151,26 @@ describe("findDuplicateSemantic", () => {
 });
 
 describe("createSemanticDuplicateChecker", () => {
-  it("returns NoopSemanticDuplicateChecker when LLM_PROVIDER is not 'ollama'", () => {
-    const checker = createSemanticDuplicateChecker({
-      LLM_PROVIDER: "none",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
-    });
+  const BASE_ENV = {
+    OPENAI_API_KEY: "",
+    OPENAI_BASE_URL: "https://api.openai.com/v1",
+    OPENAI_MODEL: "gpt-4o-mini",
+    OLLAMA_BASE_URL: "http://localhost:11434",
+    OLLAMA_MODEL: "qwen2.5:1.5b",
+  };
+
+  it("returns NoopSemanticDuplicateChecker when LLM_PROVIDER is 'none'", () => {
+    const checker = createSemanticDuplicateChecker({ ...BASE_ENV, LLM_PROVIDER: "none" });
     expect(checker).toBeInstanceOf(NoopSemanticDuplicateChecker);
   });
 
   it("returns OllamaSemanticDuplicateChecker when LLM_PROVIDER is 'ollama'", () => {
-    const checker = createSemanticDuplicateChecker({
-      LLM_PROVIDER: "ollama",
-      OLLAMA_BASE_URL: "http://localhost:11434",
-      OLLAMA_MODEL: "qwen2.5:1.5b",
-    });
+    const checker = createSemanticDuplicateChecker({ ...BASE_ENV, LLM_PROVIDER: "ollama" });
     expect(checker).toBeInstanceOf(OllamaSemanticDuplicateChecker);
+  });
+
+  it("returns OpenAiSemanticDuplicateChecker when LLM_PROVIDER is 'openai' and a key is set", () => {
+    const checker = createSemanticDuplicateChecker({ ...BASE_ENV, LLM_PROVIDER: "openai", OPENAI_API_KEY: "sk-fake" });
+    expect(checker).toBeInstanceOf(OpenAiSemanticDuplicateChecker);
   });
 });

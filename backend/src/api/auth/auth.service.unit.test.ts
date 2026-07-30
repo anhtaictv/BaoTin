@@ -134,3 +134,27 @@ describe("auth.service — officer login (single endpoint, two modes)", () => {
     expect(payload.subjectType).toBe("officer");
   });
 });
+
+describe("auth.service — registerDeviceToken", () => {
+  it("stores the token on the user row for subjectType 'user'", async () => {
+    const ctx = await setup();
+    const { devOtp } = await ctx.service.requestOtpForUser("0912345678");
+    await ctx.service.verifyOtpForUser("0912345678", devOtp!);
+    const phoneHash = hashPhoneNumber("0912345678", ctx.phoneBlindIndexKey);
+    const user = [...ctx.fakePrisma.store.users.values()].find((u) => u.phoneHash === phoneHash);
+
+    await ctx.service.registerDeviceToken("user", user.id, "fcm-token-citizen");
+
+    expect(ctx.fakePrisma.store.users.get(user.id).fcmToken).toBe("fcm-token-citizen");
+  });
+
+  it("stores the token on the officer row for subjectType 'officer'", async () => {
+    const ctx = await setup();
+    const officer = { id: randomUUID(), phoneHash: "n/a", role: "officer", phoneNumberEnc: "n/a", fullNameEnc: "n/a" };
+    ctx.fakePrisma.store.officers.set(officer.id, officer);
+
+    await ctx.service.registerDeviceToken("officer", officer.id, "fcm-token-officer");
+
+    expect(ctx.fakePrisma.store.officers.get(officer.id).fcmToken).toBe("fcm-token-officer");
+  });
+});

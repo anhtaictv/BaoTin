@@ -38,6 +38,12 @@ const EnvSchema = z.object({
   JWT_PUBLIC_KEY_PATH: z.string().min(1).default("./keys/jwt-public.pem"),
   JWT_ACCESS_TTL_MINUTES: z.coerce.number().int().positive().default(20),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  /** dashboard-web-react's username/password login (webAccountAuth.service.ts) only — officer/
+   * admin accounts carry more sensitive access than a citizen session, so baomat.txt's hardening
+   * pass asks for a shorter access-token lifetime specifically for this path, on top of the
+   * already-short JWT_ACCESS_TTL_MINUTES shared by the citizen OTP flow. Does not touch
+   * JWT_ACCESS_TTL_MINUTES or the OTP flow at all. */
+  WEB_ACCOUNT_ACCESS_TTL_MINUTES: z.coerce.number().int().positive().default(15),
 
   PII_ENCRYPTION_KEY: z
     .string()
@@ -49,9 +55,14 @@ const EnvSchema = z.object({
 
   /** Giai đoạn 2 crawler — AI tóm tắt 1-2 câu. No key configured => falls back to a plain
    * truncation, never crashes the crawler pipeline (see crawler/summarizer.ts). "ollama" runs
-   * a local model (no API key, no data leaving the machine) via Ollama's REST API. */
+   * a local model (no API key, no data leaving the machine) via Ollama's REST API. "openai"
+   * calls any OpenAI-compatible chat-completions endpoint — set OPENAI_BASE_URL to point it at
+   * a different host (e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1) and OPENAI_MODEL to
+   * that provider's model id. */
   LLM_PROVIDER: z.enum(["openai", "gemini", "ollama", "none"]).default("none"),
   OPENAI_API_KEY: z.string().default(""),
+  OPENAI_BASE_URL: z.string().min(1).default("https://api.openai.com/v1"),
+  OPENAI_MODEL: z.string().min(1).default("gpt-4o-mini"),
   GEMINI_API_KEY: z.string().default(""),
   OLLAMA_BASE_URL: z.string().min(1).default("http://localhost:11434"),
   OLLAMA_MODEL: z.string().min(1).default("qwen2.5:7b"),
@@ -61,6 +72,22 @@ const EnvSchema = z.object({
    * in schema.prisma) — machine-to-machine, not a citizen/officer JWT. Empty default means the
    * ingestion endpoint rejects everything until explicitly configured. */
   TRAFFIC_DETECTOR_API_KEY: z.string().default(""),
+
+  /** Firebase Cloud Messaging — real push notification provider (server.ts wiring). Same
+   * "no key configured => safe fallback, never crashes" pattern as LLM_PROVIDER above: unless
+   * all three are set, server.ts falls back to ConsoleNotificationSender. FCM_PRIVATE_KEY is
+   * the service account's PEM private key (literal "\n" sequences are un-escaped in
+   * FirebaseNotificationSender before use — that's how it arrives in a .env file/most secret
+   * managers). */
+  FCM_PROJECT_ID: z.string().default(""),
+  FCM_CLIENT_EMAIL: z.string().default(""),
+  FCM_PRIVATE_KEY: z.string().default(""),
+
+  /** Cache layer (src/cache/cache.ts) for rarely-changing lookups — currently geo-matching's
+   * per-point district query (geo/geoMatch.service.ts). An unreachable Redis fails open: the
+   * wrapped function just runs directly, same never-crash-the-request spirit as the LLM
+   * fallbacks above. */
+  REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
 })
   /**
    * SECURITY.md §4 (least-privilege DB user) and §5 (no wildcard CORS in production) are easy

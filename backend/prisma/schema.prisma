@@ -118,6 +118,11 @@ model User {
   cccdFrontPhotoUrl String?   @map("cccd_front_photo_url")
   cccdBackPhotoUrl  String?   @map("cccd_back_photo_url")
 
+  /// FCM device token registered by the citizen app after login (POST /auth/device-token) —
+  /// null means the app hasn't registered one yet (never opened, or push permission denied).
+  /// FirebaseNotificationSender looks this up by targetId at send time.
+  fcmToken          String?   @map("fcm_token")
+
   reports       Report[]
   otpChallenges OtpChallenge[]
   refreshTokens RefreshToken[]
@@ -146,6 +151,10 @@ model Officer {
   cccdNumberEnc  String?     @map("cccd_number_enc")
   addressEnc     String?     @map("address_enc")
   approvalStatus OfficerApprovalStatus @default(approved) @map("approval_status")
+
+  /// FCM device token registered by the officer app after login (POST /auth/device-token) —
+  /// same as User.fcmToken.
+  fcmToken       String?     @map("fcm_token")
 
   assignments        OfficerDistrictAssignment[]
   assignedReports     Report[]                    @relation("AssignedOfficer")
@@ -202,6 +211,14 @@ model WebAccount {
   lastLoginAt        DateTime? @map("last_login_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  /// TOTP 2FA (SECURITY.md §3 "cân nhắc bắt buộc 2FA... vì quyền truy cập dữ liệu nhạy cảm
+  /// hơn tài khoản dân thường"). totpSecret is AES-256-GCM ciphertext via the SAME
+  /// src/crypto/aesGcm.ts helper used for phone/name — never a second encryption scheme.
+  /// totpEnabled stays false while a secret is merely staged (setup called, confirm not yet
+  /// called) — see webAccountAuth.service.ts's setupTotp/confirmTotp.
+  totpSecret  String?  @map("totp_secret")
+  totpEnabled Boolean  @default(false) @map("totp_enabled")
 
   officer Officer @relation(fields: [officerId], references: [id])
 

@@ -40,6 +40,12 @@ export function createFakeAuthPrisma() {
         if (!officer) throw new Error("not found");
         return officer;
       },
+      async update({ where, data }: any) {
+        const officer = officers.get(where.id);
+        if (!officer) throw new Error("not found");
+        Object.assign(officer, data);
+        return officer;
+      },
     },
     otpChallenge: {
       async create({ data }: any) {

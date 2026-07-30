@@ -68,15 +68,52 @@ export class OllamaReportCategorySuggester implements ReportCategorySuggester {
   }
 }
 
+/** Same as OllamaReportCategorySuggester but against any OpenAI-compatible chat-completions
+ * endpoint (OpenAI itself, or e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1). */
+export class OpenAiReportCategorySuggester implements ReportCategorySuggester {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string = "gpt-4o-mini",
+    private readonly baseUrl: string = "https://api.openai.com/v1",
+  ) {}
+
+  async suggestCategory(description: string): Promise<ReportCategory | null> {
+    if (!description.trim()) return null;
+    try {
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: CLASSIFY_PROMPT },
+            { role: "user", content: description },
+          ],
+        }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      return text ? parseCategory(text) : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 export interface ReportClassifierEnv {
   LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
+  OPENAI_API_KEY: string;
+  OPENAI_BASE_URL: string;
+  OPENAI_MODEL: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
 }
 
-/** Only "ollama" wires in the suggester — see relevanceClassifier.ts for why this feature set
- * is scoped to the local-model provider specifically. */
+/** "gemini"/"none" give no suggestion — no Gemini implementation of this feature exists. */
 export function createReportCategorySuggester(env: ReportClassifierEnv): ReportCategorySuggester {
   if (env.LLM_PROVIDER === "ollama") return new OllamaReportCategorySuggester(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
+  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY)
+    return new OpenAiReportCategorySuggester(env.OPENAI_API_KEY, env.OPENAI_MODEL, env.OPENAI_BASE_URL);
   return new NoopReportCategorySuggester();
 }

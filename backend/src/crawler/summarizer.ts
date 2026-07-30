@@ -26,16 +26,19 @@ const SUMMARIZE_PROMPT =
   "Tóm tắt bản tin sau bằng đúng 1-2 câu tiếng Việt, ngắn gọn, chỉ nêu sự việc chính, " +
   "không thêm bình luận hay suy đoán:";
 
-/** Plain `fetch` against the REST API — avoids pulling in the full `openai` SDK for one call. */
+/** Plain `fetch` against the REST API — avoids pulling in the full `openai` SDK for one call.
+ * `baseUrl` defaults to OpenAI itself but works against any OpenAI-compatible endpoint (e.g.
+ * NVIDIA NIM: https://integrate.api.nvidia.com/v1). */
 export class OpenAiSummarizer implements Summarizer {
   constructor(
     private readonly apiKey: string,
     private readonly model: string = "gpt-4o-mini",
+    private readonly baseUrl: string = "https://api.openai.com/v1",
   ) {}
 
   async summarize(input: SummarizeInput): Promise<string> {
     try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -131,6 +134,8 @@ export class OllamaSummarizer implements Summarizer {
 export interface SummarizerEnv {
   LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
   OPENAI_API_KEY: string;
+  OPENAI_BASE_URL: string;
+  OPENAI_MODEL: string;
   GEMINI_API_KEY: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
@@ -138,7 +143,8 @@ export interface SummarizerEnv {
 
 /** "Chỗ nhét API vào" — set LLM_PROVIDER + the matching key in .env, nothing else changes. */
 export function createSummarizer(env: SummarizerEnv): Summarizer {
-  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY) return new OpenAiSummarizer(env.OPENAI_API_KEY);
+  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY)
+    return new OpenAiSummarizer(env.OPENAI_API_KEY, env.OPENAI_MODEL, env.OPENAI_BASE_URL);
   if (env.LLM_PROVIDER === "gemini" && env.GEMINI_API_KEY) return new GeminiSummarizer(env.GEMINI_API_KEY);
   if (env.LLM_PROVIDER === "ollama") return new OllamaSummarizer(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
   return new TruncateSummarizer();

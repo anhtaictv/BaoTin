@@ -103,16 +103,52 @@ export class OllamaSemanticDuplicateChecker implements SemanticDuplicateChecker 
   }
 }
 
+/** Same as OllamaSemanticDuplicateChecker but against any OpenAI-compatible chat-completions
+ * endpoint (OpenAI itself, or e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1). */
+export class OpenAiSemanticDuplicateChecker implements SemanticDuplicateChecker {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string = "gpt-4o-mini",
+    private readonly baseUrl: string = "https://api.openai.com/v1",
+  ) {}
+
+  async isSameEvent(a: string, b: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: SAME_EVENT_PROMPT },
+            { role: "user", content: `Tin 1: ${a}\n\nTin 2: ${b}` },
+          ],
+        }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      const text = data.choices?.[0]?.message?.content;
+      return text ? parseSameEventDecision(text) : false;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export interface SemanticDedupEnv {
   LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
+  OPENAI_API_KEY: string;
+  OPENAI_BASE_URL: string;
+  OPENAI_MODEL: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
 }
 
-/** Only "ollama" wires in the AI-assisted borderline check — see relevanceClassifier.ts for
- * why this feature is scoped to the local-model provider specifically. */
+/** "gemini"/"none" fall back to trigram-only — no Gemini implementation of this feature exists. */
 export function createSemanticDuplicateChecker(env: SemanticDedupEnv): SemanticDuplicateChecker {
   if (env.LLM_PROVIDER === "ollama") return new OllamaSemanticDuplicateChecker(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
+  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY)
+    return new OpenAiSemanticDuplicateChecker(env.OPENAI_API_KEY, env.OPENAI_MODEL, env.OPENAI_BASE_URL);
   return new NoopSemanticDuplicateChecker();
 }
 

@@ -64,15 +64,54 @@ export class OllamaHeatNarrator implements HeatNarrator {
   }
 }
 
+/** Same as OllamaHeatNarrator but against any OpenAI-compatible chat-completions endpoint
+ * (OpenAI itself, or e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1). */
+export class OpenAiHeatNarrator implements HeatNarrator {
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string = "gpt-4o-mini",
+    private readonly baseUrl: string = "https://api.openai.com/v1",
+  ) {}
+
+  async generate(input: { districtName: string; signals: HeatNarrativeSignal[] }): Promise<string | null> {
+    if (input.signals.length === 0) return null;
+    try {
+      const bulletList = input.signals
+        .map((s, i) => `${i + 1}. [${s.detectedCategory ?? "không rõ loại"}] ${s.summary ?? "(không có tóm tắt)"}`)
+        .join("\n");
+      const res = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: NARRATIVE_PROMPT },
+            { role: "user", content: `Khu vực: ${input.districtName}\n\nCác tín hiệu gần đây:\n${bulletList}` },
+          ],
+        }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+      return data.choices?.[0]?.message?.content?.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+}
+
 export interface HeatNarrativeEnv {
   LLM_PROVIDER: "openai" | "gemini" | "ollama" | "none";
+  OPENAI_API_KEY: string;
+  OPENAI_BASE_URL: string;
+  OPENAI_MODEL: string;
   OLLAMA_BASE_URL: string;
   OLLAMA_MODEL: string;
 }
 
-/** Only "ollama" wires in the narrative — see relevanceClassifier.ts for why this feature set
- * is scoped to the local-model provider specifically. */
+/** "gemini"/"none" show no narrative — no Gemini implementation of this feature exists. */
 export function createHeatNarrator(env: HeatNarrativeEnv): HeatNarrator {
   if (env.LLM_PROVIDER === "ollama") return new OllamaHeatNarrator(env.OLLAMA_BASE_URL, env.OLLAMA_MODEL);
+  if (env.LLM_PROVIDER === "openai" && env.OPENAI_API_KEY)
+    return new OpenAiHeatNarrator(env.OPENAI_API_KEY, env.OPENAI_MODEL, env.OPENAI_BASE_URL);
   return new NoopHeatNarrator();
 }
