@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from './core/AuthContext';
+import { ThemeModeProvider } from './core/ThemeModeContext';
 import { apiClient } from './core/apiClient';
 import { tokenStore } from './core/tokenStore';
 import App from './App';
@@ -45,11 +46,13 @@ function renderApp() {
   // while looking fine under a basename-less test router (caught for admin/accounts once already).
   return render(
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/admin">
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
+      <ThemeModeProvider>
+        <BrowserRouter basename="/admin">
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeModeProvider>
     </QueryClientProvider>,
   );
 }

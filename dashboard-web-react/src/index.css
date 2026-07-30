@@ -106,6 +106,45 @@
   }
 }
 
+/* Manual toggle (src/core/ThemeModeContext.tsx) stamps data-theme on <html> for 'light'/'dark'
+   and removes it for 'system' — these overrides take precedence over the media query above
+   because they're a more specific selector, not because of source order. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface: #0a1024;
+  --surface-raised: #101a37;
+  --surface-sunken: #0d1730;
+  --surface-overlay: #131f42;
+  --border: #23305a;
+  --border-strong: #2c3b6b;
+  --ink: #eef1fb;
+  --ink-muted: #9aa7cc;
+  --ink-faint: #66729a;
+  --destructive-surface: #2a1220;
+
+  --sidebar-bg: #060b1c;
+  --sidebar-bg-raised: #0a1230;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --surface: #f4f6fb;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eef1f8;
+  --surface-overlay: #ffffff;
+  --border: #e1e6f0;
+  --border-strong: #cbd4e6;
+  --ink: #101a33;
+  --ink-muted: #5b6786;
+  --ink-faint: #8b96b3;
+  --destructive-surface: #fef2f2;
+
+  --sidebar-bg: #0b1739;
+  --sidebar-bg-raised: #101f4a;
+  --sidebar-border: rgba(255, 255, 255, 0.09);
+}
+
 *,
 *::before,
 *::after {

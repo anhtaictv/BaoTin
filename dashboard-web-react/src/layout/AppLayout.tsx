@@ -1,9 +1,37 @@
 import { Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { LayoutGrid, LogOut, RadioTower, RefreshCw, Search, Siren, UsersRound } from 'lucide-react';
+import { LayoutGrid, LogOut, Monitor, Moon, RadioTower, RefreshCw, Search, Siren, Sun, UsersRound } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
 import { canAccessDashboard, roleLabel } from '../core/theme';
+import { useThemeMode, type ThemeMode } from '../core/ThemeModeContext';
+
+const THEME_CYCLE: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' };
+const THEME_ICON: Record<ThemeMode, typeof Sun> = { system: Monitor, light: Sun, dark: Moon };
+const THEME_LABEL: Record<ThemeMode, string> = {
+  system: 'Giao diện: Theo hệ thống',
+  light: 'Giao diện: Sáng',
+  dark: 'Giao diện: Tối',
+};
+
+/** One button cycling system -> light -> dark -> system, rather than a 3-option dropdown — this
+ * header only has room for compact icon buttons (see refresh button below), and a single click
+ * target is enough for a toggle this low-frequency. */
+function ThemeModeToggle() {
+  const { mode, setMode } = useThemeMode();
+  const Icon = THEME_ICON[mode];
+  return (
+    <button
+      onClick={() => setMode(THEME_CYCLE[mode])}
+      aria-label={THEME_LABEL[mode]}
+      title={THEME_LABEL[mode]}
+      className="btn-sm btn-ghost"
+      style={{ display: 'inline-flex', alignItems: 'center', padding: 8 }}
+    >
+      <Icon size={16} />
+    </button>
+  );
+}
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tổng quan', icon: LayoutGrid, end: true, dashboardOnly: true },
@@ -174,6 +202,7 @@ export function AppLayout() {
             borderBottom: '1px solid var(--border)',
           }}
         >
+          <ThemeModeToggle />
           <button onClick={refreshAll} className="btn-sm btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} /> Làm mới
           </button>
