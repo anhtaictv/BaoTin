@@ -57,6 +57,19 @@ services:
         mc anonymous set none local/$$MINIO_BUCKET
       "
 
+  # Pure cache (geo-matching's district lookups, see backend/src/cache/cache.ts) — no volume,
+  # losing it on restart just means the next few lookups re-hit Postgres.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   pgdata:
   miniodata:
