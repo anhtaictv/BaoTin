@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart' as latlong;
 
 import 'package:bao_tin_officer/core/api_client.dart';
 import 'package:bao_tin_officer/core/providers.dart';
@@ -39,7 +40,16 @@ Future<_FakeCameraRepository> _pump(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [cameraRepositoryProvider.overrideWithValue(fakeRepo)],
-      child: const MaterialApp(home: Scaffold(body: NearbyCamerasSection(reportId: 'r1'))),
+      // Real usage (report_detail_screen.dart) always places this inside a scrollable ListView —
+      // mirror that here (SingleChildScrollView) so the fixed-height map + camera list doesn't
+      // overflow the test surface the way a bare Scaffold body would.
+      child: const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: NearbyCamerasSection(reportId: 'r1', reportLocation: latlong.LatLng(12.68, 108.04)),
+          ),
+        ),
+      ),
     ),
   );
   await tester.pump();
