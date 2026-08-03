@@ -6,11 +6,11 @@
 <p align="center"><b>Hệ thống tiếp nhận &amp; xử lý tin báo an ninh trật tự cấp cơ sở</b></p>
 
 <p align="center">
-  <code>backend 1.23.0</code> ·
+  <code>backend 1.23.1</code> ·
   <code>dashboard-web-react 0.4.0</code> ·
   <code>dashboard-web 1.6.1+6</code> ·
-  <code>mobile-app-officer 1.14.0+21</code> ·
-  <code>mobile-app-citizen 1.10.0+16</code>
+  <code>mobile-app-officer 1.14.1+22</code> ·
+  <code>mobile-app-citizen 1.10.1+17</code>
 </p>
 
 <p align="center">
@@ -191,7 +191,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 
 | Version | Nội dung |
 |---|---|
-| **v1.23** | Push notification FCM thật; Redis cache geo-matching; MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode 4 app; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ); vá lỗ hổng dependency mức high (`sharp`, `fast-xml-parser`); scaffold ký release Android thật |
+| **v1.23** | Push notification FCM thật; Redis cache geo-matching; MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode 4 app; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ); vá lỗ hổng dependency mức high (`sharp`, `fast-xml-parser`); scaffold ký release Android thật; **[1.23.1]** audit bảo mật toàn hệ thống — vá lỗi `trust proxy` làm rate-limit SOS bị gộp chung, transaction report+attachment, index/unique constraint DB, validate link mobile |
 | **v1.22** | Sửa (thay ảnh) và xóa cho "Lệnh truy nã" — admin-only, tự dọn ảnh cũ khỏi MinIO |
 | **v1.21** | Dữ liệu demo mới trải khắp vùng Phú Yên cũ (sáp nhập Đắk Lắk 2025) để demo geo-matching/duyệt tài khoản toàn tỉnh |
 | **v1.20** | Gộp trang quản lý admin vào `mobile-app-officer` (Trợ lý tìm kiếm + Quản lý tài khoản) — admin không còn bắt buộc dùng `dashboard-web-react` |
