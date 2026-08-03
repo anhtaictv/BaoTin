@@ -254,6 +254,11 @@ async function main() {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")
         .map((origin) => origin.trim())
         .filter(Boolean),
+      // docs/DEPLOY.md: production sits behind exactly 1 reverse-proxy hop (IIS + URL
+      // Rewrite/ARR). Trusting that one hop lets req.ip resolve to the real client address
+      // instead of the proxy's own — otherwise every IP-keyed rate limiter collapses into one
+      // shared bucket for all users (see rateLimiters.ts).
+      trustProxy: env.NODE_ENV === "production" ? 1 : false,
     },
   );
 

@@ -328,6 +328,7 @@ model ReportAttachment {
 
   report Report @relation(fields: [reportId], references: [id])
 
+  @@index([reportId])
   @@map("report_attachments")
 }
 
@@ -336,7 +337,7 @@ model ReportAttachment {
 model SocialMediaSignal {
   id               String     @id @default(uuid())
   sourceName       String?    @map("source_name")
-  sourceUrl        String?    @map("source_url")
+  sourceUrl        String?    @unique @map("source_url")
   trustLevel       TrustLevel @map("trust_level")
   summary          String?
   rawSnippet       String?    @map("raw_snippet")
@@ -350,6 +351,8 @@ model SocialMediaSignal {
   duplicateOf SocialMediaSignal?  @relation("SignalDuplicate", fields: [duplicateOfId], references: [id])
   duplicates  SocialMediaSignal[] @relation("SignalDuplicate")
 
+  @@index([districtId])
+  @@index([crawledAt])
   @@map("social_media_signals")
 }
 
@@ -367,6 +370,7 @@ model ReportStatusHistory {
   report  Report   @relation(fields: [reportId], references: [id])
   officer Officer? @relation(fields: [changedBy], references: [id])
 
+  @@index([reportId, changedAt])
   @@map("report_status_history")
 }
 
@@ -378,6 +382,7 @@ model OfficialCaseLink {
 
   report Report @relation(fields: [reportId], references: [id])
 
+  @@index([reportId])
   @@map("official_case_links")
 }
 
@@ -456,6 +461,7 @@ model Camera {
   extractionRequests    CameraExtractionRequest[]
   trafficAccidentAlerts TrafficAccidentAlert[]
 
+  @@index([districtId])
   @@map("cameras")
 }
 
@@ -486,6 +492,7 @@ model TrafficAccidentAlert {
   confirmedByOfficer  Officer?  @relation("ConfirmedTrafficAccidentAlert", fields: [confirmedByOfficerId], references: [id])
 
   @@index([districtId])
+  @@index([cameraId])
   @@map("traffic_accident_alerts")
 }
 
@@ -518,6 +525,7 @@ model CameraExtractionRequest {
 
   @@index([reportId])
   @@index([groupId])
+  @@index([cameraId])
   @@map("camera_extraction_requests")
 }
 

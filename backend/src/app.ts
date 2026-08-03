@@ -50,11 +50,20 @@ export interface AppRouters {
 export interface AppConfig {
   /** Empty/undefined => reflect any origin (dev/test only, never production — see config/env.ts). */
   corsAllowedOrigins?: string[];
+  /** Express "trust proxy" setting. Must match the real number of reverse-proxy hops in front
+   * of the app (docs/DEPLOY.md: 1 hop, IIS/ARR) in production, or req.ip always resolves to the
+   * proxy's own address — silently collapsing every IP-keyed rate limiter (rateLimiters.ts),
+   * including the SOS/emergency-report limiter, into one shared bucket for all users. */
+  trustProxy?: number | boolean;
 }
 
 /** Builds the Express app from already-constructed routers — no env/DB access happens here. */
 export function createApp(routers: AppRouters, config: AppConfig = {}) {
   const app = express();
+
+  if (config.trustProxy !== undefined) {
+    app.set("trust proxy", config.trustProxy);
+  }
 
   app.use(helmet());
   app.use(cors(config.corsAllowedOrigins?.length ? { origin: config.corsAllowedOrigins } : {}));

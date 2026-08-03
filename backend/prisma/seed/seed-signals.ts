@@ -78,9 +78,29 @@ export const SEED_SIGNALS: SeedSignalSpec[] = [
 
 export async function seedSignals(prisma: PrismaClient, signals: SeedSignalSpec[] = SEED_SIGNALS): Promise<void> {
   const createdIds: string[] = [];
+  let created = 0;
+  let skipped = 0;
 
   for (const spec of signals) {
     const district = spec.wardTenXa ? await prisma.district.findFirst({ where: { tenXa: spec.wardTenXa } }) : null;
+    const duplicateOfId = spec.duplicateOfIndex !== undefined ? createdIds[spec.duplicateOfIndex] : null;
+
+    // source_url is unique at the DB level (see 2026-08-03 crawler-dedup fix) — re-running
+    // seed must find-or-create, not blindly insert, or it fails on the 2nd run. The one entry
+    // with no sourceUrl (NULLs don't collide under the unique index) is matched by name+category
+    // instead so it doesn't get duplicated on every reseed either.
+    const existing = spec.sourceUrl
+      ? await prisma.socialMediaSignal.findUnique({ where: { sourceUrl: spec.sourceUrl } })
+      : await prisma.socialMediaSignal.findFirst({
+          where: { sourceUrl: null, sourceName: spec.sourceName, detectedCategory: spec.detectedCategory },
+        });
+
+    if (existing) {
+      createdIds.push(existing.id);
+      skipped++;
+      continue;
+    }
+
     const row = await prisma.socialMediaSignal.create({
       data: {
         sourceName: spec.sourceName,
@@ -91,11 +111,15 @@ export async function seedSignals(prisma: PrismaClient, signals: SeedSignalSpec[
         districtId: district?.id ?? null,
         detectedCategory: spec.detectedCategory,
         publishedAt: spec.publishedAt,
-        duplicateOfId: spec.duplicateOfIndex !== undefined ? createdIds[spec.duplicateOfIndex] : null,
+        duplicateOfId,
       },
     });
     createdIds.push(row.id);
+    created++;
     // eslint-disable-next-line no-console
     console.log(`[seed-signals] ${spec.sourceName} (${spec.trustLevel}) -> ${spec.wardTenXa ?? "không rõ địa bàn"}`);
   }
+
+  // eslint-disable-next-line no-console
+  console.log(`[seed-signals] đã tạo ${created} tin hiệu mới (bỏ qua ${skipped} đã có).`);
 }

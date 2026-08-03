@@ -93,6 +93,8 @@ class _NewsCard extends StatelessWidget {
     final title = item['title'] as String? ?? '';
     final summary = item['summary'] as String? ?? '';
     final link = item['link'] as String?;
+    final linkUri = link == null ? null : Uri.tryParse(link);
+    final isValidLink = linkUri != null && (linkUri.scheme == 'http' || linkUri.scheme == 'https');
     final publishedAt = _formatDate(item['publishedAt'] as String?);
 
     return Material(
@@ -100,9 +102,9 @@ class _NewsCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: link == null
-            ? null
-            : () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
+        onTap: isValidLink
+            ? () => launchUrl(linkUri, mode: LaunchMode.externalApplication)
+            : null,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(

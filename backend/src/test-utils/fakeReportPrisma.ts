@@ -49,8 +49,14 @@ export function createFakeReportPrisma() {
   const officers: { id: string; role: string }[] = [];
   const lockedUserIds = new Set<string>();
 
-  return {
+  const client = {
     store: { reports, attachments, statusHistory, officers, lockedUserIds },
+    /** reportLifecycle.service.ts wraps report+attachment writes in a real transaction; this
+     * fake has no isolation/rollback semantics, it just runs the callback against itself
+     * (same shape services already call directly elsewhere in this file). */
+    async $transaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {
+      return fn(client);
+    },
     seedOfficer(officer: { id: string; role: string }) {
       officers.push(officer);
     },
@@ -119,6 +125,8 @@ export function createFakeReportPrisma() {
       },
     },
   };
+
+  return client;
 }
 
 export type FakeReportPrisma = ReturnType<typeof createFakeReportPrisma>;

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { detectCategory, detectDistrict } from "./keywordFilter.js";
 import { findDuplicateSemantic, NoopSemanticDuplicateChecker, type SemanticDuplicateChecker } from "./dedup.js";
 import type { Summarizer } from "./summarizer.js";
@@ -82,20 +82,32 @@ export function createPressCrawlerService(deps: PressCrawlerDeps) {
 
       const summary = await deps.summarizer.summarize({ title: item.title, content: item.content });
 
-      await deps.prisma.socialMediaSignal.create({
-        data: {
-          sourceName: source.name,
-          sourceUrl: item.link,
-          trustLevel: "verified_press",
-          summary,
-          rawSnippet: item.content.slice(0, 2000),
-          districtId,
-          detectedCategory: category,
-          publishedAt: item.pubDate ? new Date(item.pubDate) : null,
-          duplicateOfId,
-        },
-      });
-      inserted++;
+      try {
+        await deps.prisma.socialMediaSignal.create({
+          data: {
+            sourceName: source.name,
+            sourceUrl: item.link,
+            trustLevel: "verified_press",
+            summary,
+            rawSnippet: item.content.slice(0, 2000),
+            districtId,
+            detectedCategory: category,
+            publishedAt: item.pubDate ? new Date(item.pubDate) : null,
+            duplicateOfId,
+          },
+        });
+        inserted++;
+      } catch (err) {
+        // The findFirst check above is a fast pre-filter, not a lock — two overlapping crawl
+        // runs (cron overlap, retry, multi-worker) can both pass it for the same URL. The
+        // "source_url" unique index is the real guard; P2002 here just means another run won
+        // the race, so treat it as a duplicate rather than aborting the whole feed.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          skipped++;
+          continue;
+        }
+        throw err;
+      }
     }
 
     return { inserted, skipped };

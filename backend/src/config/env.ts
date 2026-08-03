@@ -131,6 +131,20 @@ const EnvSchema = z.object({
           "machine can never reach. Set it to the public domain, reverse-proxied to MinIO.",
       });
     }
+    if (env.MINIO_ROOT_USER === "minioadmin") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["MINIO_ROOT_USER"],
+        message: "MINIO_ROOT_USER must not be left at the default \"minioadmin\" in production.",
+      });
+    }
+    if (env.MINIO_ROOT_PASSWORD === "changeme_minio_pw") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["MINIO_ROOT_PASSWORD"],
+        message: "MINIO_ROOT_PASSWORD must not be left at the default value in production.",
+      });
+    }
   });
 
 export type Env = z.infer<typeof EnvSchema>;

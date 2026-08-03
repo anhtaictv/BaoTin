@@ -47,6 +47,19 @@ describe("loadEnv — production fail-fast", () => {
     ).toThrow(/MINIO_PUBLIC_ENDPOINT is required in production/);
   });
 
+  it("throws when MINIO_ROOT_USER or MINIO_ROOT_PASSWORD is left at its default value", () => {
+    expect(() =>
+      loadEnv({
+        ...BASE_ENV,
+        NODE_ENV: "production",
+        APP_DATABASE_URL: "postgres://app_role@localhost/baotin",
+        CORS_ALLOWED_ORIGINS: "https://dashboard.example.com",
+        OTP_HASH_PEPPER: "c".repeat(44),
+        MINIO_PUBLIC_ENDPOINT: "baotin.work.gd",
+      }),
+    ).toThrow(/MINIO_ROOT_USER must not be left at the default/);
+  });
+
   it("succeeds once every production-only secret is set", () => {
     expect(() =>
       loadEnv({
@@ -56,6 +69,8 @@ describe("loadEnv — production fail-fast", () => {
         CORS_ALLOWED_ORIGINS: "https://dashboard.example.com",
         OTP_HASH_PEPPER: "c".repeat(44),
         MINIO_PUBLIC_ENDPOINT: "baotin.work.gd",
+        MINIO_ROOT_USER: "baotin_prod_user",
+        MINIO_ROOT_PASSWORD: "a-real-generated-password",
       }),
     ).not.toThrow();
   });

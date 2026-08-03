@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { HttpError } from "../middleware/errorHandler.js";
 import type { GeoMatchService } from "../geo/geoMatch.service.js";
 import type { AssignOfficerService } from "../geo/assignOfficer.service.js";
@@ -35,30 +35,32 @@ export interface ReportLifecycleDeps {
 }
 
 export function createReportLifecycleService(deps: ReportLifecycleDeps) {
-  async function insertReportRow(params: {
-    userId: string;
-    category: string;
-    urgency: "normal" | "emergency";
-    description: string | null;
-    lat: number;
-    lng: number;
-    locationSource: string | null;
-    districtId: string | null;
-    assignedOfficerId: string | null;
-  }): Promise<string> {
-    const reportId = randomUUID();
-    await deps.prisma.$executeRaw`
+  async function insertReportRow(
+    client: PrismaClient | Prisma.TransactionClient,
+    params: {
+      reportId: string;
+      userId: string;
+      category: string;
+      urgency: "normal" | "emergency";
+      description: string | null;
+      lat: number;
+      lng: number;
+      locationSource: string | null;
+      districtId: string | null;
+      assignedOfficerId: string | null;
+    },
+  ): Promise<void> {
+    await client.$executeRaw`
       INSERT INTO reports (
         id, source, user_id, category, urgency, description,
         location, location_source, district_id, assigned_officer_id, status
       )
       VALUES (
-        ${reportId}::uuid, 'citizen', ${params.userId}::uuid, ${params.category}, ${params.urgency}::report_urgency,
+        ${params.reportId}::uuid, 'citizen', ${params.userId}::uuid, ${params.category}, ${params.urgency}::report_urgency,
         ${params.description}, ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326),
         ${params.locationSource}, ${params.districtId}::uuid, ${params.assignedOfficerId}::uuid, 'pending'::report_status
       )
     `;
-    return reportId;
   }
 
   async function createCitizenReport(input: CreateCitizenReportInput) {
@@ -73,32 +75,47 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
 
     const districtId = await deps.geoMatch.matchDistrict({ lat: input.location.lat, lng: input.location.lng });
     const assignedOfficerId = districtId ? await deps.assignOfficer.pickOfficerForDistrict(districtId) : null;
+    const reportId = randomUUID();
 
-    const reportId = await insertReportRow({
-      userId: input.userId,
-      category: input.category,
-      urgency: "normal",
-      description: input.description ?? null,
-      lat: input.location.lat,
-      lng: input.location.lng,
-      locationSource: input.location.source,
-      districtId,
-      assignedOfficerId,
-    });
+    // MinIO uploads happen before the DB transaction (object storage has no 2PC with Postgres,
+    // and network I/O inside an interactive Prisma transaction risks hitting its timeout). If a
+    // later DB write fails, the transaction rolls back cleanly and we're left with orphaned
+    // MinIO objects (a cleanup cost) rather than a report row referencing an attachment DB row
+    // that never got created (a broken read for the citizen checking their report).
+    const uploadedAttachments = await Promise.all(
+      input.attachments.map(async (attachment) => {
+        const key = `${reportId}/${randomUUID()}`;
+        await deps.storage.putObject(key, attachment.buffer, attachment.mimetype);
+        return { key, attachment };
+      }),
+    );
 
-    for (const attachment of input.attachments) {
-      const key = `${reportId}/${randomUUID()}`;
-      await deps.storage.putObject(key, attachment.buffer, attachment.mimetype);
-      await deps.prisma.reportAttachment.create({
-        data: {
-          reportId,
-          fileUrl: key,
-          fileType: attachment.mimetype,
-          exifGpsLat: attachment.exifGps?.lat ?? null,
-          exifGpsLng: attachment.exifGps?.lng ?? null,
-        },
+    await deps.prisma.$transaction(async (tx) => {
+      await insertReportRow(tx, {
+        reportId,
+        userId: input.userId,
+        category: input.category,
+        urgency: "normal",
+        description: input.description ?? null,
+        lat: input.location.lat,
+        lng: input.location.lng,
+        locationSource: input.location.source,
+        districtId,
+        assignedOfficerId,
       });
-    }
+
+      for (const { key, attachment } of uploadedAttachments) {
+        await tx.reportAttachment.create({
+          data: {
+            reportId,
+            fileUrl: key,
+            fileType: attachment.mimetype,
+            exifGpsLat: attachment.exifGps?.lat ?? null,
+            exifGpsLng: attachment.exifGps?.lng ?? null,
+          },
+        });
+      }
+    });
 
     if (assignedOfficerId) {
       await deps.notifications.notifyOfficerOfNewReport(assignedOfficerId, reportId, false);
@@ -115,8 +132,10 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
   async function createEmergencyReport(input: CreateEmergencyReportInput) {
     const districtId = await deps.geoMatch.matchDistrict(input.location);
     const assignedOfficerId = districtId ? await deps.assignOfficer.pickOfficerForDistrict(districtId) : null;
+    const reportId = randomUUID();
 
-    const reportId = await insertReportRow({
+    await insertReportRow(deps.prisma, {
+      reportId,
       userId: input.userId,
       category: input.emergencyType,
       urgency: "emergency",
