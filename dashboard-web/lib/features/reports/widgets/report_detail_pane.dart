@@ -41,7 +41,10 @@ class ReportDetailPane extends ConsumerWidget {
               children: [
                 _UrgencyBadge(urgency: report['urgency'] as String? ?? 'normal'),
                 const SizedBox(width: 8),
-                _StatusBadge(status: report['status'] as String? ?? 'pending'),
+                _StatusBadge(
+                  status: report['status'] as String? ?? 'pending',
+                  isAssigned: report['assignedOfficerId'] != null,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -94,17 +97,18 @@ class ReportDetailPane extends ConsumerWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+  const _StatusBadge({required this.status, this.isAssigned = false});
 
   final String status;
+  final bool isAssigned;
 
   @override
   Widget build(BuildContext context) {
-    final color = statusColor(status);
+    final color = statusColor(status, isAssigned: isAssigned);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
-      child: Text(statusLabel(status), style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+      child: Text(statusLabel(status, isAssigned: isAssigned), style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
     );
   }
 }

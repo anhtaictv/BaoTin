@@ -55,6 +55,18 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Background sync of queued offline reports (workmanager package) — registerPeriodicTask
+	     on iOS schedules a BGAppRefreshTaskRequest, which requires both entries below. The
+	     identifier must match the uniqueName used in background_sync.dart. Best-effort only:
+	     iOS decides when/whether to actually run it, unlike Android's WorkManager. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>bao_tin_pending_reports_sync</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

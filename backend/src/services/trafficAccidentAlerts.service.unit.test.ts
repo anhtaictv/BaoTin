@@ -25,6 +25,7 @@ function buildService() {
       return new Date();
     },
     notifyOfficerOfChatMessage: async () => new Date(),
+    notifyUserOfDistrictBroadcast: async () => new Date(),
   };
 
   const service = createTrafficAccidentAlertsService({

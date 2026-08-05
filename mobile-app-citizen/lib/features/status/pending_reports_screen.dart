@@ -36,14 +36,16 @@ class _PendingReportsScreenState extends ConsumerState<PendingReportsScreen> {
 
   Future<void> _retryNow() async {
     setState(() => _flushing = true);
-    final sent = await ref.read(pendingReportsQueueProvider).flush();
+    final result = await ref.read(pendingReportsQueueProvider).flush();
     if (!mounted) return;
     setState(() => _flushing = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text(sent > 0
-              ? 'Đã gửi $sent tin báo.'
-              : 'Vẫn chưa gửi được — kiểm tra kết nối mạng.')),
+          content: Text(result.sessionExpired
+              ? 'Phiên đăng nhập đã hết hạn — vui lòng đăng nhập lại để gửi tin đang chờ.'
+              : result.sent > 0
+                  ? 'Đã gửi ${result.sent} tin báo.'
+                  : 'Vẫn chưa gửi được — kiểm tra kết nối mạng.')),
     );
     await _reload();
   }

@@ -14,6 +14,7 @@ class ReportRepository {
     required double lat,
     required double lng,
     required String locationSource,
+    String? clientRequestId,
     List<({Uint8List bytes, String filename})> attachments = const [],
   }) async {
     final formData = FormData();
@@ -24,6 +25,9 @@ class ReportRepository {
     formData.fields.add(
       MapEntry('location', jsonEncode({'lat': lat, 'lng': lng, 'source': locationSource})),
     );
+    if (clientRequestId != null) {
+      formData.fields.add(MapEntry('clientRequestId', clientRequestId));
+    }
     for (final attachment in attachments) {
       formData.files.add(
         MapEntry('attachments', MultipartFile.fromBytes(attachment.bytes, filename: attachment.filename)),

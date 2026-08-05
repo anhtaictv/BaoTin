@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { HttpError } from "../middleware/errorHandler.js";
 import type { GeoMatchService } from "../geo/geoMatch.service.js";
 import type { AssignOfficerService } from "../geo/assignOfficer.service.js";
@@ -18,6 +18,8 @@ export interface CreateCitizenReportInput {
   description?: string;
   location: { lat: number; lng: number; source: string };
   attachments: ReportAttachmentInput[];
+  /** Client-generated idempotency key (offline queue retries) — see createCitizenReport. */
+  clientRequestId?: string;
 }
 
 export interface CreateEmergencyReportInput {
@@ -48,17 +50,19 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
       locationSource: string | null;
       districtId: string | null;
       assignedOfficerId: string | null;
+      clientRequestId: string | null;
     },
   ): Promise<void> {
     await client.$executeRaw`
       INSERT INTO reports (
         id, source, user_id, category, urgency, description,
-        location, location_source, district_id, assigned_officer_id, status
+        location, location_source, district_id, assigned_officer_id, status, client_request_id
       )
       VALUES (
         ${params.reportId}::uuid, 'citizen', ${params.userId}::uuid, ${params.category}, ${params.urgency}::report_urgency,
         ${params.description}, ST_SetSRID(ST_MakePoint(${params.lng}, ${params.lat}), 4326),
-        ${params.locationSource}, ${params.districtId}::uuid, ${params.assignedOfficerId}::uuid, 'pending'::report_status
+        ${params.locationSource}, ${params.districtId}::uuid, ${params.assignedOfficerId}::uuid, 'pending'::report_status,
+        ${params.clientRequestId}
       )
     `;
   }
@@ -71,6 +75,17 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
     const user = await deps.prisma.user.findUnique({ where: { id: input.userId }, select: { lockedAt: true } });
     if (user?.lockedAt) {
       throw new HttpError(403, "ACCOUNT_LOCKED", "Tài khoản đã bị khóa do có nhiều tin báo bị xác nhận là sai.");
+    }
+
+    // Fast path for a retried submission (offline queue flush, or a request that succeeded
+    // but the response never reached the client): skip geo-match/uploads/notify entirely and
+    // hand back the already-created report instead of filing a duplicate.
+    if (input.clientRequestId) {
+      const existing = await deps.prisma.report.findFirst({
+        where: { userId: input.userId, clientRequestId: input.clientRequestId },
+        select: { id: true, status: true },
+      });
+      if (existing) return { reportId: existing.id, status: existing.status };
     }
 
     const districtId = await deps.geoMatch.matchDistrict({ lat: input.location.lat, lng: input.location.lng });
@@ -90,32 +105,49 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
       }),
     );
 
-    await deps.prisma.$transaction(async (tx) => {
-      await insertReportRow(tx, {
-        reportId,
-        userId: input.userId,
-        category: input.category,
-        urgency: "normal",
-        description: input.description ?? null,
-        lat: input.location.lat,
-        lng: input.location.lng,
-        locationSource: input.location.source,
-        districtId,
-        assignedOfficerId,
-      });
-
-      for (const { key, attachment } of uploadedAttachments) {
-        await tx.reportAttachment.create({
-          data: {
-            reportId,
-            fileUrl: key,
-            fileType: attachment.mimetype,
-            exifGpsLat: attachment.exifGps?.lat ?? null,
-            exifGpsLng: attachment.exifGps?.lng ?? null,
-          },
+    try {
+      await deps.prisma.$transaction(async (tx) => {
+        await insertReportRow(tx, {
+          reportId,
+          userId: input.userId,
+          category: input.category,
+          urgency: "normal",
+          description: input.description ?? null,
+          lat: input.location.lat,
+          lng: input.location.lng,
+          locationSource: input.location.source,
+          districtId,
+          assignedOfficerId,
+          clientRequestId: input.clientRequestId ?? null,
         });
+
+        for (const { key, attachment } of uploadedAttachments) {
+          await tx.reportAttachment.create({
+            data: {
+              reportId,
+              fileUrl: key,
+              fileType: attachment.mimetype,
+              exifGpsLat: attachment.exifGps?.lat ?? null,
+              exifGpsLng: attachment.exifGps?.lng ?? null,
+            },
+          });
+        }
+      });
+    } catch (err) {
+      // Two overlapping submissions with the same clientRequestId (retry fired before the
+      // first one committed) — the unique index is the real guard, this findFirst-after-catch
+      // just resolves the race in favor of "return the one that won" instead of a 500. The
+      // uploaded MinIO objects for the losing attempt become orphaned (accepted cost, same
+      // tradeoff as any transaction rollback here — see comment on uploadedAttachments above).
+      if (input.clientRequestId && err instanceof Prisma.PrismaClientKnownRequestError) {
+        const existing = await deps.prisma.report.findFirst({
+          where: { userId: input.userId, clientRequestId: input.clientRequestId },
+          select: { id: true, status: true },
+        });
+        if (existing) return { reportId: existing.id, status: existing.status };
       }
-    });
+      throw err;
+    }
 
     if (assignedOfficerId) {
       await deps.notifications.notifyOfficerOfNewReport(assignedOfficerId, reportId, false);
@@ -145,6 +177,7 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
       locationSource: "device_gps",
       districtId,
       assignedOfficerId,
+      clientRequestId: null,
     });
 
     // Admin also gets pushed for emergency reports specifically (SOS, any district) —
@@ -181,6 +214,7 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
         createdAt: true,
         verifiedAt: true,
         responseTimeSeconds: true,
+        assignedOfficerId: true,
       },
     });
     if (!report) throw new HttpError(404, "REPORT_NOT_FOUND", "Không tìm thấy tin báo.");

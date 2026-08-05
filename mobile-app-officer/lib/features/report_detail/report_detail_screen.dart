@@ -91,7 +91,10 @@ class _DetailsTab extends StatelessWidget {
           children: [
             UrgencyBadge(urgency: report['urgency'] as String? ?? 'normal'),
             if ((report['urgency'] as String?) == 'emergency') const SizedBox(width: 8),
-            StatusBadge(status: report['status'] as String? ?? 'pending'),
+            StatusBadge(
+              status: report['status'] as String? ?? 'pending',
+              isAssigned: report['assignedOfficerId'] != null,
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -322,7 +325,10 @@ class _ProcessingTab extends StatelessWidget {
               children: [
                 Text('Trạng thái hiện tại', style: Theme.of(context).textTheme.titleSmall),
                 const Spacer(),
-                StatusBadge(status: report['status'] as String? ?? 'pending'),
+                StatusBadge(
+                  status: report['status'] as String? ?? 'pending',
+                  isAssigned: report['assignedOfficerId'] != null,
+                ),
               ],
             ),
           ),

@@ -111,3 +111,20 @@ export const emergencyReportLimiter = rateLimit({
     "Quá nhiều yêu cầu cấp cứu từ thiết bị này trong thời gian ngắn.",
   ),
 });
+
+/** Geo-fence broadcast alert (POST /officer/broadcast-alerts) — IP-keyed like
+ * registrationLimiter, not officer-id-keyed: express-rate-limit runs before requireAuth
+ * resolves req.user, so an authenticated-subject key isn't available here without reordering
+ * auth ahead of rate-limiting (out of scope for this endpoint). Generous enough for genuine
+ * back-to-back alerts (e.g. an evolving incident) but bounds spam broadcast to a whole district. */
+export const broadcastAlertLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  message: rateLimitedResponse(
+    "BROADCAST_ALERT_RATE_LIMITED",
+    "Quá nhiều cảnh báo được gửi trong thời gian ngắn, vui lòng thử lại sau.",
+  ),
+});

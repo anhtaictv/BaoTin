@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers.dart';
@@ -76,10 +77,23 @@ class _AreaSafetyScreenState extends ConsumerState<AreaSafetyScreen> {
 
           final data = snapshot.data!;
           final districts = List<Map<String, dynamic>>.from(data.areaAlerts['districts'] as List? ?? []);
+          final recentBroadcasts =
+              List<Map<String, dynamic>>.from(data.areaAlerts['recentBroadcasts'] as List? ?? []);
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (recentBroadcasts.isNotEmpty) ...[
+                Text('Cảnh báo mới', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Từ cán bộ phụ trách địa bàn của bạn, trong 48 giờ gần nhất.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                for (final b in recentBroadcasts) _BroadcastAlertCard(broadcast: b),
+                const SizedBox(height: 24),
+              ],
               Text('Bản đồ cảnh báo khu vực', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
@@ -178,6 +192,41 @@ IconData _iconForContactType(String? type) {
     case 'police':
     default:
       return Icons.local_police_outlined;
+  }
+}
+
+/// Geo-fence alert từ cán bộ phụ trách địa bàn (GET /area-alerts's `recentBroadcasts`) —
+/// tách hẳn khỏi statusColor/alertLevelColor (CLAUDE.md #1 tinh thần: nguồn khác nhau, không
+/// dùng chung bảng màu) bằng cách tô nền đỏ nhạt riêng cho mức khẩn cấp thay vì tái dùng
+/// alertLevelColor's "high".
+class _BroadcastAlertCard extends StatelessWidget {
+  const _BroadcastAlertCard({required this.broadcast});
+
+  final Map<String, dynamic> broadcast;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEmergency = (broadcast['urgency'] as String?) == 'emergency';
+    return Card(
+      color: isEmergency ? const Color(0xFFFFEBEE) : null,
+      child: ListTile(
+        leading: Icon(
+          Icons.campaign_outlined,
+          color: isEmergency ? const Color(0xFFD32F2F) : Colors.grey.shade700,
+        ),
+        title: Text(broadcast['message'] as String? ?? ''),
+        subtitle: Text(_formatBroadcastTime(broadcast['createdAt'] as String?)),
+      ),
+    );
+  }
+}
+
+String _formatBroadcastTime(String? iso) {
+  if (iso == null) return '';
+  try {
+    return DateFormat('dd/MM HH:mm').format(DateTime.parse(iso).toLocal());
+  } catch (_) {
+    return iso;
   }
 }
 

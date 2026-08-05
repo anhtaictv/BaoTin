@@ -11,10 +11,11 @@ export function createReportsController(
   return {
     async createReport(req: Request, res: Response) {
       if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
-      const { category, description, location } = req.body as {
+      const { category, description, location, clientRequestId } = req.body as {
         category: string;
         description?: string;
         location: { lat: number; lng: number; source: string };
+        clientRequestId?: string;
       };
 
       const files = (req.files as Express.Multer.File[] | undefined) ?? [];
@@ -34,6 +35,7 @@ export function createReportsController(
         description,
         location,
         attachments,
+        clientRequestId,
       });
 
       res.status(201).json({ success: true, data: result, error: null });

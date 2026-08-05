@@ -18,6 +18,7 @@ export function ReportDetailPane({ reportId }: { reportId: string }) {
   const location = report.location as { lat: number; lng: number } | null | undefined;
   const urgency = (report.urgency as string) ?? 'normal';
   const status = (report.status as string) ?? 'pending';
+  const isAssigned = report.assignedOfficerId != null;
 
   return (
     <div key={reportId} className="rise-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -27,7 +28,7 @@ export function ReportDetailPane({ reportId }: { reportId: string }) {
             {urgencyLabel('emergency')}
           </Badge>
         )}
-        <Badge color={statusColor(status)}>{statusLabel(status)}</Badge>
+        <Badge color={statusColor(status, isAssigned)}>{statusLabel(status, isAssigned)}</Badge>
       </div>
 
       <div>

@@ -15,7 +15,10 @@ export const theme = {
   destructiveLight: '#DC2626',
 };
 
-export function statusColor(status: string): string {
+/** `isAssigned` only matters for 'pending' — distinguishes "Mới gửi" (chưa gán cán bộ) from
+ * "Đã định tuyến" (đã gán) without needing a new backend enum value. Defaults to false so
+ * every existing call site keeps its current 4-color behavior unchanged. */
+export function statusColor(status: string, isAssigned = false): string {
   switch (status) {
     case 'confirmed_true':
       return '#2E7D32';
@@ -25,21 +28,21 @@ export function statusColor(status: string): string {
       return '#F9A825';
     case 'pending':
     default:
-      return theme.primary;
+      return isAssigned ? theme.secondary : theme.primary;
   }
 }
 
-export function statusLabel(status: string): string {
+export function statusLabel(status: string, isAssigned = false): string {
   switch (status) {
     case 'confirmed_true':
-      return 'Đúng sự thật';
+      return 'Đã xử lý';
     case 'confirmed_false':
-      return 'Tin sai';
+      return 'Tin giả/Hủy';
     case 'verifying':
       return 'Đang xác minh';
     case 'pending':
     default:
-      return 'Chờ xử lý';
+      return isAssigned ? 'Đã định tuyến' : 'Mới gửi';
   }
 }
 

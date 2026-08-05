@@ -22,6 +22,8 @@ export const createReportSchema = z.object({
   category: z.string().min(1).max(100),
   description: z.string().max(2000).optional(),
   location: z.preprocess(parseJsonField, reportLocationSchema),
+  /** Client-generated idempotency key (offline queue retries) — see reportLifecycle.service.ts. */
+  clientRequestId: z.string().min(1).max(100).optional(),
 });
 
 export const createEmergencyReportSchema = z.object({

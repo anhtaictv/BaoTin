@@ -66,7 +66,7 @@ class _ReportStatusScreenState extends ConsumerState<ReportStatusScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                StatusBadge(status: status),
+                StatusBadge(status: status, isAssigned: data['assignedOfficerId'] != null),
                 const SizedBox(height: 16),
                 Text('Mã tin báo: ${widget.reportId}', style: Theme.of(context).textTheme.bodyMedium),
                 if (data['verifiedAt'] != null) ...[

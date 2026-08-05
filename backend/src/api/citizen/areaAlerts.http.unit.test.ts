@@ -28,6 +28,11 @@ async function buildTestApp() {
     async $queryRaw() {
       return [{ id: districtId, tenXa: "Buôn Ma Thuột", lat: 12.68, lng: 108.05 }];
     },
+    officerBroadcastAlert: {
+      async findMany() {
+        return [];
+      },
+    },
   };
   const geoMatch: GeoMatchService = { matchDistrict: async () => districtId, matchNearestDistrict: async () => districtId };
   const service = createAreaAlertsService({ prisma: fakePrisma as any, geoMatch });

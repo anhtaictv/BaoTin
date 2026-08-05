@@ -69,6 +69,9 @@ import { createNewsFeedRoutes } from "./api/news/newsFeed.routes.js";
 import { createChatService } from "./services/chat.service.js";
 import { createChatController } from "./api/officer/chat.controller.js";
 import { createChatRoutes } from "./api/officer/chat.routes.js";
+import { createBroadcastAlertsService } from "./services/broadcastAlerts.service.js";
+import { createBroadcastAlertsController } from "./api/officer/broadcastAlerts.controller.js";
+import { createBroadcastAlertsRoutes } from "./api/officer/broadcastAlerts.routes.js";
 import { createApp } from "./app.js";
 
 /** FCM env vars are all-or-nothing — anything short of all three configured falls back to the
@@ -229,6 +232,10 @@ async function main() {
   const chatController = createChatController(chatService);
   const chatRouter = createChatRoutes(chatController, requireAuth);
 
+  const broadcastAlertsService = createBroadcastAlertsService({ prisma, districtScope, notifications });
+  const broadcastAlertsController = createBroadcastAlertsController(broadcastAlertsService);
+  const broadcastAlertsRouter = createBroadcastAlertsRoutes(broadcastAlertsController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -249,6 +256,7 @@ async function main() {
       trafficAccidentAlertsRouter,
       newsFeedRouter,
       chatRouter,
+      broadcastAlertsRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

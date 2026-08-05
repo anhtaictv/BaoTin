@@ -168,6 +168,7 @@ model Officer {
   assignedTrafficAccidentAlerts  TrafficAccidentAlert[] @relation("AssignedTrafficAccidentAlert")
   confirmedTrafficAccidentAlerts TrafficAccidentAlert[] @relation("ConfirmedTrafficAccidentAlert")
   chatMessages        ChatMessage[]
+  broadcastAlerts     OfficerBroadcastAlert[]
 
   @@map("officers")
 }
@@ -245,6 +246,7 @@ model District {
   emergencyContacts     EmergencyContact[]
   trafficAccidentAlerts TrafficAccidentAlert[]
   chatMessages          ChatMessage[]
+  broadcastAlerts       OfficerBroadcastAlert[]
 
   @@map("districts")
 }
@@ -297,6 +299,9 @@ model Report {
   createdAt             DateTime      @default(now()) @map("created_at")
   verifiedAt            DateTime?     @map("verified_at")
   responseTimeSeconds   Int?          @map("response_time_seconds")
+  // Idempotency key for citizen submission retries (offline queue / flaky network) — see
+  // reportLifecycle.service.ts createCitizenReport. Null for emergency reports (no retry queue).
+  clientRequestId       String?       @unique @map("client_request_id")
 
   user            User?                  @relation(fields: [userId], references: [id])
   district        District?              @relation(fields: [districtId], references: [id])
@@ -548,4 +553,24 @@ model ChatMessage {
 
   @@index([channelType, districtId, createdAt])
   @@map("chat_messages")
+}
+
+/// Cảnh báo ngược từ cán bộ (Geo-fence Alert, theo địa bàn/phường — không phải bán kính GPS
+/// liên tục) — officer/senior_officer/admin phát cảnh báo nhanh tới người dân đang ở trong 1
+/// địa bàn. Named apart from `DistrictAlert` (a TS interface in areaAlerts.service.ts for
+/// report-density aggregation, unrelated concept) to avoid confusion. Reuses `ReportUrgency`
+/// instead of a new severity enum — same emergency/normal vocabulary the rest of the app uses.
+model OfficerBroadcastAlert {
+  id          String        @id @default(uuid())
+  districtId  String        @map("district_id")
+  message     String
+  urgency     ReportUrgency @default(normal)
+  createdById String        @map("created_by_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  district  District @relation(fields: [districtId], references: [id])
+  createdBy Officer  @relation(fields: [createdById], references: [id])
+
+  @@index([districtId, createdAt])
+  @@map("officer_broadcast_alerts")
 }

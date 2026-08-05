@@ -32,6 +32,9 @@ class _FakeAreaSafetyRepository extends AreaSafetyRepository {
         {'districtId': 'd1', 'tenXa': 'Buôn Ma Thuột', 'centroidLat': 12.68, 'centroidLng': 108.05, 'reportCount': 1, 'alertLevel': 'low'},
         {'districtId': 'd2', 'tenXa': 'Buôn Hồ', 'centroidLat': 12.91, 'centroidLng': 108.27, 'reportCount': 10, 'alertLevel': 'high'},
       ],
+      'recentBroadcasts': [
+        {'id': 'b1', 'message': 'Cướp giật gần chợ trung tâm, người dân lưu ý.', 'urgency': 'emergency', 'createdAt': '2026-01-01T10:00:00Z'},
+      ],
     };
   }
 
@@ -46,6 +49,15 @@ class _FakeAreaSafetyRepository extends AreaSafetyRepository {
 
 void main() {
   testWidgets('shows the alert map disclaimer and the emergency contact list', (tester) async {
+    // The screen's ListView only builds children within the viewport + cache extent — with
+    // the broadcast alert section on top of the map/legend/contacts, the default test surface
+    // is too short to lazily build the contacts list. A tall viewport is simpler than
+    // scrolling assertions into view one by one.
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -64,6 +76,8 @@ void main() {
     expect(find.text('Công an (toàn quốc)'), findsOneWidget);
     expect(find.text('113'), findsOneWidget);
     expect(find.text('[DEMO] Trung tâm y tế Buôn Ma Thuột'), findsOneWidget);
+    expect(find.text('Cảnh báo mới'), findsOneWidget);
+    expect(find.text('Cướp giật gần chợ trung tâm, người dân lưu ý.'), findsOneWidget);
   });
 
   testWidgets('shows a retry action when the device location is unavailable', (tester) async {

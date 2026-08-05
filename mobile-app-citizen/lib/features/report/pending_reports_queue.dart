@@ -1,8 +1,32 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../core/api_client.dart';
 import 'report_repository.dart';
+
+/// Minimal key-value contract `PendingReportsQueue` needs — narrowed from
+/// `FlutterSecureStorage`'s full API purely so tests can inject an in-memory fake instead of
+/// hitting the real Keychain/Keystore platform channel (unavailable under `flutter test`,
+/// same reasoning as `PendingReportsQueue`'s old `directory` override for path_provider).
+abstract class SecureKeyValueStore {
+  Future<String?> read(String key);
+  Future<void> write(String key, String value);
+  Future<void> delete(String key);
+}
+
+class _FlutterSecureKeyValueStore implements SecureKeyValueStore {
+  const _FlutterSecureKeyValueStore(this._storage);
+  final FlutterSecureStorage _storage;
+
+  @override
+  Future<String?> read(String key) => _storage.read(key: key);
+  @override
+  Future<void> write(String key, String value) => _storage.write(key: key, value: value);
+  @override
+  Future<void> delete(String key) => _storage.delete(key: key);
+}
 
 /// A report that failed to submit for lack of connectivity, waiting for a retry.
 /// Holds the picked photo's file *path* (not its bytes) — `image_picker`/the camera already
@@ -53,69 +77,82 @@ class PendingReport {
 }
 
 /// Local "sent later" queue for reports that couldn't reach the backend because of no
-/// connectivity. Just a JSON file under the app's documents directory — a handful of queued
-/// items at most, so a real embedded DB (sqlite/drift/isar) would be overkill for this app,
-/// which has none of those set up already.
+/// connectivity. Backed by Keychain/Keystore (via `flutter_secure_storage`, same as the JWT
+/// tokens in `secure_token_store.dart`) rather than a plaintext file — queued reports carry
+/// GPS + description text. A handful of queued items at most, so a real embedded DB
+/// (sqlite/drift/isar) would be overkill for this app, which has none of those set up already.
 ///
-/// ponytail: file is read+rewritten in full on every enqueue/remove (no incremental append,
-/// no lock against concurrent writers). Fine at citizen-app scale (a person queues a handful
-/// of reports, not hundreds); move to a real embedded DB if that stops being true.
+/// Stored as one key per report (`pending_report_<id>`) plus an id-list key
+/// (`pending_report_ids`), not a single blob — some Android Keystore implementations
+/// (Samsung/Xiaomi) cap a single secure-storage entry at a few KB, and a handful of reports
+/// with long descriptions could exceed that if packed into one value.
 class PendingReportsQueue {
-  // `directory` is overridable purely so unit tests can point the queue at a temp folder
-  // instead of needing a real path_provider platform channel (unavailable under `flutter
-  // test`) — production code never passes it, it always defaults to the real documents dir.
-  PendingReportsQueue(this._repository,
-      {Future<Directory> Function()? directory})
-      : _directory = directory ?? getApplicationDocumentsDirectory;
+  static const _idsKey = 'pending_report_ids';
+
+  // `storage` is overridable purely so unit tests can inject an in-memory fake instead of
+  // needing the real Keychain/Keystore platform channel (unavailable under `flutter test`) —
+  // production code never passes it, it always defaults to the real secure storage.
+  PendingReportsQueue(this._repository, {SecureKeyValueStore? storage})
+      : _storage = storage ?? const _FlutterSecureKeyValueStore(FlutterSecureStorage());
 
   final ReportRepository _repository;
-  final Future<Directory> Function() _directory;
+  final SecureKeyValueStore _storage;
 
-  Future<File> _file() async {
-    final dir = await _directory();
-    return File('${dir.path}/pending_reports.json');
-  }
-
-  Future<List<PendingReport>> listPending() async {
-    final file = await _file();
-    if (!await file.exists()) return [];
+  Future<List<String>> _readIds() async {
+    final raw = await _storage.read(_idsKey);
+    if (raw == null) return [];
     try {
-      final raw = jsonDecode(await file.readAsString()) as List;
-      return raw
-          .map((e) => PendingReport.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return (jsonDecode(raw) as List).cast<String>();
     } catch (_) {
-      // Corrupt/unreadable queue file — treat as empty rather than crashing the app on it.
+      // Corrupt/unreadable id list — treat as empty rather than crashing the app on it.
       return [];
     }
   }
 
-  Future<void> _save(List<PendingReport> reports) async {
-    final file = await _file();
-    await file
-        .writeAsString(jsonEncode(reports.map((r) => r.toJson()).toList()));
+  Future<void> _writeIds(List<String> ids) => _storage.write(_idsKey, jsonEncode(ids));
+
+  Future<List<PendingReport>> listPending() async {
+    final ids = await _readIds();
+    final reports = <PendingReport>[];
+    for (final id in ids) {
+      final raw = await _storage.read('pending_report_$id');
+      if (raw == null) continue;
+      try {
+        reports.add(PendingReport.fromJson(jsonDecode(raw) as Map<String, dynamic>));
+      } catch (_) {
+        // Corrupt entry — skip it rather than crashing the whole list.
+      }
+    }
+    return reports;
   }
 
   Future<void> enqueue(PendingReport report) async {
-    final reports = await listPending();
-    reports.add(report);
-    await _save(reports);
+    await _storage.write('pending_report_${report.id}', jsonEncode(report.toJson()));
+    final ids = await _readIds();
+    if (!ids.contains(report.id)) {
+      ids.add(report.id);
+      await _writeIds(ids);
+    }
   }
 
   Future<void> remove(String id) async {
-    final reports = await listPending();
-    reports.removeWhere((r) => r.id == id);
-    await _save(reports);
+    await _storage.delete('pending_report_$id');
+    final ids = await _readIds();
+    ids.remove(id);
+    await _writeIds(ids);
   }
 
   /// Tries to actually submit every queued report via [ReportRepository.createReport],
   /// removing each one that succeeds. Items that still fail (still offline, or a fresh error)
   /// are left queued for the next flush or a manual retry — this never throws itself so a
-  /// caller can fire-and-forget it from a connectivity listener.
-  /// Returns how many were sent successfully.
-  Future<int> flush() async {
+  /// caller can fire-and-forget it from a connectivity listener or a background task.
+  /// [sessionExpired] is true if any attempt failed because the refresh token itself is
+  /// invalid/expired (ApiClient's interceptor already cleared it) — distinct from "still
+  /// offline" so the UI can tell the person to log back in instead of just "try again later".
+  Future<({int sent, bool sessionExpired})> flush() async {
     final reports = await listPending();
     var sent = 0;
+    var sessionExpired = false;
     for (final report in reports) {
       try {
         var attachments = const <({Uint8List bytes, String filename})>[];
@@ -137,14 +174,18 @@ class PendingReportsQueue {
           lat: report.lat,
           lng: report.lng,
           locationSource: report.locationSource,
+          clientRequestId: report.id,
           attachments: attachments,
         );
         await remove(report.id);
         sent++;
+      } on DioException catch (e) {
+        if (e.error is SessionExpiredException) sessionExpired = true;
+        // Still failing — leave it queued, next flush (or manual retry) will try again.
       } catch (_) {
         // Still failing — leave it queued, next flush (or manual retry) will try again.
       }
     }
-    return sent;
+    return (sent: sent, sessionExpired: sessionExpired);
   }
 }

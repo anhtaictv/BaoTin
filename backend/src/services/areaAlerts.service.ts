@@ -17,12 +17,24 @@ export interface DistrictAlert {
   alertLevel: AlertLevel;
 }
 
+export interface BroadcastAlertItem {
+  id: string;
+  message: string;
+  urgency: string;
+  createdAt: Date;
+}
+
 export interface AreaAlertsResult {
   myDistrictId: string | null;
   districts: DistrictAlert[];
+  recentBroadcasts: BroadcastAlertItem[];
 }
 
 const LOOKBACK_DAYS = 30;
+/** Geo-fence alerts (OfficerBroadcastAlert) are point-in-time notices, not an ongoing
+ * condition like report density — a much shorter window than LOOKBACK_DAYS above so the list
+ * doesn't fill up with stale alerts from weeks ago. */
+const BROADCAST_LOOKBACK_HOURS = 48;
 /** reportCount >= this -> "high"; >= ALERT_THRESHOLD_MEDIUM but below -> "medium"; else "low". */
 const ALERT_THRESHOLD_HIGH = 8;
 const ALERT_THRESHOLD_MEDIUM = 3;
@@ -70,7 +82,18 @@ export function createAreaAlertsService(deps: AreaAlertsDeps) {
       };
     });
 
-    return { myDistrictId, districts };
+    const recentBroadcasts = myDistrictId
+      ? await deps.prisma.officerBroadcastAlert.findMany({
+          where: {
+            districtId: myDistrictId,
+            createdAt: { gte: new Date(Date.now() - BROADCAST_LOOKBACK_HOURS * 60 * 60 * 1000) },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, message: true, urgency: true, createdAt: true },
+        })
+      : [];
+
+    return { myDistrictId, districts, recentBroadcasts };
   }
 
   return { getAreaAlerts };

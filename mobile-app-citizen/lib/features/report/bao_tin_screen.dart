@@ -116,6 +116,11 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
       return;
     }
 
+    // Generated once up front (not inside the retry/queue branch below) so a direct submit
+    // and its fallback enqueue-on-failure share the same key — the backend dedupes on it
+    // either way, so a retry from the pending queue can never create a second report row.
+    final clientRequestId = DateTime.now().microsecondsSinceEpoch.toString();
+
     setState(() {
       _submitting = true;
       _error = null;
@@ -127,6 +132,7 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
             lat: location.lat,
             lng: location.lng,
             locationSource: location.source,
+            clientRequestId: clientRequestId,
             attachments: _photoBytes != null
                 ? [(bytes: _photoBytes!, filename: _photoFilename ?? 'photo.jpg')]
                 : const [],
@@ -154,7 +160,7 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
       if (_isConnectivityError(e)) {
         await ref.read(pendingReportsQueueProvider).enqueue(
               PendingReport(
-                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                id: clientRequestId,
                 category: _category,
                 description: _descriptionController.text,
                 lat: location.lat,

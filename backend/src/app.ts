@@ -45,6 +45,10 @@ export interface AppRouters {
   /** Chat giữa các đơn vị (bottom-nav "Chat") — mounted at "/officer/chat". Channel-level
    * access is enforced in chat.service.ts, not here. */
   chatRouter?: Router;
+  /** Geo-fence alert (cảnh báo ngược từ cán bộ, theo địa bàn) — mounted at
+   * "/officer/broadcast-alerts". District-scope access is enforced in
+   * broadcastAlerts.service.ts, not here. */
+  broadcastAlertsRouter?: Router;
 }
 
 export interface AppConfig {
@@ -125,6 +129,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.chatRouter) {
     app.use("/officer/chat", routers.chatRouter);
+  }
+  if (routers.broadcastAlertsRouter) {
+    app.use("/officer/broadcast-alerts", routers.broadcastAlertsRouter);
   }
 
   app.use(notFoundHandler);

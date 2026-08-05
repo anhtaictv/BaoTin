@@ -180,7 +180,10 @@ class BaoTinOfficerTheme {
   }
 }
 
-Color statusColor(String status) {
+/// [isAssigned] only matters for 'pending' — distinguishes "Mới gửi" (chưa gán cán bộ) from
+/// "Đã định tuyến" (đã gán) without needing a new backend enum value. Defaults to false so
+/// every existing call site keeps its current 4-color behavior unchanged.
+Color statusColor(String status, {bool isAssigned = false}) {
   switch (status) {
     case 'confirmed_true':
       return const Color(0xFF2E7D32);
@@ -190,21 +193,21 @@ Color statusColor(String status) {
       return const Color(0xFFF9A825);
     case 'pending':
     default:
-      return BaoTinOfficerTheme.primary;
+      return isAssigned ? BaoTinOfficerTheme.primaryLight : BaoTinOfficerTheme.primary;
   }
 }
 
-String statusLabel(String status) {
+String statusLabel(String status, {bool isAssigned = false}) {
   switch (status) {
     case 'confirmed_true':
-      return 'Đúng sự thật';
+      return 'Đã xử lý';
     case 'confirmed_false':
-      return 'Tin sai';
+      return 'Tin giả/Hủy';
     case 'verifying':
       return 'Đang xác minh';
     case 'pending':
     default:
-      return 'Chờ xử lý';
+      return isAssigned ? 'Đã định tuyến' : 'Mới gửi';
   }
 }
 

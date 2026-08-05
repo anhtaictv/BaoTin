@@ -114,7 +114,9 @@ export function ReportsPage() {
                         </span>
                         <span style={{ fontSize: 12, color: 'var(--ink-faint)' }}>{formatDate(report.createdAt)}</span>
                       </span>
-                      <Badge color={statusColor(report.status)}>{statusLabel(report.status)}</Badge>
+                      <Badge color={statusColor(report.status, report.assignedOfficerId != null)}>
+                        {statusLabel(report.status, report.assignedOfficerId != null)}
+                      </Badge>
                     </button>
                   </li>
                 );

@@ -31,6 +31,7 @@ function buildService(fakePrisma: FakeOfficerPrisma) {
     },
     notifyOfficerOfAccidentAlert: async () => new Date(),
     notifyOfficerOfChatMessage: async () => new Date(),
+    notifyUserOfDistrictBroadcast: async () => new Date(),
   };
   const service = createOfficerReportsService({
     prisma: fakePrisma as any,

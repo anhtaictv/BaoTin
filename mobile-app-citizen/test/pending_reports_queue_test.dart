@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bao_tin_citizen/core/api_client.dart';
@@ -8,10 +8,12 @@ import 'package:bao_tin_citizen/features/report/pending_reports_queue.dart';
 import 'package:bao_tin_citizen/features/report/report_repository.dart';
 
 class _FakeReportRepository extends ReportRepository {
-  _FakeReportRepository(super.apiClient, {this.shouldFail = false});
+  _FakeReportRepository(super.apiClient, {this.shouldFail = false, this.sessionExpired = false});
 
   final bool shouldFail;
+  final bool sessionExpired;
   final List<String> submittedCategories = [];
+  final List<String?> submittedClientRequestIds = [];
 
   @override
   Future<String> createReport({
@@ -20,16 +22,34 @@ class _FakeReportRepository extends ReportRepository {
     required double lat,
     required double lng,
     required String locationSource,
+    String? clientRequestId,
     List<({Uint8List bytes, String filename})> attachments = const [],
   }) async {
+    if (sessionExpired) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/reports'),
+        error: SessionExpiredException(),
+      );
+    }
     if (shouldFail) throw Exception('still offline');
     submittedCategories.add(category);
+    submittedClientRequestIds.add(clientRequestId);
     return 'r-${submittedCategories.length}';
   }
 }
 
-Future<Directory> _tempDir() =>
-    Directory.systemTemp.createTemp('pending_reports_test');
+class _FakeSecureKeyValueStore implements SecureKeyValueStore {
+  final Map<String, String> _values = {};
+
+  @override
+  Future<String?> read(String key) async => _values[key];
+
+  @override
+  Future<void> write(String key, String value) async => _values[key] = value;
+
+  @override
+  Future<void> delete(String key) async => _values.remove(key);
+}
 
 PendingReport _report(String id) => PendingReport(
       id: id,
@@ -43,10 +63,9 @@ PendingReport _report(String id) => PendingReport(
 
 void main() {
   test('enqueue then listPending returns the queued report', () async {
-    final dir = await _tempDir();
     final repo =
         _FakeReportRepository(ApiClient(tokenStore: SecureTokenStore()));
-    final queue = PendingReportsQueue(repo, directory: () async => dir);
+    final queue = PendingReportsQueue(repo, storage: _FakeSecureKeyValueStore());
 
     await queue.enqueue(_report('a'));
     final pending = await queue.listPending();
@@ -58,40 +77,54 @@ void main() {
 
   test('flush submits every queued report and empties the queue on success',
       () async {
-    final dir = await _tempDir();
     final repo =
         _FakeReportRepository(ApiClient(tokenStore: SecureTokenStore()));
-    final queue = PendingReportsQueue(repo, directory: () async => dir);
+    final queue = PendingReportsQueue(repo, storage: _FakeSecureKeyValueStore());
 
     await queue.enqueue(_report('a'));
     await queue.enqueue(_report('b'));
 
-    final sent = await queue.flush();
+    final result = await queue.flush();
 
-    expect(sent, 2);
+    expect(result.sent, 2);
+    expect(result.sessionExpired, isFalse);
     expect(repo.submittedCategories, ['trom_cap', 'trom_cap']);
+    expect(repo.submittedClientRequestIds, ['a', 'b']);
     expect(await queue.listPending(), isEmpty);
   });
 
   test('flush leaves a report queued when submission still fails', () async {
-    final dir = await _tempDir();
     final repo = _FakeReportRepository(
         ApiClient(tokenStore: SecureTokenStore()),
         shouldFail: true);
-    final queue = PendingReportsQueue(repo, directory: () async => dir);
+    final queue = PendingReportsQueue(repo, storage: _FakeSecureKeyValueStore());
 
     await queue.enqueue(_report('a'));
-    final sent = await queue.flush();
+    final result = await queue.flush();
 
-    expect(sent, 0);
+    expect(result.sent, 0);
+    expect(result.sessionExpired, isFalse);
+    expect(await queue.listPending(), hasLength(1));
+  });
+
+  test('flush reports sessionExpired distinctly from a plain offline failure', () async {
+    final repo = _FakeReportRepository(
+        ApiClient(tokenStore: SecureTokenStore()),
+        sessionExpired: true);
+    final queue = PendingReportsQueue(repo, storage: _FakeSecureKeyValueStore());
+
+    await queue.enqueue(_report('a'));
+    final result = await queue.flush();
+
+    expect(result.sent, 0);
+    expect(result.sessionExpired, isTrue);
     expect(await queue.listPending(), hasLength(1));
   });
 
   test('remove deletes only the matching report', () async {
-    final dir = await _tempDir();
     final repo =
         _FakeReportRepository(ApiClient(tokenStore: SecureTokenStore()));
-    final queue = PendingReportsQueue(repo, directory: () async => dir);
+    final queue = PendingReportsQueue(repo, storage: _FakeSecureKeyValueStore());
 
     await queue.enqueue(_report('a'));
     await queue.enqueue(_report('b'));

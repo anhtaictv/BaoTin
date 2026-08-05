@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../shared/widgets/status_badge.dart';
+import '../broadcast_alert/broadcast_alert_screen.dart';
 import '../report_detail/report_detail_screen.dart';
 import '../signals/signal_list_screen.dart';
 
@@ -162,6 +163,13 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
             ? null
             : [
                 IconButton(
+                  tooltip: 'Gửi cảnh báo khu vực',
+                  icon: const Icon(Icons.campaign_outlined),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const BroadcastAlertScreen()),
+                  ),
+                ),
+                IconButton(
                   tooltip: 'Tin nhanh (tham khảo)',
                   icon: const Icon(Icons.feed_outlined),
                   onPressed: () => Navigator.of(context).push(
@@ -264,7 +272,10 @@ class _ReportListScreenState extends ConsumerState<ReportListScreen> {
                             ],
                           ),
                           subtitle: Text(_formatDate(report['createdAt'] as String?)),
-                          trailing: StatusBadge(status: report['status'] as String? ?? 'pending'),
+                          trailing: StatusBadge(
+                            status: report['status'] as String? ?? 'pending',
+                            isAssigned: report['assignedOfficerId'] != null,
+                          ),
                           onTap: () async {
                             await Navigator.of(context).push(
                               MaterialPageRoute(

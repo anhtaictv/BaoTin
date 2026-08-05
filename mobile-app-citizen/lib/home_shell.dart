@@ -6,6 +6,7 @@ import 'core/bao_tin_badge.dart';
 import 'core/providers.dart';
 import 'core/responsive.dart';
 import 'core/theme.dart';
+import 'features/report/background_sync.dart';
 import 'features/report/bao_tin_screen.dart';
 import 'features/emergency/sos_screen.dart';
 import 'features/status/my_reports_screen.dart';
@@ -32,15 +33,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   void initState() {
     super.initState();
-    // App-foreground sync only (no background service/WorkManager) — good enough for a
-    // citizen app: flush whatever's queued as soon as the app starts, then again any time
-    // connectivity comes back while it's open.
+    // Foreground sync: flush whatever's queued as soon as the app starts, then again any time
+    // connectivity comes back while it's open. registerBackgroundSync() (below) covers the
+    // gap while the app isn't in the foreground at all.
     ref.read(pendingReportsQueueProvider).flush();
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
       if (results.any((r) => r != ConnectivityResult.none)) {
         ref.read(pendingReportsQueueProvider).flush();
       }
     });
+    registerBackgroundSync();
   }
 
   @override

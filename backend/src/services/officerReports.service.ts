@@ -44,6 +44,7 @@ const REPORT_LIST_SELECT = {
   status: true,
   districtId: true,
   createdAt: true,
+  assignedOfficerId: true,
 } as const;
 
 export function createOfficerReportsService(deps: OfficerReportsDeps) {

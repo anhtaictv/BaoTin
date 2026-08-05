@@ -33,6 +33,11 @@ function createFakePrisma(reports: FakeReport[], districtRows: FakeDistrictRow[]
     async $queryRaw() {
       return districtRows.map((d) => ({ id: d.id, tenXa: d.tenXa, lat: d.lat, lng: d.lng }));
     },
+    officerBroadcastAlert: {
+      async findMany() {
+        return [];
+      },
+    },
   };
 }
 
@@ -97,5 +102,29 @@ describe("areaAlerts.service — getAreaAlerts", () => {
 
     const result = await service.getAreaAlerts({ lat: 0, lng: 0 });
     expect(result.myDistrictId).toBeNull();
+  });
+
+  it("includes recentBroadcasts for my district and skips the query entirely when no district matched", async () => {
+    const d1 = randomUUID();
+    const broadcast = { id: randomUUID(), message: "Cướp giật gần chợ", urgency: "emergency", createdAt: new Date() };
+    const prisma = createFakePrisma([], [{ id: d1, tenXa: "D1", lat: 1, lng: 1 }]) as any;
+    prisma.officerBroadcastAlert.findMany = async ({ where }: any) => {
+      expect(where.districtId).toBe(d1);
+      return [broadcast];
+    };
+    const service = createAreaAlertsService({ prisma, geoMatch: fakeGeoMatch(d1) });
+
+    const result = await service.getAreaAlerts({ lat: 1, lng: 1 });
+    expect(result.recentBroadcasts).toEqual([broadcast]);
+
+    let called = false;
+    prisma.officerBroadcastAlert.findMany = async () => {
+      called = true;
+      return [];
+    };
+    const noDistrictService = createAreaAlertsService({ prisma, geoMatch: fakeGeoMatch(null) });
+    const noDistrictResult = await noDistrictService.getAreaAlerts({ lat: 0, lng: 0 });
+    expect(noDistrictResult.recentBroadcasts).toEqual([]);
+    expect(called).toBe(false);
   });
 });

@@ -14,6 +14,7 @@ import '../features/news/news_repository.dart';
 import '../features/admin_citizens/locked_citizens_repository.dart';
 import '../features/chat/chat_repository.dart';
 import '../features/search/search_repository.dart';
+import '../features/broadcast_alert/broadcast_alert_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -71,4 +72,8 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 
 final searchRepositoryProvider = Provider<SearchRepository>(
   (ref) => SearchRepository(ref.watch(apiClientProvider)),
+);
+
+final broadcastAlertRepositoryProvider = Provider<BroadcastAlertRepository>(
+  (ref) => BroadcastAlertRepository(ref.watch(apiClientProvider)),
 );

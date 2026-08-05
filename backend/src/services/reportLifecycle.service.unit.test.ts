@@ -43,6 +43,7 @@ function buildService(
     notifyUserOfStatusChange: async () => new Date(),
     notifyOfficerOfAccidentAlert: async () => new Date(),
     notifyOfficerOfChatMessage: async () => new Date(),
+    notifyUserOfDistrictBroadcast: async () => new Date(),
   };
 
   const service = createReportLifecycleService({
@@ -138,6 +139,63 @@ describe("reportLifecycle.service — createCitizenReport", () => {
         attachments: [],
       }),
     ).rejects.toMatchObject({ status: 403, code: "ACCOUNT_LOCKED" });
+  });
+
+  it("returns the same reportId on a retried submission with the same clientRequestId, without re-uploading or re-notifying", async () => {
+    const { service, putObjectCalls, notifyCalls } = buildService(fakePrisma);
+    const clientRequestId = "citizen-local-id-123";
+    const input = {
+      userId: USER_ID,
+      category: "trom_cap",
+      location: { lat: 12.66, lng: 108.05, source: "exif" as const },
+      attachments: [{ buffer: Buffer.from("fake-jpeg"), mimetype: "image/jpeg", exifGps: null }],
+      clientRequestId,
+    };
+
+    const first = await service.createCitizenReport(input);
+    const second = await service.createCitizenReport(input);
+
+    expect(second.reportId).toBe(first.reportId);
+    expect(fakePrisma.store.reports).toHaveLength(1);
+    expect(putObjectCalls).toHaveLength(1);
+    expect(notifyCalls).toHaveLength(1);
+  });
+
+  it("resolves a same-clientRequestId race (concurrent insert wins first) to the winning report instead of throwing", async () => {
+    const { service } = buildService(fakePrisma);
+    const clientRequestId = "citizen-local-id-race";
+    // Simulates the second of two near-simultaneous retries: by the time this insert runs,
+    // the first request's row is already committed, so the unique index rejects it — the
+    // fake's $executeRaw throws the same P2002-shaped error a live Postgres would.
+    const winningId = randomUUID();
+    fakePrisma.store.reports.push({
+      id: winningId,
+      userId: USER_ID,
+      category: "trom_cap",
+      urgency: "normal",
+      description: null,
+      lng: 108.05,
+      lat: 12.66,
+      locationSource: "exif",
+      districtId: IN_BOUNDS_DISTRICT_ID,
+      assignedOfficerId: ASSIGNED_OFFICER_ID,
+      status: "pending",
+      createdAt: new Date(),
+      verifiedAt: null,
+      responseTimeSeconds: null,
+      clientRequestId,
+    });
+
+    const result = await service.createCitizenReport({
+      userId: USER_ID,
+      category: "trom_cap",
+      location: { lat: 12.66, lng: 108.05, source: "exif" },
+      attachments: [],
+      clientRequestId,
+    });
+
+    expect(result.reportId).toBe(winningId);
+    expect(fakePrisma.store.reports).toHaveLength(1);
   });
 });
 

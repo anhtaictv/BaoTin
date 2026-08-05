@@ -61,11 +61,25 @@ export function createNotificationService(sender: NotificationSender) {
     return sentAt;
   }
 
+  /** Geo-fence alert (broadcast theo địa bàn) — pushed to citizens who've reported in the
+   * target district recently (broadcastAlerts.service.ts), alongside the pull-based
+   * `recentBroadcasts` in GET /area-alerts. `districtName` is already the Vietnamese tên xã
+   * (resolved by the caller), same pattern as notifyOfficerOfChatMessage's channelLabel. */
+  async function notifyUserOfDistrictBroadcast(userId: string, message: string, districtName: string): Promise<Date> {
+    const { sentAt } = await sender.send(userId, {
+      title: `📢 Cảnh báo khu vực — ${districtName}`,
+      body: message,
+      data: { districtName },
+    });
+    return sentAt;
+  }
+
   return {
     notifyOfficerOfNewReport,
     notifyUserOfStatusChange,
     notifyOfficerOfAccidentAlert,
     notifyOfficerOfChatMessage,
+    notifyUserOfDistrictBroadcast,
   };
 }
 

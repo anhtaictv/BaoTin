@@ -119,7 +119,10 @@ class ReportListPane extends ConsumerWidget {
                         : const SizedBox(width: 24),
                     title: Text(report['category'] as String? ?? 'Khác'),
                     subtitle: Text(_formatDate(report['createdAt'] as String?)),
-                    trailing: _StatusDot(status: report['status'] as String? ?? 'pending'),
+                    trailing: _StatusDot(
+                      status: report['status'] as String? ?? 'pending',
+                      isAssigned: report['assignedOfficerId'] != null,
+                    ),
                     onTap: () => ref.read(selectedReportIdProvider.notifier).state = id,
                   );
                 },
@@ -133,17 +136,18 @@ class ReportListPane extends ConsumerWidget {
 }
 
 class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.status});
+  const _StatusDot({required this.status, this.isAssigned = false});
 
   final String status;
+  final bool isAssigned;
 
   @override
   Widget build(BuildContext context) {
-    final color = statusColor(status);
+    final color = statusColor(status, isAssigned: isAssigned);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
-      child: Text(statusLabel(status), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(statusLabel(status, isAssigned: isAssigned), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }

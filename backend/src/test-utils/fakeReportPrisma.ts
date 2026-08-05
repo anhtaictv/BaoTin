@@ -15,6 +15,7 @@ interface FakeReportRow {
   createdAt: Date;
   verifiedAt: Date | null;
   responseTimeSeconds: number | null;
+  clientRequestId: string | null;
 }
 
 interface FakeStatusHistoryRow {
@@ -76,8 +77,41 @@ export function createFakeReportPrisma() {
       },
     },
     async $executeRaw(_strings: TemplateStringsArray, ...values: unknown[]) {
-      const [reportId, userId, category, urgency, description, lng, lat, locationSource, districtId, assignedOfficerId] =
-        values as [string, string, string, string, string | null, number, number, string | null, string | null, string | null];
+      const [
+        reportId,
+        userId,
+        category,
+        urgency,
+        description,
+        lng,
+        lat,
+        locationSource,
+        districtId,
+        assignedOfficerId,
+        clientRequestId,
+      ] = values as [
+        string,
+        string,
+        string,
+        string,
+        string | null,
+        number,
+        number,
+        string | null,
+        string | null,
+        string | null,
+        string | null,
+      ];
+      // Mirrors the real "reports_client_request_id_key" unique index — a repeat
+      // clientRequestId must fail the same way a live Postgres constraint would, so tests can
+      // exercise reportLifecycle.service.ts's P2002-ish catch-and-requery path.
+      if (clientRequestId && reports.some((r) => r.clientRequestId === clientRequestId)) {
+        const { Prisma } = await import("@prisma/client");
+        throw new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+          code: "P2002",
+          clientVersion: "test",
+        });
+      }
       reports.push({
         id: reportId,
         userId,
@@ -93,6 +127,7 @@ export function createFakeReportPrisma() {
         createdAt: new Date(),
         verifiedAt: null,
         responseTimeSeconds: null,
+        clientRequestId,
       });
       return 1;
     },
@@ -111,7 +146,9 @@ export function createFakeReportPrisma() {
           .map((r) => pick(r, select));
       },
       async findFirst({ where, select }: any) {
-        const row = reports.find((r) => r.id === where.id && r.userId === where.userId);
+        const row = reports.find((r) =>
+          (Object.keys(where) as (keyof FakeReportRow)[]).every((key) => r[key] === where[key]),
+        );
         return row ? pick(row, select) : null;
       },
     },
