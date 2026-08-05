@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../profile/profile_screen.dart';
+import '../legal_lookup/legal_lookup_screen.dart';
 import 'camera_gps_capture.dart';
 import 'pending_reports_queue.dart';
 
@@ -213,6 +214,13 @@ class _BaoTinScreenState extends ConsumerState<BaoTinScreen> {
       appBar: AppBar(
         title: const Text('Báo tin'),
         actions: [
+          IconButton(
+            tooltip: 'Tra cứu văn bản luật',
+            icon: const Icon(Icons.gavel_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LegalLookupScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'Hồ sơ',
             icon: const Icon(Icons.person_outline),

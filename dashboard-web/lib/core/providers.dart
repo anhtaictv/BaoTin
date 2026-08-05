@@ -10,6 +10,7 @@ import '../features/reports/reports_repository.dart';
 import '../features/cameras/camera_repository.dart';
 import '../features/signals/signals_repository.dart';
 import '../features/search/search_repository.dart';
+import '../features/legal_lookup/legal_lookup_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -47,4 +48,8 @@ final signalsRepositoryProvider = Provider<SignalsRepository>(
 
 final searchRepositoryProvider = Provider<SearchRepository>(
   (ref) => SearchRepository(ref.watch(apiClientProvider)),
+);
+
+final legalLookupRepositoryProvider = Provider<LegalLookupRepository>(
+  (ref) => LegalLookupRepository(ref.watch(apiClientProvider)),
 );

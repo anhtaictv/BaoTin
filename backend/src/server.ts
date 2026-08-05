@@ -72,6 +72,10 @@ import { createChatRoutes } from "./api/officer/chat.routes.js";
 import { createBroadcastAlertsService } from "./services/broadcastAlerts.service.js";
 import { createBroadcastAlertsController } from "./api/officer/broadcastAlerts.controller.js";
 import { createBroadcastAlertsRoutes } from "./api/officer/broadcastAlerts.routes.js";
+import { createLegalQueryInterpreter } from "./services/legalQueryInterpreter.js";
+import { createLegalLookupService } from "./services/legalLookup.service.js";
+import { createLegalLookupController } from "./api/legal/legalLookup.controller.js";
+import { createLegalLookupRoutes } from "./api/legal/legalLookup.routes.js";
 import { createApp } from "./app.js";
 
 /** FCM env vars are all-or-nothing — anything short of all three configured falls back to the
@@ -236,6 +240,11 @@ async function main() {
   const broadcastAlertsController = createBroadcastAlertsController(broadcastAlertsService);
   const broadcastAlertsRouter = createBroadcastAlertsRoutes(broadcastAlertsController, requireAuth);
 
+  const legalQueryInterpreter = createLegalQueryInterpreter(env);
+  const legalLookupService = createLegalLookupService({ prisma, interpreter: legalQueryInterpreter });
+  const legalLookupController = createLegalLookupController(legalLookupService);
+  const legalLookupRouter = createLegalLookupRoutes(legalLookupController, requireAuth);
+
   const app = createApp(
     {
       authRouter,
@@ -257,6 +266,7 @@ async function main() {
       newsFeedRouter,
       chatRouter,
       broadcastAlertsRouter,
+      legalLookupRouter,
     },
     {
       corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS.split(",")

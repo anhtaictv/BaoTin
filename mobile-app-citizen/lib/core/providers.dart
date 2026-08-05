@@ -10,6 +10,7 @@ import '../features/emergency/emergency_repository.dart';
 import '../features/area_safety/area_safety_repository.dart';
 import '../features/wanted/wanted_notices_repository.dart';
 import '../features/news/news_repository.dart';
+import '../features/legal_lookup/legal_lookup_repository.dart';
 
 final secureTokenStoreProvider = Provider<SecureTokenStore>((ref) => SecureTokenStore());
 
@@ -51,4 +52,8 @@ final wantedNoticesRepositoryProvider = Provider<WantedNoticesRepository>(
 
 final newsRepositoryProvider = Provider<NewsRepository>(
   (ref) => NewsRepository(ref.watch(apiClientProvider)),
+);
+
+final legalLookupRepositoryProvider = Provider<LegalLookupRepository>(
+  (ref) => LegalLookupRepository(ref.watch(apiClientProvider)),
 );

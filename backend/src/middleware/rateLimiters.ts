@@ -128,3 +128,20 @@ export const broadcastAlertLimiter = rateLimit({
     "Quá nhiều cảnh báo được gửi trong thời gian ngắn, vui lòng thử lại sau.",
   ),
 });
+
+/** /legal-lookup dùng requireAuth([]) — mở cho cả "citizen" (tài khoản tự đăng ký qua OTP,
+ * tạo hàng loạt được), rộng hơn nhiều so với "/admin/search" (chỉ admin/senior_officer). Mỗi
+ * request khi LLM_PROVIDER=ollama tốn 1 lần inference cục bộ (CPU/GPU) — IP-keyed như
+ * broadcastAlertLimiter để chặn spam từ 1 nguồn trước khi làm nghẽn Ollama dùng chung với các
+ * tính năng AI khác (search, classifier...). */
+export const legalLookupLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  message: rateLimitedResponse(
+    "LEGAL_LOOKUP_RATE_LIMITED",
+    "Quá nhiều lượt tra cứu trong thời gian ngắn, vui lòng thử lại sau.",
+  ),
+});

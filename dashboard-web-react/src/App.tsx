@@ -17,6 +17,9 @@ const OverviewPage = lazy(() => import('./features/dashboard/OverviewPage').then
 const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const SignalsPage = lazy(() => import('./features/signals/SignalsPage').then((m) => ({ default: m.SignalsPage })));
 const SearchPage = lazy(() => import('./features/search/SearchPage').then((m) => ({ default: m.SearchPage })));
+const LegalLookupPage = lazy(() =>
+  import('./features/legal_lookup/LegalLookupPage').then((m) => ({ default: m.LegalLookupPage })),
+);
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { account, loading } = useAuth();
@@ -77,6 +80,7 @@ function App() {
             </DashboardOnlyRoute>
           }
         />
+        <Route path="legal-lookup" element={<LegalLookupPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route
           path="accounts"

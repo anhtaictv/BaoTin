@@ -574,3 +574,32 @@ model OfficerBroadcastAlert {
   @@index([districtId, createdAt])
   @@map("officer_broadcast_alerts")
 }
+
+/// Tra cứu văn bản luật/quy định (AI local qua Ollama, xem legalLookup.service.ts) — corpus
+/// nạp thủ công 1 lần từ PDF trong data/legal-corpus/ (prisma/seed/import-legal-corpus.ts),
+/// không crawl live. Không tách bảng riêng cho khoản — trích từ fullText bằng regex lúc
+/// truy vấn (deterministic, không cần AI).
+model LegalDocument {
+  id             String   @id @default(uuid())
+  title          String
+  documentNumber String?  @map("document_number")
+  sourceFileName String   @unique @map("source_file_name")
+  importedAt     DateTime @default(now()) @map("imported_at")
+
+  articles LegalArticle[]
+
+  @@map("legal_documents")
+}
+
+model LegalArticle {
+  id              String @id @default(uuid())
+  legalDocumentId String @map("legal_document_id")
+  articleNumber   Int    @map("article_number")
+  title           String
+  fullText        String @map("full_text")
+
+  document LegalDocument @relation(fields: [legalDocumentId], references: [id])
+
+  @@unique([legalDocumentId, articleNumber])
+  @@map("legal_articles")
+}

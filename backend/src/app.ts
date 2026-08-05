@@ -49,6 +49,9 @@ export interface AppRouters {
    * "/officer/broadcast-alerts". District-scope access is enforced in
    * broadcastAlerts.service.ts, not here. */
   broadcastAlertsRouter?: Router;
+  /** Tra cứu văn bản luật/quy định (AI local qua Ollama) — mounted at "/legal-lookup". Any
+   * authenticated role (officer, citizen, admin, senior_officer share this feature). */
+  legalLookupRouter?: Router;
 }
 
 export interface AppConfig {
@@ -132,6 +135,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.broadcastAlertsRouter) {
     app.use("/officer/broadcast-alerts", routers.broadcastAlertsRouter);
+  }
+  if (routers.legalLookupRouter) {
+    app.use("/legal-lookup", routers.legalLookupRouter);
   }
 
   app.use(notFoundHandler);

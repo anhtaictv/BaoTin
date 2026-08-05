@@ -8,6 +8,7 @@ import '../auth/officer_auth_gate.dart';
 import '../report_detail/report_detail_screen.dart';
 import '../reports_list/report_list_screen.dart';
 import '../signals/signal_list_screen.dart';
+import '../legal_lookup/legal_lookup_screen.dart';
 
 /// Landing tab: a quick read of the officer's current workload before diving into the full
 /// list. Counts come from GET /officer/reports/overview-stats — a server-side aggregate
@@ -55,6 +56,13 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen> {
             icon: const Icon(Icons.feed_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SignalListScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Tra cứu văn bản luật',
+            icon: const Icon(Icons.gavel_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LegalLookupScreen()),
             ),
           ),
           IconButton(
