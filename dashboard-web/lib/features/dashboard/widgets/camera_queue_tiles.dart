@@ -23,7 +23,13 @@ class CameraQueueTiles extends StatelessWidget {
               children: [
                 const Icon(Icons.videocam_outlined, size: 16, color: DashboardTheme.accent),
                 const SizedBox(width: 6),
-                Text('Hàng đợi yêu cầu trích xuất camera', style: Theme.of(context).textTheme.titleMedium),
+                Expanded(
+                  child: Text(
+                    'Hàng đợi yêu cầu trích xuất camera',
+                    style: Theme.of(context).textTheme.titleMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
