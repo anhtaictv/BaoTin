@@ -6,16 +6,18 @@
 <p align="center"><b>Hệ thống tiếp nhận &amp; xử lý tin báo an ninh trật tự cấp cơ sở</b></p>
 
 <p align="center">
-  <img alt="backend" src="https://img.shields.io/badge/backend-1.24.0-2563eb?style=flat-square">
-  <img alt="dashboard-web-react" src="https://img.shields.io/badge/dashboard--web--react-0.5.0-2563eb?style=flat-square">
-  <img alt="dashboard-web" src="https://img.shields.io/badge/dashboard--web-1.7.0%2B7-2563eb?style=flat-square">
-  <img alt="mobile-app-officer" src="https://img.shields.io/badge/mobile--app--officer-1.15.0%2B23-2563eb?style=flat-square">
-  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.11.0%2B18-2563eb?style=flat-square">
+  <img alt="backend" src="https://img.shields.io/badge/backend-1.24.0-2563eb?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="dashboard-web-react" src="https://img.shields.io/badge/dashboard--web--react-0.5.0-2563eb?style=flat-square&logo=react&logoColor=white">
+  <img alt="dashboard-web" src="https://img.shields.io/badge/dashboard--web-1.7.0%2B7-2563eb?style=flat-square&logo=flutter&logoColor=white">
+  <img alt="mobile-app-officer" src="https://img.shields.io/badge/mobile--app--officer-1.15.0%2B23-2563eb?style=flat-square&logo=flutter&logoColor=white">
+  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.11.0%2B18-2563eb?style=flat-square&logo=flutter&logoColor=white">
 </p>
 <p align="center">
-  <img alt="backend tests" src="https://img.shields.io/badge/backend%20tests-803%20passing-16a34a?style=flat-square">
-  <img alt="stack" src="https://img.shields.io/badge/stack-Node.js%20%C2%B7%20PostgreSQL%2FPostGIS%20%C2%B7%20Flutter%20%C2%B7%20React-64748b?style=flat-square">
-  <img alt="license" src="https://img.shields.io/badge/license-proprietary-64748b?style=flat-square">
+  <img alt="PostgreSQL + PostGIS" src="https://img.shields.io/badge/PostgreSQL_+_PostGIS-336791?style=flat-square&logo=postgresql&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-02569B?style=flat-square&logo=flutter&logoColor=white">
+  <img alt="backend tests" src="https://img.shields.io/badge/backend_tests-803_passing-16a34a?style=flat-square&logo=vitest&logoColor=white">
+  <img alt="human-in-the-loop" src="https://img.shields.io/badge/x%C3%A1c_minh-human--in--the--loop-dc2626?style=flat-square">
 </p>
 
 <p align="center">
@@ -158,33 +160,53 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 
 ## Tính năng chính
 
-**Báo tin & xác minh**
-- Báo tin thường (giữ EXIF GPS) + báo tin khẩn cấp (SOS) — geo-matching PostGIS thật, định
-  tuyến ngay tới cán bộ phụ trách địa bàn.
-- Xác minh trạng thái bắt buộc qua cán bộ (human-in-the-loop), audit log mọi hành động nhạy cảm.
-- Trạng thái tin báo chia 5 mức (Mới gửi/Đã định tuyến/Đang xác minh/Đã xử lý/Tin giả-Hủy) thay
-  vì gộp chung "pending" — dân và cán bộ biết ngay tin đã có ai nhận xử lý chưa.
-- Cảnh báo theo địa bàn (geo-fence broadcast): cán bộ gửi cảnh báo hàng loạt tới dân trong địa
-  bàn được phân công, push theo batch, không chặn request nếu 1 lượt push lỗi.
-- Kênh tình báo mở (crawler RSS + AI hỗ trợ tùy chọn) tách biệt hoàn toàn khỏi tin dân báo.
-- Module camera an ninh (yêu cầu trích xuất hành chính, không xem/tải video), cảnh báo tai nạn
-  giao thông (YOLO + OCR biển số, không nhận diện khuôn mặt), "Lệnh truy nã", chat nội bộ liên
-  đơn vị.
-- Tra cứu văn bản luật/quy định (Bộ luật Hình sự, Dân sự) trên cả 4 app/web — AI chỉ diễn giải
-  câu hỏi thành điều/khoản/từ khóa cần tìm, câu trả lời luôn là nguyên văn thật lấy từ corpus đã
-  nạp, AI không bao giờ tự viết câu trả lời.
+<table>
+<tr>
+<td width="50%">
 
-**Xác thực & bảo mật**
-- OTP + JWT RS256/refresh rotation cho công dân; username/password + MFA/TOTP cho officer/admin.
-- Mã hoá AES-256-GCM dữ liệu định danh, rate-limit + account lockout, RBAC theo `district_id`.
-- Push notification qua Firebase Cloud Messaging (fallback console nếu chưa cấu hình).
+### 📨 Báo tin & xác minh
+- Báo tin thường (giữ EXIF GPS) + SOS khẩn cấp — geo-matching PostGIS thật, định tuyến ngay tới
+  cán bộ phụ trách địa bàn
+- Xác minh bắt buộc qua cán bộ (**human-in-the-loop**), audit log mọi hành động nhạy cảm
+- Trạng thái 5 mức: Mới gửi / Đã định tuyến / Đang xác minh / Đã xử lý / Tin giả-Hủy
+- Cảnh báo theo địa bàn (**geo-fence broadcast**) — officer gửi hàng loạt tới dân trong địa bàn
+  được phân công, push chia batch, không chặn request nếu 1 lượt lỗi
 
-**Vận hành**
-- CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux.
-- Redis cache cho dữ liệu ít đổi (fail-open), dark mode toàn bộ 4 app/web.
-- Offline queue của `mobile-app-citizen` nâng cấp: `clientRequestId` chống tạo trùng report khi
-  retry, chuyển sang `flutter_secure_storage`, đồng bộ nền thật qua `workmanager` thay vì chỉ khi
-  mở lại app.
+</td>
+<td width="50%">
+
+### 🧩 Module chuyên biệt
+- Kênh tình báo mở (crawler RSS + AI tùy chọn) — tách biệt hoàn toàn khỏi tin dân báo
+- Camera an ninh — yêu cầu trích xuất hành chính, **không xem/tải video**
+- Cảnh báo tai nạn giao thông — YOLO + OCR biển số, **không nhận diện khuôn mặt**
+- "Lệnh truy nã", chat nội bộ liên đơn vị
+- Tra cứu văn bản luật (Bộ luật Hình sự, Dân sự) — AI chỉ diễn giải câu hỏi, câu trả lời luôn
+  nguyên văn thật từ corpus đã nạp
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔐 Xác thực & bảo mật
+- OTP + JWT RS256/refresh rotation cho công dân; username/password + MFA/TOTP cho officer/admin
+- Mã hoá **AES-256-GCM** dữ liệu định danh, rate-limit + account lockout, RBAC theo `district_id`
+- Push notification qua Firebase Cloud Messaging (fallback console nếu chưa cấu hình)
+
+</td>
+<td width="50%">
+
+### ⚙️ Vận hành
+- CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux
+- Redis cache cho dữ liệu ít đổi (fail-open), dark mode toàn bộ 4 app/web
+- Offline queue `mobile-app-citizen`: `clientRequestId` chống trùng report khi retry,
+  `flutter_secure_storage`, background sync thật qua `workmanager`
+
+</td>
+</tr>
+</table>
+
+<!-- Ảnh chụp màn hình thật của app (citizen/officer/dashboard) chèn vào đây khi có -->
 
 ## Trạng thái và việc còn thiếu
 
