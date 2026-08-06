@@ -1,16 +1,21 @@
 <p align="center">
-  <img src="landing/logo.png" alt="Báo Tin" width="140">
+  <img src="landing/logo.png" alt="Báo Tin" width="120">
 </p>
 
 <h1 align="center">Báo Tin</h1>
 <p align="center"><b>Hệ thống tiếp nhận &amp; xử lý tin báo an ninh trật tự cấp cơ sở</b></p>
 
 <p align="center">
-  <code>backend 1.23.1</code> ·
-  <code>dashboard-web-react 0.4.0</code> ·
-  <code>dashboard-web 1.6.1+6</code> ·
-  <code>mobile-app-officer 1.14.1+22</code> ·
-  <code>mobile-app-citizen 1.10.1+17</code>
+  <img alt="backend" src="https://img.shields.io/badge/backend-1.24.0-2563eb?style=flat-square">
+  <img alt="dashboard-web-react" src="https://img.shields.io/badge/dashboard--web--react-0.5.0-2563eb?style=flat-square">
+  <img alt="dashboard-web" src="https://img.shields.io/badge/dashboard--web-1.7.0%2B7-2563eb?style=flat-square">
+  <img alt="mobile-app-officer" src="https://img.shields.io/badge/mobile--app--officer-1.15.0%2B23-2563eb?style=flat-square">
+  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.11.0%2B18-2563eb?style=flat-square">
+</p>
+<p align="center">
+  <img alt="backend tests" src="https://img.shields.io/badge/backend%20tests-803%20passing-16a34a?style=flat-square">
+  <img alt="stack" src="https://img.shields.io/badge/stack-Node.js%20%C2%B7%20PostgreSQL%2FPostGIS%20%C2%B7%20Flutter%20%C2%B7%20React-64748b?style=flat-square">
+  <img alt="license" src="https://img.shields.io/badge/license-proprietary-64748b?style=flat-square">
 </p>
 
 <p align="center">
@@ -82,7 +87,7 @@ Chi tiết đầy đủ ở [`CLAUDE.md`](CLAUDE.md) — đây là quy tắc b�
 | `mobile-app-officer` | Flutter — cán bộ phụ trách địa bàn **và** admin/senior_officer (từ v1.20: gộp đủ màn quản trị — thống kê, duyệt/quản lý tài khoản, trợ lý tìm kiếm, chat liên đơn vị), dark mode theo hệ thống |
 | `dashboard-web` | Flutter Web — bản dashboard cũ hơn, vẫn chạy song song, đã có dark mode từ trước |
 | `dashboard-web-react` | Vite + React + TypeScript, react-router-dom, @tanstack/react-query, axios, recharts — đăng nhập username/password riêng cho 102 xã/phường, dark mode toggle thủ công, MFA/TOTP |
-| AI hỗ trợ (opt-in) | [Ollama](https://ollama.com) local, hoặc bất kỳ endpoint OpenAI-compatible (`LLM_PROVIDER=openai` + `OPENAI_BASE_URL`, ví dụ NVIDIA NIM) — tóm tắt tin, lọc liên quan, gộp trùng, gợi ý phân loại, trợ lý tìm kiếm ngôn ngữ tự nhiên. Tắt hoàn toàn nếu `LLM_PROVIDER=none`. |
+| AI hỗ trợ (opt-in) | [Ollama](https://ollama.com) local, hoặc bất kỳ endpoint OpenAI-compatible (`LLM_PROVIDER=openai` + `OPENAI_BASE_URL`, ví dụ NVIDIA NIM) — tóm tắt tin, lọc liên quan, gộp trùng, gợi ý phân loại, trợ lý tìm kiếm ngôn ngữ tự nhiên, diễn giải câu hỏi tra cứu luật thành điều/khoản/từ khóa. Tắt hoàn toàn nếu `LLM_PROVIDER=none`. |
 
 Mobile/web dùng chung 1 backend, versioned độc lập với nhau.
 
@@ -110,9 +115,10 @@ npm run gen:keys                       # sinh keypair RS256 dev (backend/keys/*.
 cp ../infra/.env.example .env          # rồi điền giá trị thật (không commit .env)
 
 npx tsc --noEmit                       # kiểm tra type
-npx vitest run                         # 782+ test: crypto, validation, geo-matching, auth/report/
+npx vitest run                         # 803 test: crypto, validation, geo-matching, auth/report/
                                         # officer/camera/dashboard/signals/search/web-account/
-                                        # wanted-notice/traffic-accident + HTTP wiring + seed specs
+                                        # wanted-notice/traffic-accident/legal-lookup/broadcast-alert
+                                        # + HTTP wiring + seed specs
 ```
 
 Đầy đủ (cần Docker):
@@ -156,10 +162,17 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 - Báo tin thường (giữ EXIF GPS) + báo tin khẩn cấp (SOS) — geo-matching PostGIS thật, định
   tuyến ngay tới cán bộ phụ trách địa bàn.
 - Xác minh trạng thái bắt buộc qua cán bộ (human-in-the-loop), audit log mọi hành động nhạy cảm.
+- Trạng thái tin báo chia 5 mức (Mới gửi/Đã định tuyến/Đang xác minh/Đã xử lý/Tin giả-Hủy) thay
+  vì gộp chung "pending" — dân và cán bộ biết ngay tin đã có ai nhận xử lý chưa.
+- Cảnh báo theo địa bàn (geo-fence broadcast): cán bộ gửi cảnh báo hàng loạt tới dân trong địa
+  bàn được phân công, push theo batch, không chặn request nếu 1 lượt push lỗi.
 - Kênh tình báo mở (crawler RSS + AI hỗ trợ tùy chọn) tách biệt hoàn toàn khỏi tin dân báo.
 - Module camera an ninh (yêu cầu trích xuất hành chính, không xem/tải video), cảnh báo tai nạn
   giao thông (YOLO + OCR biển số, không nhận diện khuôn mặt), "Lệnh truy nã", chat nội bộ liên
   đơn vị.
+- Tra cứu văn bản luật/quy định (Bộ luật Hình sự, Dân sự) trên cả 4 app/web — AI chỉ diễn giải
+  câu hỏi thành điều/khoản/từ khóa cần tìm, câu trả lời luôn là nguyên văn thật lấy từ corpus đã
+  nạp, AI không bao giờ tự viết câu trả lời.
 
 **Xác thực & bảo mật**
 - OTP + JWT RS256/refresh rotation cho công dân; username/password + MFA/TOTP cho officer/admin.
@@ -169,6 +182,9 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 **Vận hành**
 - CI/CD lên VPS Windows/IIS (self-hosted runner) + đường dự phòng Docker/Linux.
 - Redis cache cho dữ liệu ít đổi (fail-open), dark mode toàn bộ 4 app/web.
+- Offline queue của `mobile-app-citizen` nâng cấp: `clientRequestId` chống tạo trùng report khi
+  retry, chuyển sang `flutter_secure_storage`, đồng bộ nền thật qua `workmanager` thay vì chỉ khi
+  mở lại app.
 
 ## Trạng thái và việc còn thiếu
 
@@ -191,6 +207,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 
 | Version | Nội dung |
 |---|---|
+| **v1.24** | Trạng thái tin báo chia 5 mức (Mới gửi/Đã định tuyến/Đang xác minh/Đã xử lý/Tin giả-Hủy); cảnh báo theo địa bàn (geo-fence broadcast) cho officer gửi hàng loạt tới dân; offline sync hardening cho `mobile-app-citizen` (`clientRequestId` chống trùng, `flutter_secure_storage`, background sync qua `workmanager`); tra cứu văn bản luật/quy định bằng AI local (Ollama) trên cả 4 app/web — câu trả lời luôn nguyên văn từ corpus PDF thật, AI chỉ diễn giải câu hỏi; vá lỗi bản đồ 403 do `Referrer-Policy` chặn OSM tile server |
 | **v1.23** | Push notification FCM thật; Redis cache geo-matching; MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode 4 app; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ); vá lỗ hổng dependency mức high (`sharp`, `fast-xml-parser`); scaffold ký release Android thật; **[1.23.1]** audit bảo mật toàn hệ thống — vá lỗi `trust proxy` làm rate-limit SOS bị gộp chung, transaction report+attachment, index/unique constraint DB, validate link mobile |
 | **v1.22** | Sửa (thay ảnh) và xóa cho "Lệnh truy nã" — admin-only, tự dọn ảnh cũ khỏi MinIO |
 | **v1.21** | Dữ liệu demo mới trải khắp vùng Phú Yên cũ (sáp nhập Đắk Lắk 2025) để demo geo-matching/duyệt tài khoản toàn tỉnh |
@@ -226,6 +243,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.21** | Dữ liệu demo mới trải khắp vùng Phú Yên cũ (sáp nhập Đắk Lắk 2025); 5 tin cảnh báo tai nạn giao thông demo; 1 tài khoản dân demo bị khóa tự động, đi qua đúng luồng thật |
 | **v1.22** | Sửa (thay ảnh) và xóa cho "Lệnh truy nã" — admin-only, tự dọn ảnh cũ khỏi MinIO khi thay/xóa |
 | **v1.23** | Push notification FCM thật; Redis cache geo-matching (fail-open); MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode theo hệ thống cho `mobile-app-citizen`/`mobile-app-officer`, toggle thủ công cho `dashboard-web-react`; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ, không chỉ OpenAI/Gemini/Ollama); vá 2 lỗ hổng bảo mật high-severity (`sharp`, `fast-xml-parser`); scaffold ký release Android thật (minify/shrink + `key.properties`) |
+| **v1.24** | Status badge tách "pending" thành Mới gửi/Đã định tuyến theo `assignedOfficerId`, đổi nhãn Đã xử lý/Tin giả-Hủy — wire xuyên 4 file theme + 7 màn danh sách/chi tiết tin báo (backend + citizen + officer + dashboard-web(-react)); geo-fence broadcast alert (`OfficerBroadcastAlert`, `POST /officer/broadcast-alerts`, mở rộng `GET /area-alerts`) cho officer gửi cảnh báo hàng loạt tới dân trong địa bàn được phân công; offline sync hardening cho `mobile-app-citizen` — `clientRequestId` idempotency chống trùng report khi retry, hàng đợi offline chuyển sang `flutter_secure_storage`, background sync thật qua `workmanager` (Android) / `BGTaskScheduler` (iOS); tra cứu văn bản luật/quy định bằng AI local (Ollama) — corpus PDF thật (Bộ luật Hình sự, Dân sự) nạp thủ công vào DB, AI chỉ diễn giải câu hỏi thành điều/khoản/từ khóa, câu trả lời luôn nguyên văn từ dữ liệu đã nạp, không do AI tự viết; vá lỗi bản đồ 403 do `Referrer-Policy: no-referrer` chặn Referer tới OSM tile server, đổi sang `strict-origin-when-cross-origin` |
 
 </details>
 
