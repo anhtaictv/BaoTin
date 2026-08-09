@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 import '../../core/providers.dart';
 import '../../core/theme.dart';
+import '../cameras/camera_cone.dart';
 import '../report_detail/report_detail_screen.dart';
+
+const _cameraColor = Color(0xFF1976D2);
 
 const _fallbackCenter = latlong.LatLng(16.0, 108.0); // Vietnam-wide default when nothing has a pin yet.
 
@@ -23,6 +26,61 @@ class _ReportMapScreenState extends ConsumerState<ReportMapScreen> {
   late Future<List<Map<String, dynamic>>> _future;
   final _mapController = MapController();
   bool _fitted = false;
+
+  // "Hiện camera" overlay: every camera in the officer's own district(s), not tied to any one
+  // report — lazily loaded on first toggle-on rather than always fetched alongside reports.
+  bool _showCameras = false;
+  Future<List<Map<String, dynamic>>>? _camerasFuture;
+
+  void _toggleCameras() {
+    setState(() {
+      _showCameras = !_showCameras;
+      if (_showCameras) {
+        _camerasFuture ??= ref.read(cameraRepositoryProvider).listDistrictCameras();
+      }
+    });
+  }
+
+  Widget _cameraOverlay() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _camerasFuture,
+      builder: (context, snapshot) {
+        final cameras = snapshot.data ?? const [];
+        return Stack(
+          children: [
+            PolygonLayer(
+              polygons: [
+                for (final camera in cameras)
+                  if (camera['directionDegrees'] != null && camera['lat'] != null && camera['lng'] != null)
+                    Polygon(
+                      points: cameraConePolygon(
+                        latlong.LatLng((camera['lat'] as num).toDouble(), (camera['lng'] as num).toDouble()),
+                        (camera['directionDegrees'] as num).toDouble(),
+                        ((camera['fovDegrees'] as num?) ?? 90).toDouble(),
+                      ),
+                      color: _cameraColor.withValues(alpha: 0.25),
+                      borderColor: _cameraColor,
+                      borderStrokeWidth: 1,
+                    ),
+              ],
+            ),
+            MarkerLayer(
+              markers: [
+                for (final camera in cameras)
+                  if (camera['lat'] != null && camera['lng'] != null)
+                    Marker(
+                      point: latlong.LatLng((camera['lat'] as num).toDouble(), (camera['lng'] as num).toDouble()),
+                      width: 28,
+                      height: 28,
+                      child: const Icon(Icons.videocam, color: _cameraColor, size: 24),
+                    ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   // ponytail: a map view inherently wants every pin, but the list endpoint is now paginated
   // (server-side max page_size 100) — a district with more reports than that just won't show
@@ -74,7 +132,14 @@ class _ReportMapScreenState extends ConsumerState<ReportMapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Địa điểm'),
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh)],
+        actions: [
+          IconButton(
+            icon: Icon(_showCameras ? Icons.videocam : Icons.videocam_outlined),
+            tooltip: _showCameras ? 'Ẩn camera' : 'Hiện camera',
+            onPressed: _toggleCameras,
+          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+        ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _future,
@@ -137,6 +202,7 @@ class _ReportMapScreenState extends ConsumerState<ReportMapScreen> {
                         ),
                     ],
                   ),
+                  if (_showCameras) _cameraOverlay(),
                 ],
               ),
               if (reports.isNotEmpty && points.isEmpty)

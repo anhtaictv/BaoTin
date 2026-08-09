@@ -30,4 +30,13 @@ describe("SEED_CAMERAS", () => {
       expect(camera).not.toHaveProperty("videoUrl");
     }
   });
+
+  it("every entry has a valid compass bearing and a positive field of view", () => {
+    for (const camera of SEED_CAMERAS) {
+      expect(camera.directionDegrees).toBeGreaterThanOrEqual(0);
+      expect(camera.directionDegrees).toBeLessThan(360);
+      expect(camera.fovDegrees).toBeGreaterThan(0);
+      expect(camera.fovDegrees).toBeLessThanOrEqual(360);
+    }
+  });
 });

@@ -10,8 +10,22 @@ import 'package:bao_tin_officer/features/cameras/camera_repository.dart';
 import 'package:bao_tin_officer/features/cameras/nearby_cameras_section.dart';
 
 const _cameras = [
-  {'id': 'c1', 'name': 'Camera ngã tư 1', 'managingUnitName': 'Công an phường A', 'managingUnitContact': '0900000001', 'distanceMeters': 120},
-  {'id': 'c2', 'name': 'Camera ngã tư 2', 'managingUnitName': 'Công an phường B', 'managingUnitContact': '0900000002', 'distanceMeters': 340},
+  {
+    'id': 'c1',
+    'name': 'Camera ngã tư 1',
+    'managingUnitName': 'Công an phường A',
+    'managingUnitContact': '0900000001',
+    'distanceMeters': 120,
+    'facesLocation': true,
+  },
+  {
+    'id': 'c2',
+    'name': 'Camera ngã tư 2',
+    'managingUnitName': 'Công an phường B',
+    'managingUnitContact': '0900000002',
+    'distanceMeters': 340,
+    'facesLocation': false,
+  },
   {'id': 'c3', 'name': 'Camera chợ', 'managingUnitName': 'Ban quản lý chợ', 'managingUnitContact': '0900000003', 'distanceMeters': 500},
 ];
 
@@ -36,6 +50,16 @@ class _FakeCameraRepository extends CameraRepository {
 }
 
 Future<_FakeCameraRepository> _pump(WidgetTester tester) async {
+  // The facing-direction badge added a longer subtitle line per camera row, pushing the
+  // "Xin trích xuất" button below the default 800x600 test surface — tester.tap() fails a
+  // hit test on anything outside that surface even inside a SingleChildScrollView. Growing
+  // the surface (not scrolling) matches the same fix used elsewhere in this codebase for
+  // this exact class of failure (see area_safety_screen_test.dart).
+  tester.view.physicalSize = const Size(800, 1400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
   final fakeRepo = _FakeCameraRepository(ApiClient(tokenStore: SecureTokenStore()));
   await tester.pumpWidget(
     ProviderScope(
@@ -58,6 +82,13 @@ Future<_FakeCameraRepository> _pump(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('badges cameras by whether their own facing direction actually covers the report location', (tester) async {
+    await _pump(tester);
+
+    expect(find.textContaining('hướng về hiện trường'), findsOneWidget);
+    expect(find.textContaining('có thể không hướng tới hiện trường'), findsOneWidget);
+  });
+
   testWidgets('lists nearby cameras with checkboxes, no per-row extraction button', (tester) async {
     await _pump(tester);
 

@@ -1,15 +1,49 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Polygon, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Camera as CameraIcon } from 'lucide-react';
 import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
 import { EmptyState } from '../../components/EmptyState';
+import { cameraConePolygon } from './cameraCone';
 import { createExtractionRequest, getNearbyCameras } from './camerasApi';
+
+const REPORT_COLOR = '#D32F2F';
+
+/** Green = confirmed facing the report, amber = confirmed NOT facing, blue = unknown (no
+ * direction data) — same 3-way distinction as the text badge below. */
+function coneColor(facesLocation: boolean | null): string {
+  if (facesLocation === true) return '#16a34a';
+  if (facesLocation === false) return '#d97706';
+  return '#1976D2';
+}
+
+/** null = camera has no direction data (unknown) — shows nothing rather than guessing. */
+function FacingBadge({ facesLocation }: { facesLocation: boolean | null }) {
+  if (facesLocation === null) return null;
+  return (
+    <span style={{ color: facesLocation ? 'var(--success, #16a34a)' : 'var(--warning, #d97706)', fontWeight: 500 }}>
+      {' '}
+      • {facesLocation ? 'hướng về hiện trường' : 'có thể không hướng tới hiện trường'}
+    </span>
+  );
+}
 
 /** Ported from mobile-app-officer/dashboard-web's NearbyCamerasSection (v1.9.0) — cameras
  * can be selected in bulk (e.g. several along a route) and submitted in one action, but that
  * only ever produces N separate administrative paperwork requests, one per camera's own
- * managing unit. No cross-camera recognition/tracking anywhere here (CLAUDE.md #8). */
-export function NearbyCamerasSection({ reportId }: { reportId: string }) {
+ * managing unit. No cross-camera recognition/tracking anywhere here (CLAUDE.md #8).
+ *
+ * `reportLocation` is optional purely for caller convenience (a report missing GPS, per
+ * CLAUDE.md #6, shouldn't happen but isn't worth a hard crash) — without it, the mini-map is
+ * skipped and only the text list + facing badges show. */
+export function NearbyCamerasSection({
+  reportId,
+  reportLocation,
+}: {
+  reportId: string;
+  reportLocation?: { lat: number; lng: number } | null;
+}) {
   const query = useQuery({ queryKey: ['nearby-cameras', reportId], queryFn: () => getNearbyCameras(reportId) });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showForm, setShowForm] = useState(false);
@@ -75,6 +109,27 @@ export function NearbyCamerasSection({ reportId }: { reportId: string }) {
         <EmptyState message="Không có camera nào được ghi nhận gần vị trí này." />
       ) : (
         <>
+          {reportLocation && (
+            <div style={{ marginTop: 10, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+              <MapContainer center={[reportLocation.lat, reportLocation.lng]} zoom={16} scrollWheelZoom={false} style={{ height: 200, width: '100%' }}>
+                <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <CircleMarker center={[reportLocation.lat, reportLocation.lng]} radius={7} pathOptions={{ color: REPORT_COLOR, fillColor: REPORT_COLOR, fillOpacity: 1, weight: 1 }} />
+                {cameras.map((camera) => (
+                  <div key={camera.id}>
+                    {camera.directionDegrees != null && (
+                      <Polygon
+                        positions={cameraConePolygon(camera, camera.directionDegrees, camera.fovDegrees ?? 90)}
+                        pathOptions={{ color: coneColor(camera.facesLocation), fillColor: coneColor(camera.facesLocation), fillOpacity: 0.25, weight: 1 }}
+                      />
+                    )}
+                    <CircleMarker center={[camera.lat, camera.lng]} radius={5} pathOptions={{ color: coneColor(camera.facesLocation), fillColor: coneColor(camera.facesLocation), fillOpacity: 1, weight: 1 }}>
+                      <Popup>{camera.name}</Popup>
+                    </CircleMarker>
+                  </div>
+                ))}
+              </MapContainer>
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
             {cameras.map((camera) => {
               const checked = selected.has(camera.id);
@@ -100,6 +155,7 @@ export function NearbyCamerasSection({ reportId }: { reportId: string }) {
                       <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 400 }}>
                         {camera.managingUnitName ?? 'Không rõ đơn vị'} — {camera.managingUnitContact ?? ''} • cách{' '}
                         {Math.round(camera.distanceMeters)}m
+                        <FacingBadge facesLocation={camera.facesLocation} />
                       </span>
                     </span>
                   </span>

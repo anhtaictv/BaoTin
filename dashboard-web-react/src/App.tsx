@@ -20,6 +20,7 @@ const SearchPage = lazy(() => import('./features/search/SearchPage').then((m) =>
 const LegalLookupPage = lazy(() =>
   import('./features/legal_lookup/LegalLookupPage').then((m) => ({ default: m.LegalLookupPage })),
 );
+const CamerasPage = lazy(() => import('./features/cameras/CamerasPage').then((m) => ({ default: m.CamerasPage })));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { account, loading } = useAuth();
@@ -81,6 +82,7 @@ function App() {
           }
         />
         <Route path="legal-lookup" element={<LegalLookupPage />} />
+        <Route path="cameras" element={<CamerasPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route
           path="accounts"

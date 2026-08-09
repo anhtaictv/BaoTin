@@ -39,4 +39,11 @@ class CameraRepository {
     final res = await _apiClient.dio.get('/officer/reports/$reportId/camera-extraction-requests');
     return List<Map<String, dynamic>>.from(res.data['data'] as List);
   }
+
+  /// All cameras in the officer's own assigned district(s) — for the "Hiện camera" overlay
+  /// on the "Địa điểm" map (report_map_screen.dart), not tied to any one report.
+  Future<List<Map<String, dynamic>>> listDistrictCameras() async {
+    final res = await _apiClient.dio.get('/officer/cameras');
+    return List<Map<String, dynamic>>.from(res.data['data'] as List);
+  }
 }

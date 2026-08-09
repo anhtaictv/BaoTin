@@ -33,6 +33,30 @@ export function createCamerasController(service: CameraExtractionService) {
       const requests = await service.listExtractionRequests(req.user, req.params.id as string);
       res.status(200).json({ success: true, data: requests, error: null });
     },
+
+    async listDistrictCameras(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const cameras = await service.listDistrictCameras(req.user);
+      res.status(200).json({ success: true, data: cameras, error: null });
+    },
+
+    async createCamera(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const camera = await service.createCamera(req.body);
+      res.status(201).json({ success: true, data: camera, error: null });
+    },
+
+    async updateCamera(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const camera = await service.updateCamera(req.params.id as string, req.body);
+      res.status(200).json({ success: true, data: camera, error: null });
+    },
+
+    async deleteCamera(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      await service.deleteCamera(req.params.id as string);
+      res.status(200).json({ success: true, data: null, error: null });
+    },
   };
 }
 

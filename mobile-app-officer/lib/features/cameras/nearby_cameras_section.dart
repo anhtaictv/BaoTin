@@ -3,7 +3,22 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 import '../../core/providers.dart';
+import 'camera_cone.dart';
 import 'extraction_request_dialog.dart';
+
+/// null = camera has no direction data (unknown) — shows nothing rather than guessing.
+String _facingLabel(bool? facesLocation) {
+  if (facesLocation == null) return '';
+  return facesLocation ? ' • hướng về hiện trường' : ' • có thể không hướng tới hiện trường';
+}
+
+/// Green = confirmed facing the report, amber = confirmed NOT facing, blue = unknown (no
+/// direction data) — same 3-way distinction as the text label above.
+Color _coneColor(bool? facesLocation) {
+  if (facesLocation == true) return const Color(0xFF16A34A);
+  if (facesLocation == false) return const Color(0xFFD97706);
+  return const Color(0xFF1976D2);
+}
 
 /// Auto-suggests cameras near a report's location — fetched automatically when this
 /// widget mounts (alongside the report detail load), never behind a manual search
@@ -123,6 +138,22 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
                               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                               userAgentPackageName: 'vn.baotin.officer',
                             ),
+                            PolygonLayer(
+                              polygons: [
+                                for (final camera in cameras)
+                                  if (camera['directionDegrees'] != null && camera['lat'] != null && camera['lng'] != null)
+                                    Polygon(
+                                      points: cameraConePolygon(
+                                        latlong.LatLng((camera['lat'] as num).toDouble(), (camera['lng'] as num).toDouble()),
+                                        (camera['directionDegrees'] as num).toDouble(),
+                                        ((camera['fovDegrees'] as num?) ?? 90).toDouble(),
+                                      ),
+                                      color: _coneColor(camera['facesLocation'] as bool?).withValues(alpha: 0.25),
+                                      borderColor: _coneColor(camera['facesLocation'] as bool?),
+                                      borderStrokeWidth: 1,
+                                    ),
+                              ],
+                            ),
                             MarkerLayer(
                               markers: [
                                 Marker(
@@ -144,7 +175,7 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
                                         Icons.videocam,
                                         color: _selected.contains(camera['id'])
                                             ? Theme.of(context).colorScheme.primary
-                                            : const Color(0xFF1976D2),
+                                            : _coneColor(camera['facesLocation'] as bool?),
                                         size: 28,
                                       ),
                                     ),
@@ -165,7 +196,8 @@ class _NearbyCamerasSectionState extends ConsumerState<NearbyCamerasSection> {
                         subtitle: Text(
                           '${camera['managingUnitName'] ?? 'Không rõ đơn vị'} — '
                           '${camera['managingUnitContact'] ?? ''}'
-                          '${(camera['distanceMeters'] as num?) != null ? ' • cách ${(camera['distanceMeters'] as num).round()}m' : ''}',
+                          '${(camera['distanceMeters'] as num?) != null ? ' • cách ${(camera['distanceMeters'] as num).round()}m' : ''}'
+                          '${_facingLabel(camera['facesLocation'] as bool?)}',
                         ),
                       ),
                     const SizedBox(height: 8),

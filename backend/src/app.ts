@@ -10,6 +10,9 @@ export interface AppRouters {
   officerReportsRouter?: Router;
   /** v1.1 — nearby-cameras + extraction requests, mounted at the same base as officerReportsRouter. */
   camerasRouter?: Router;
+  /** Standalone "Camera" map page (all cameras in the officer's district) — mounted at
+   * "/officer/cameras", separate from camerasRouter above. */
+  districtCamerasRouter?: Router;
   /** v1.2 — admin/senior_officer only, mounted at "/admin/dashboard". */
   dashboardRouter?: Router;
   /** Giai đoạn 2 "kênh tình báo mở" — read-only, mounted at "/officer/signals". */
@@ -99,6 +102,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.camerasRouter) {
     app.use("/officer/reports", routers.camerasRouter);
+  }
+  if (routers.districtCamerasRouter) {
+    app.use("/officer/cameras", routers.districtCamerasRouter);
   }
   if (routers.dashboardRouter) {
     app.use("/admin/dashboard", routers.dashboardRouter);

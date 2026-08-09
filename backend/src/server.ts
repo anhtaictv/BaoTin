@@ -27,7 +27,7 @@ import { createOfficerReportsController } from "./api/officer/officerReports.con
 import { createOfficerReportsRoutes } from "./api/officer/officerReports.routes.js";
 import { createCameraExtractionService } from "./services/cameraExtraction.service.js";
 import { createCamerasController } from "./api/officer/cameras.controller.js";
-import { createCamerasRoutes } from "./api/officer/cameras.routes.js";
+import { createCamerasRoutes, createDistrictCamerasRoutes } from "./api/officer/cameras.routes.js";
 import { createDashboardStatsService } from "./services/dashboardStats.service.js";
 import { createDashboardController } from "./api/admin/dashboard.controller.js";
 import { createDashboardRoutes } from "./api/admin/dashboard.routes.js";
@@ -156,6 +156,7 @@ async function main() {
   const cameraExtractionService = createCameraExtractionService({ prisma, districtScope });
   const camerasController = createCamerasController(cameraExtractionService);
   const camerasRouter = createCamerasRoutes(camerasController, requireAuth);
+  const districtCamerasRouter = createDistrictCamerasRoutes(camerasController, requireAuth);
 
   const dashboardStats = createDashboardStatsService({ prisma, piiEncryptionKey: env.PII_ENCRYPTION_KEY });
   const dashboardController = createDashboardController(dashboardStats);
@@ -251,6 +252,7 @@ async function main() {
       citizenReportsRouter,
       officerReportsRouter,
       camerasRouter,
+      districtCamerasRouter,
       dashboardRouter,
       signalsRouter,
       emergencyContactsRouter,

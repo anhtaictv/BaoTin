@@ -462,6 +462,13 @@ model Camera {
   districtId          String?  @map("district_id")
   createdAt           DateTime @default(now()) @map("created_at")
 
+  /// Compass bearing (0-359, 0 = Bắc) the camera lens faces, and its field-of-view width in
+  /// degrees — lets the officer UI draw a "cone" showing what the camera can actually see,
+  /// instead of just a dot that might be pointed away from the incident. Both nullable:
+  /// real cameras registered without this data still show as a plain marker.
+  directionDegrees    Int?     @map("direction_degrees")
+  fovDegrees          Int?     @map("fov_degrees")
+
   district              District?                 @relation(fields: [districtId], references: [id])
   extractionRequests    CameraExtractionRequest[]
   trafficAccidentAlerts TrafficAccidentAlert[]

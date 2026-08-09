@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+/** Shared by both create (POST) and update (PUT) — update is a full replace, not a partial
+ * patch, since the admin form always submits every field back (pre-filled from the list it
+ * loaded), so there's no need to merge with existing DB state. */
+export const cameraInputSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+  managingUnitName: z.string().trim().max(200).optional(),
+  managingUnitContact: z.string().trim().max(50).optional(),
+  districtId: z.string().uuid(),
+  directionDegrees: z.number().int().min(0).max(359).optional(),
+  fovDegrees: z.number().int().min(1).max(360).optional(),
+});
+
+export const cameraIdParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
 /** Capped at 5km — this is "nearby", not a general camera search (CLAUDE.md #8 scope). */
 export const nearbyCamerasQuerySchema = z.object({
   radius_m: z.coerce.number().int().positive().max(5000).optional(),

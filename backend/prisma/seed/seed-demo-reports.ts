@@ -36,6 +36,13 @@ interface DemoEmergencySpec {
 const BUON_MA_THUOT = { lat: 12.678, lng: 108.05 };
 const BUON_MA_THUOT_2 = { lat: 12.682, lng: 108.048 };
 const BUON_HO = { lat: 12.91, lng: 108.27 };
+// ~150m due north of BUON_MA_THUOT (= seed-cameras.ts's Camera 1, directionDegrees=135 "Đông
+// Nam", fovDegrees=80). Bearing from that camera to this point is ~0° (Bắc), outside its
+// 95°-175° field of view — demos the "gần nhưng camera không hướng tới" (facesLocation=false)
+// case distinctly from every other report above, which sit exactly on a camera's own
+// coordinates (facesLocation=true, distance≈0m, trivial). Close enough to the verified
+// BUON_MA_THUOT point that it should stay inside the same ward polygon.
+const NEAR_CAMERA_1_NOT_FACING = { lat: 12.679347, lng: 108.05 };
 
 const DEMO_REPORTS: DemoReportSpec[] = [
   {
@@ -69,6 +76,11 @@ const DEMO_REPORTS: DemoReportSpec[] = [
     category: "khac",
     description: `${DEMO_MARKER} Phản ánh về tiếng ồn lớn kéo dài từ một quán karaoke gần khu dân cư.`,
     ...BUON_HO,
+  },
+  {
+    category: "an_ninh_khan_cap",
+    description: `${DEMO_MARKER} Phát hiện đối tượng lạ mặt lảng vảng gần trạm xe buýt, có biểu hiện nghi vấn.`,
+    ...NEAR_CAMERA_1_NOT_FACING,
   },
   {
     category: "trom_cap",

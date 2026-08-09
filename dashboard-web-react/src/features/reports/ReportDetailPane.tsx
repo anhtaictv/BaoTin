@@ -69,7 +69,7 @@ export function ReportDetailPane({ reportId }: { reportId: string }) {
         </div>
       )}
 
-      <NearbyCamerasSection reportId={reportId} />
+      <NearbyCamerasSection reportId={reportId} reportLocation={location} />
       <StatusUpdateAction reportId={reportId} />
     </div>
   );

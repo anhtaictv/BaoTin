@@ -11,15 +11,37 @@ vi.mock('../../core/apiClient', () => ({
 }));
 
 const CAMERAS = [
-  { id: 'c1', name: 'Camera ngã tư 1', managingUnitName: 'Công an phường A', managingUnitContact: '0900000001', distanceMeters: 120 },
-  { id: 'c2', name: 'Camera chợ', managingUnitName: 'Ban quản lý chợ', managingUnitContact: '0900000003', distanceMeters: 340 },
+  {
+    id: 'c1',
+    name: 'Camera ngã tư 1',
+    lat: 12.6809,
+    lng: 108.05,
+    managingUnitName: 'Công an phường A',
+    managingUnitContact: '0900000001',
+    distanceMeters: 120,
+    directionDegrees: 180,
+    fovDegrees: 60,
+    facesLocation: true,
+  },
+  {
+    id: 'c2',
+    name: 'Camera chợ',
+    lat: 12.6809,
+    lng: 108.05,
+    managingUnitName: 'Ban quản lý chợ',
+    managingUnitContact: '0900000003',
+    distanceMeters: 340,
+    directionDegrees: 0,
+    fovDegrees: 60,
+    facesLocation: false,
+  },
 ];
 
 function renderSection() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <NearbyCamerasSection reportId="r1" />
+      <NearbyCamerasSection reportId="r1" reportLocation={{ lat: 12.68, lng: 108.05 }} />
     </QueryClientProvider>,
   );
 }
@@ -37,6 +59,14 @@ describe('NearbyCamerasSection', () => {
     expect(await screen.findByText('Camera ngã tư 1', { exact: false })).toBeInTheDocument();
     const button = screen.getByRole('button', { name: 'Xin trích xuất' });
     expect(button).toBeDisabled();
+  });
+
+  it('badges cameras by whether their own facing direction actually covers the report location', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { data: CAMERAS } });
+    renderSection();
+
+    expect(await screen.findByText(/hướng về hiện trường/)).toBeInTheDocument();
+    expect(screen.getByText(/có thể không hướng tới hiện trường/)).toBeInTheDocument();
   });
 
   it('selecting two cameras and submitting sends one call with both cameraIds', async () => {

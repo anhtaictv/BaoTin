@@ -9,6 +9,12 @@ export interface SeedCameraSpec {
   managingUnitContact: string;
   /** Must match a districts.ten_xa value seeded from data/raw/Daklak.geojson. */
   wardTenXa: string;
+  /** Compass bearing (0-359, 0 = Bắc) the lens faces — hand-estimated from the camera's
+   * named location (which intersection/street side it sits on), not measured on-site. Real
+   * cameras added later should get a surveyed value instead of a guess. */
+  directionDegrees: number;
+  /** Field-of-view width in degrees — typical fixed security-camera lens, not a spec sheet value. */
+  fovDegrees: number;
 }
 
 /**
@@ -24,6 +30,8 @@ export const SEED_CAMERAS: SeedCameraSpec[] = [
     managingUnitName: "Công an phường Buôn Ma Thuột",
     managingUnitContact: "0900000001",
     wardTenXa: "Buôn Ma Thuột",
+    directionDegrees: 135,
+    fovDegrees: 80,
   },
   {
     name: "[DEMO] Camera chợ trung tâm Buôn Ma Thuột",
@@ -32,6 +40,8 @@ export const SEED_CAMERAS: SeedCameraSpec[] = [
     managingUnitName: "Ban quản lý chợ trung tâm",
     managingUnitContact: "0900000005",
     wardTenXa: "Buôn Ma Thuột",
+    directionDegrees: 270,
+    fovDegrees: 90,
   },
   {
     name: "[DEMO] Camera bến xe Buôn Hồ",
@@ -40,6 +50,8 @@ export const SEED_CAMERAS: SeedCameraSpec[] = [
     managingUnitName: "Công an phường Buôn Hồ",
     managingUnitContact: "0900000002",
     wardTenXa: "Buôn Hồ",
+    directionDegrees: 0,
+    fovDegrees: 100,
   },
 ];
 
@@ -48,11 +60,15 @@ export async function seedCameras(prisma: PrismaClient, cameras: SeedCameraSpec[
     const district = await prisma.district.findFirst({ where: { tenXa: spec.wardTenXa } });
     const id = randomUUID();
     await prisma.$executeRaw`
-      INSERT INTO cameras (id, name, location, managing_unit_name, managing_unit_contact, district_id)
+      INSERT INTO cameras (
+        id, name, location, managing_unit_name, managing_unit_contact, district_id,
+        direction_degrees, fov_degrees
+      )
       VALUES (
         ${id}::uuid, ${spec.name},
         ST_SetSRID(ST_MakePoint(${spec.lng}, ${spec.lat}), 4326),
-        ${spec.managingUnitName}, ${spec.managingUnitContact}, ${district?.id ?? null}::uuid
+        ${spec.managingUnitName}, ${spec.managingUnitContact}, ${district?.id ?? null}::uuid,
+        ${spec.directionDegrees}, ${spec.fovDegrees}
       )
     `;
     // eslint-disable-next-line no-console
