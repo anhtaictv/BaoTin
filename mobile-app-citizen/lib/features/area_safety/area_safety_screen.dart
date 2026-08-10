@@ -20,11 +20,19 @@ class AreaSafetyScreen extends ConsumerStatefulWidget {
 
 class _AreaSafetyScreenState extends ConsumerState<AreaSafetyScreen> {
   late Future<_AreaSafetyData?> _future;
+  // ponytail: Flutter Web reports the wrong viewport size on the very first frame, so
+  // mounting FlutterMap immediately makes it compute+fetch its tile grid twice (once for the
+  // bogus size, once after the real resize). Gating it behind the first post-frame callback
+  // means it only ever mounts once layout has already settled — halves the OSM tile requests.
+  bool _mapReady = false;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _mapReady = true);
+    });
   }
 
   Future<_AreaSafetyData?> _load() async {
@@ -106,7 +114,9 @@ class _AreaSafetyScreenState extends ConsumerState<AreaSafetyScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: SizedBox(
                   height: 260,
-                  child: FlutterMap(
+                  child: !_mapReady
+                      ? const SizedBox()
+                      : FlutterMap(
                     options: MapOptions(
                       initialCenter: latlong.LatLng(data.myLat, data.myLng),
                       initialZoom: 11,
