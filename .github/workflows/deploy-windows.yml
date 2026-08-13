@@ -77,7 +77,7 @@ jobs:
 
       - name: Collect deploy artifact
         run: |
-          mkdir -p artifact/backend artifact/landing artifact/admin artifact/dashboard-web artifact/citizen artifact/officer artifact/data/raw artifact/downloads
+          mkdir -p artifact/backend artifact/landing artifact/admin artifact/dashboard-web artifact/citizen artifact/officer artifact/data/raw artifact/data/legal-corpus artifact/downloads
           cp -r backend/dist artifact/backend/dist
           cp -r backend/prisma artifact/backend/prisma
           cp backend/package.json backend/package-lock.json artifact/backend/
@@ -91,6 +91,9 @@ jobs:
           # Only actually needed once (Phần 2's manual seed step), but the VPS has no inbound
           # path to fetch it any other way — riding along in the artifact is simplest.
           cp data/raw/Daklak.geojson artifact/data/raw/
+          # Same reasoning — only actually needed once (import-legal-corpus.yml's manual run),
+          # but the VPS has no other way to fetch these PDFs.
+          cp data/legal-corpus/*.pdf artifact/data/legal-corpus/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -143,6 +146,9 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\raw" | Out-Null
           Copy-Item -Path "artifact\data\raw\Daklak.geojson" -Destination "C:\baotin\data\raw\Daklak.geojson" -Force
+
+          New-Item -ItemType Directory -Force -Path "C:\baotin\data\legal-corpus" | Out-Null
+          Copy-Item -Path "artifact\data\legal-corpus\*.pdf" -Destination "C:\baotin\data\legal-corpus\" -Force
 
       - name: Install deps, migrate, restart backend service
         shell: powershell
