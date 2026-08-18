@@ -276,6 +276,66 @@ describe("reportLifecycle.service — createEmergencyReport", () => {
 
     expect(notifyCalls).toEqual([{ officerId: ASSIGNED_OFFICER_ID, reportId: expect.any(String), urgent: true }]);
   });
+
+  it("returns SOS response immediately without waiting for slow notifications", async () => {
+    const fakePrisma = createFakeReportPrisma();
+    fakePrisma.seedOfficer({ id: ASSIGNED_OFFICER_ID, role: "officer" });
+    fakePrisma.seedOfficer({ id: randomUUID(), role: "admin" });
+
+    const notifyCalls: { officerId: string; reportId: string; urgent: boolean }[] = [];
+    let notifyResolve: (() => void) | null = null;
+    const neverResolvingNotify = new Promise<Date>((resolve) => {
+      notifyResolve = () => resolve(new Date());
+    });
+
+    const geoMatch: GeoMatchService = {
+      matchDistrict: async () => IN_BOUNDS_DISTRICT_ID,
+      matchNearestDistrict: async () => IN_BOUNDS_DISTRICT_ID,
+    };
+    const assignOfficer: AssignOfficerService = {
+      pickOfficerForDistrict: async () => ASSIGNED_OFFICER_ID,
+    };
+    const storage: StorageClient = {
+      putObject: async () => {},
+      getPresignedGetUrl: async () => "https://minio.local/fake",
+      removeObject: async () => {},
+    };
+    const notifications: NotificationService = {
+      notifyOfficerOfNewReport: async (officerId, reportId, urgent) => {
+        notifyCalls.push({ officerId, reportId, urgent });
+        return neverResolvingNotify;
+      },
+      notifyUserOfStatusChange: async () => new Date(),
+      notifyOfficerOfAccidentAlert: async () => new Date(),
+      notifyOfficerOfChatMessage: async () => new Date(),
+      notifyUserOfDistrictBroadcast: async () => new Date(),
+    };
+
+    const service = createReportLifecycleService({
+      prisma: fakePrisma as any,
+      geoMatch,
+      assignOfficer,
+      storage,
+      notifications,
+    });
+
+    const sos = service.createEmergencyReport({
+      userId: USER_ID,
+      emergencyType: "chay_no",
+      location: { lat: 12.66, lng: 108.05 },
+    });
+
+    const responsePromise = Promise.race([
+      sos,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("SOS response timed out after 100ms")), 100);
+      }),
+    ]);
+
+    await expect(responsePromise).resolves.toEqual({ reportId: expect.any(String), status: "pending" });
+    expect(notifyCalls.length).toBeGreaterThan(0);
+    expect(notifyResolve).toBeDefined();
+  });
 });
 
 describe("reportLifecycle.service — listMyReports / getReportStatus", () => {

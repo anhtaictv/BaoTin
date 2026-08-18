@@ -185,7 +185,10 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
     // flood admin with every report from all 102 xã/phường instead of just the district
     // officer who's actually responsible for it (product decision, not an oversight).
     const admins = await deps.prisma.officer.findMany({ where: { role: "admin" }, select: { id: true } });
-    await Promise.all([
+    // Fire notifications in background (don't await). SOS response must be returned immediately
+    // per CLAUDE.md's stability/speed requirement. notifyOfficerOfNewReport errors are logged
+    // internally (FirebaseNotificationSender.ts:53-58), so Promise.all can never reject.
+    void Promise.all([
       assignedOfficerId ? deps.notifications.notifyOfficerOfNewReport(assignedOfficerId, reportId, true) : null,
       ...admins
         .filter((a) => a.id !== assignedOfficerId)
