@@ -6,11 +6,11 @@
 <p align="center"><b>Hệ thống tiếp nhận &amp; xử lý tin báo an ninh trật tự cấp cơ sở</b></p>
 
 <p align="center">
-  <img alt="backend" src="https://img.shields.io/badge/backend-1.25.3-2563eb?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="backend" src="https://img.shields.io/badge/backend-1.26.0-2563eb?style=flat-square&logo=nodedotjs&logoColor=white">
   <img alt="dashboard-web-react" src="https://img.shields.io/badge/dashboard--web--react-0.6.0-2563eb?style=flat-square&logo=react&logoColor=white">
   <img alt="dashboard-web" src="https://img.shields.io/badge/dashboard--web-1.7.0%2B7-2563eb?style=flat-square&logo=flutter&logoColor=white">
-  <img alt="mobile-app-officer" src="https://img.shields.io/badge/mobile--app--officer-1.16.0%2B24-2563eb?style=flat-square&logo=flutter&logoColor=white">
-  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.11.0%2B18-2563eb?style=flat-square&logo=flutter&logoColor=white">
+  <img alt="mobile-app-officer" src="https://img.shields.io/badge/mobile--app--officer-1.17.0%2B25-2563eb?style=flat-square&logo=flutter&logoColor=white">
+  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.12.0%2B19-2563eb?style=flat-square&logo=flutter&logoColor=white">
 </p>
 <p align="center">
   <img alt="PostgreSQL + PostGIS" src="https://img.shields.io/badge/PostgreSQL_+_PostGIS-336791?style=flat-square&logo=postgresql&logoColor=white">
