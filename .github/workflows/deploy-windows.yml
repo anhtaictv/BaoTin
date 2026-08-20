@@ -187,8 +187,7 @@ jobs:
                 Write-Host "✓ Service is healthy (attempt $attempt/$maxAttempts)"
                 break
               }
-            }
-            catch {
+            } catch {
               Write-Host "Health check failed (attempt $attempt/$maxAttempts): $($_.Exception.Message)"
             }
             if ($attempt -lt $maxAttempts) {
