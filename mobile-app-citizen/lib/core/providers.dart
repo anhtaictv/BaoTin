@@ -58,3 +58,7 @@ final newsRepositoryProvider = Provider<NewsRepository>(
 final legalLookupRepositoryProvider = Provider<LegalLookupRepository>(
   (ref) => LegalLookupRepository(ref.watch(apiClientProvider)),
 );
+
+final emergencyQueueProvider = Provider<EmergencyQueue>(
+  (ref) => EmergencyQueue(),
+);
