@@ -26,6 +26,8 @@ export interface CreateEmergencyReportInput {
   userId: string;
   emergencyType: string;
   location: { lat: number; lng: number };
+  /** Client-generated idempotency key (offline queue retries). */
+  clientRequestId?: string;
 }
 
 export interface ReportLifecycleDeps {
@@ -162,23 +164,46 @@ export function createReportLifecycleService(deps: ReportLifecycleDeps) {
    * the same way but with urgency='emergency' so priority.service sorts it first.
    */
   async function createEmergencyReport(input: CreateEmergencyReportInput) {
+    // Fast path for a retried submission (offline queue flush): skip geo-match/assign entirely
+    // and hand back the already-created report instead of filing a duplicate.
+    if (input.clientRequestId) {
+      const existing = await deps.prisma.report.findFirst({
+        where: { userId: input.userId, clientRequestId: input.clientRequestId },
+        select: { id: true, status: true },
+      });
+      if (existing) return { reportId: existing.id, status: existing.status };
+    }
+
     const districtId = await deps.geoMatch.matchDistrict(input.location);
     const assignedOfficerId = districtId ? await deps.assignOfficer.pickOfficerForDistrict(districtId) : null;
     const reportId = randomUUID();
 
-    await insertReportRow(deps.prisma, {
-      reportId,
-      userId: input.userId,
-      category: input.emergencyType,
-      urgency: "emergency",
-      description: null,
-      lat: input.location.lat,
-      lng: input.location.lng,
-      locationSource: "device_gps",
-      districtId,
-      assignedOfficerId,
-      clientRequestId: null,
-    });
+    try {
+      await insertReportRow(deps.prisma, {
+        reportId,
+        userId: input.userId,
+        category: input.emergencyType,
+        urgency: "emergency",
+        description: null,
+        lat: input.location.lat,
+        lng: input.location.lng,
+        locationSource: "device_gps",
+        districtId,
+        assignedOfficerId,
+        clientRequestId: input.clientRequestId ?? null,
+      });
+    } catch (err) {
+      // Two overlapping submissions with the same clientRequestId — resolve the race in favor
+      // of "return the one that won" instead of a 500 (same as createCitizenReport).
+      if (input.clientRequestId && err instanceof Prisma.PrismaClientKnownRequestError) {
+        const existing = await deps.prisma.report.findFirst({
+          where: { userId: input.userId, clientRequestId: input.clientRequestId },
+          select: { id: true, status: true },
+        });
+        if (existing) return { reportId: existing.id, status: existing.status };
+      }
+      throw err;
+    }
 
     // Admin also gets pushed for emergency reports specifically (SOS, any district) —
     // deliberately NOT done for createCitizenReport's normal-urgency path above, which would

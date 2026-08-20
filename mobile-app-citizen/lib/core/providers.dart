@@ -7,6 +7,7 @@ import '../features/report/report_repository.dart';
 import '../features/report/camera_gps_capture.dart';
 import '../features/report/pending_reports_queue.dart';
 import '../features/emergency/emergency_repository.dart';
+import '../features/emergency/emergency_queue.dart';
 import '../features/area_safety/area_safety_repository.dart';
 import '../features/wanted/wanted_notices_repository.dart';
 import '../features/news/news_repository.dart';

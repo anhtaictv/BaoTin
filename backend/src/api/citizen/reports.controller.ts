@@ -43,15 +43,17 @@ export function createReportsController(
 
     async createEmergencyReport(req: Request, res: Response) {
       if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
-      const { emergencyType, location } = req.body as {
+      const { emergencyType, location, clientRequestId } = req.body as {
         emergencyType: string;
         location: { lat: number; lng: number };
+        clientRequestId?: string;
       };
 
       const result = await reportLifecycle.createEmergencyReport({
         userId: req.user.id,
         emergencyType,
         location,
+        clientRequestId,
       });
 
       res.status(201).json({ success: true, data: result, error: null });

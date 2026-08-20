@@ -18,15 +18,56 @@ import 'features/chat/chat_channel_list_screen.dart';
 /// Tin báo's AppBar): CLAUDE.md non-negotiable #1/#2 requires MXH signals to read as
 /// completely separate from citizen reports, and giving it an equal-weight nav slot next to
 /// verified reports risks exactly that blur.
-class HomeShell extends StatefulWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  Timer? _emergencyPollTimer;
+  int? _lastEmergencyCount;
+
+  @override
+  void initState() {
+    super.initState();
+    // Poll every 30s for new emergencies (SOS). If count increased, play alert + show banner.
+    // ponytail: foreground-only polling — when app closes/backgrounded, no alerts (OK for now,
+    // upgrade to push notification when Firebase project available).
+    _emergencyPollTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      try {
+        final stats = await ref.read(officerReportsRepositoryProvider).getOverviewStats();
+        final emergencyCount = stats['emergencyCount'] as int? ?? 0;
+        if (_lastEmergencyCount != null && emergencyCount > _lastEmergencyCount!) {
+          // New SOS arrived!
+          SystemSound.play(SystemSoundType.alert);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Có tin khẩn cấp mới!'),
+                action: SnackBarAction(
+                  label: 'Xem',
+                  onPressed: () => setState(() => _index = 1), // Jump to "Tin báo" tab
+                ),
+                duration: const Duration(seconds: 10),
+              ),
+            );
+          }
+        }
+        _lastEmergencyCount = emergencyCount;
+      } catch (_) {
+        // Ignore poll errors — will retry in 30s.
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _emergencyPollTimer?.cancel();
+    super.dispose();
+  }
 
   static const _screens = [
     OverviewScreen(),

@@ -145,3 +145,32 @@ export const legalLookupLimiter = rateLimit({
     "Quá nhiều lượt tra cứu trong thời gian ngắn, vui lòng thử lại sau.",
   ),
 });
+
+/** POST /reports (regular report creation with photo upload) — per-citizen rate limit.
+ * Keyed by user ID (extracted after requireAuth runs), not IP, to prevent one user from
+ * monopolizing upload/geo-match/notification resources. */
+export const createReportLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.user as any)?.id ?? req.ip ?? "unknown",
+  message: rateLimitedResponse(
+    "CREATE_REPORT_RATE_LIMITED",
+    "Quá nhiều báo tin trong thời gian ngắn, vui lòng thử lại sau.",
+  ),
+});
+
+/** POST /reports/classify-suggestion — same ceiling as legalLookupLimiter (both call Ollama).
+ * IP-keyed since it's a one-shot query, not a full-fledged resource like POST /reports. */
+export const classifySuggestionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip ?? "unknown",
+  message: rateLimitedResponse(
+    "CLASSIFY_SUGGESTION_RATE_LIMITED",
+    "Quá nhiều lượt gợi ý phân loại trong thời gian ngắn, vui lòng thử lại sau.",
+  ),
+});

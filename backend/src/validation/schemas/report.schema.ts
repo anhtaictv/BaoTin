@@ -29,6 +29,8 @@ export const createReportSchema = z.object({
 export const createEmergencyReportSchema = z.object({
   emergencyType: z.string().min(1).max(100),
   location: z.preprocess(parseJsonField, z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })),
+  /** Client-generated idempotency key (offline queue retries) — same as createReportSchema. */
+  clientRequestId: z.string().min(1).max(100).optional(),
 });
 
 /** Giai đoạn "nâng cấp AI cục bộ" — gợi ý loại vụ việc, không phải gửi tin báo thật nên

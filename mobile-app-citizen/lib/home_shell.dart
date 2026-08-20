@@ -36,10 +36,28 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // Foreground sync: flush whatever's queued as soon as the app starts, then again any time
     // connectivity comes back while it's open. registerBackgroundSync() (below) covers the
     // gap while the app isn't in the foreground at all.
-    ref.read(pendingReportsQueueProvider).flush();
+    final emergencyQueue = ref.read(emergencyQueueProvider);
+    final emergencyRepo = ref.read(emergencyRepositoryProvider);
+    final pendingQueue = ref.read(pendingReportsQueueProvider);
+
+    _flushQueues() async {
+      // Flush emergency queue — submit callback uses repo's endpoint.
+      await emergencyQueue.flush((clientRequestId, lat, lng, emergencyType) async {
+        await emergencyRepo.createEmergencyReport(
+          emergencyType: emergencyType,
+          lat: lat,
+          lng: lng,
+          clientRequestId: clientRequestId,
+        );
+        return clientRequestId;
+      });
+      await pendingQueue.flush();
+    }
+
+    _flushQueues();
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
       if (results.any((r) => r != ConnectivityResult.none)) {
-        ref.read(pendingReportsQueueProvider).flush();
+        _flushQueues();
       }
     });
     registerBackgroundSync();

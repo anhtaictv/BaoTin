@@ -319,6 +319,10 @@ model Report {
   @@index([status])
   @@index([assignedOfficerId])
   @@index([source, createdAt])
+  // Composite index for officerReports.listReports: WHERE districtId + status + urgency
+  // + ORDER BY [urgency, createdAt]. Without this, query plan falls back to scanning status
+  // or districtId index then filtering in-memory on the others.
+  @@index([districtId, status, urgency, createdAt])
   @@map("reports")
 }
 

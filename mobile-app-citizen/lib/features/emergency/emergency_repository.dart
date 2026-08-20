@@ -11,10 +11,12 @@ class EmergencyRepository {
     required String emergencyType,
     required double lat,
     required double lng,
+    String? clientRequestId,
   }) async {
     final res = await _apiClient.dio.post('/reports/emergency', data: {
       'emergencyType': emergencyType,
       'location': {'lat': lat, 'lng': lng},
+      if (clientRequestId != null) 'clientRequestId': clientRequestId,
     });
     final data = res.data['data'] as Map<String, dynamic>;
     return data['reportId'] as String;

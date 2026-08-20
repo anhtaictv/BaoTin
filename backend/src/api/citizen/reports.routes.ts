@@ -9,7 +9,7 @@ import {
   createEmergencyReportSchema,
   createReportSchema,
 } from "../../validation/schemas/report.schema.js";
-import { emergencyReportLimiter } from "../../middleware/rateLimiters.js";
+import { emergencyReportLimiter, createReportLimiter, classifySuggestionLimiter } from "../../middleware/rateLimiters.js";
 
 export function createReportsRoutes(controller: ReportsController, requireAuth: RequireAuth): Router {
   const router = Router();
@@ -17,6 +17,7 @@ export function createReportsRoutes(controller: ReportsController, requireAuth: 
   router.post(
     "/",
     requireAuth(["citizen"]),
+    createReportLimiter,
     uploadAttachments,
     validateRequest(createReportSchema),
     asyncHandler(controller.createReport),
@@ -38,6 +39,7 @@ export function createReportsRoutes(controller: ReportsController, requireAuth: 
   router.post(
     "/classify-suggestion",
     requireAuth(["citizen"]),
+    classifySuggestionLimiter,
     validateRequest(classifyReportSchema),
     asyncHandler(controller.classifySuggestion),
   );

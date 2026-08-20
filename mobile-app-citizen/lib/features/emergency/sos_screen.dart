@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
+import 'emergency_queue.dart';
 
 const _emergencyTypes = <String, IconData>{
   'chay_no': Icons.local_fire_department,
@@ -45,14 +47,50 @@ class _SosScreenState extends ConsumerState<SosScreen> {
         setState(() => _error = 'Không lấy được vị trí. Hãy bật định vị và thử lại.');
         return;
       }
-      final reportId = await ref.read(emergencyRepositoryProvider).createEmergencyReport(
+
+      const uuid = Uuid();
+      final clientRequestId = uuid.v4();
+      final repo = ref.read(emergencyRepositoryProvider);
+      final queue = ref.read(emergencyQueueProvider);
+
+      try {
+        // Attempt 1: try to send immediately
+        final reportId = await repo.createEmergencyReport(
+          emergencyType: emergencyType,
+          lat: location.lat,
+          lng: location.lng,
+          clientRequestId: clientRequestId,
+        );
+        setState(() => _sentReportId = reportId);
+      } catch (_) {
+        // Attempt 2: auto-retry once
+        try {
+          final reportId = await repo.createEmergencyReport(
             emergencyType: emergencyType,
             lat: location.lat,
             lng: location.lng,
+            clientRequestId: clientRequestId,
           );
-      setState(() => _sentReportId = reportId);
+          setState(() => _sentReportId = reportId);
+        } catch (_) {
+          // Both attempts failed — queue for later
+          await queue.enqueue(QueuedEmergency(
+            id: clientRequestId,
+            emergencyType: emergencyType,
+            lat: location.lat,
+            lng: location.lng,
+            createdAt: DateTime.now(),
+          ));
+          if (mounted) {
+            setState(() {
+              _sentReportId = clientRequestId;
+              _error = 'Đã lưu — sẽ gửi ngay khi có mạng';
+            });
+          }
+        }
+      }
     } catch (_) {
-      setState(() => _error = 'Gửi cấp cứu thất bại — hãy thử lại ngay.');
+      setState(() => _error = 'Không thể lấy vị trí — vui lòng thử lại.');
     } finally {
       if (mounted) setState(() => _sending = false);
     }

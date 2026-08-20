@@ -158,7 +158,7 @@ async function main() {
   const camerasRouter = createCamerasRoutes(camerasController, requireAuth);
   const districtCamerasRouter = createDistrictCamerasRoutes(camerasController, requireAuth);
 
-  const dashboardStats = createDashboardStatsService({ prisma, piiEncryptionKey: env.PII_ENCRYPTION_KEY });
+  const dashboardStats = createDashboardStatsService({ prisma, piiEncryptionKey: env.PII_ENCRYPTION_KEY, cache });
   const dashboardController = createDashboardController(dashboardStats);
   const dashboardRouter = createDashboardRoutes(dashboardController, requireAuth);
 
@@ -282,10 +282,30 @@ async function main() {
     },
   );
 
-  app.listen(env.PORT, () => {
+  const httpServer = app.listen(env.PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`Báo Tin backend listening on :${env.PORT}`);
   });
+
+  // Graceful shutdown: close keep-alive connections, finish in-flight requests, then exit.
+  const shutdown = async (signal: string) => {
+    // eslint-disable-next-line no-console
+    console.log(`Received ${signal}, shutting down gracefully...`);
+    httpServer.close(async () => {
+      await prisma.$disconnect();
+      // eslint-disable-next-line no-console
+      console.log("Shutdown complete.");
+      process.exit(0);
+    });
+    // Force exit after 10s if close() hangs (long-lived keep-alive connections).
+    setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.error("Shutdown timeout, force exiting...");
+      process.exit(1);
+    }, 10000);
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 main().catch((err) => {
