@@ -6,17 +6,17 @@
 <p align="center"><b>Hệ thống tiếp nhận &amp; xử lý tin báo an ninh trật tự cấp cơ sở</b></p>
 
 <p align="center">
-  <img alt="backend" src="https://img.shields.io/badge/backend-1.26.0-2563eb?style=flat-square&logo=nodedotjs&logoColor=white">
-  <img alt="dashboard-web-react" src="https://img.shields.io/badge/dashboard--web--react-0.6.0-2563eb?style=flat-square&logo=react&logoColor=white">
+  <img alt="backend" src="https://img.shields.io/badge/backend-1.26.1-2563eb?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="dashboard-web-react" src="https://img.shields.io/badge/dashboard--web--react-0.7.0-2563eb?style=flat-square&logo=react&logoColor=white">
   <img alt="dashboard-web" src="https://img.shields.io/badge/dashboard--web-1.7.0%2B7-2563eb?style=flat-square&logo=flutter&logoColor=white">
   <img alt="mobile-app-officer" src="https://img.shields.io/badge/mobile--app--officer-1.17.0%2B25-2563eb?style=flat-square&logo=flutter&logoColor=white">
-  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.12.0%2B19-2563eb?style=flat-square&logo=flutter&logoColor=white">
+  <img alt="mobile-app-citizen" src="https://img.shields.io/badge/mobile--app--citizen-1.13.0%2B20-2563eb?style=flat-square&logo=flutter&logoColor=white">
 </p>
 <p align="center">
   <img alt="PostgreSQL + PostGIS" src="https://img.shields.io/badge/PostgreSQL_+_PostGIS-336791?style=flat-square&logo=postgresql&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white">
   <img alt="Flutter" src="https://img.shields.io/badge/Flutter-02569B?style=flat-square&logo=flutter&logoColor=white">
-  <img alt="backend tests" src="https://img.shields.io/badge/backend_tests-824_passing-16a34a?style=flat-square&logo=vitest&logoColor=white">
+  <img alt="backend tests" src="https://img.shields.io/badge/backend_tests-825_passing-16a34a?style=flat-square&logo=vitest&logoColor=white">
   <img alt="human-in-the-loop" src="https://img.shields.io/badge/x%C3%A1c_minh-human--in--the--loop-dc2626?style=flat-square">
 </p>
 
@@ -117,7 +117,7 @@ npm run gen:keys                       # sinh keypair RS256 dev (backend/keys/*.
 cp ../infra/.env.example .env          # rồi điền giá trị thật (không commit .env)
 
 npx tsc --noEmit                       # kiểm tra type
-npx vitest run                         # 824 test: crypto, validation, geo-matching, auth/report/
+npx vitest run                         # 825 test: crypto, validation, geo-matching, auth/report/
                                         # officer/camera (hướng + facesLocation + CRUD admin)/
                                         # dashboard/signals/search/web-account/wanted-notice/
                                         # traffic-accident/legal-lookup/broadcast-alert
@@ -237,12 +237,12 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 
 | Version | Nội dung |
 |---|---|
+| **v1.26** | SOS reliability & backend perf: hàng đợi SOS offline tự retry ở `mobile-app-citizen` (idempotency, phản hồi UI rõ ràng), officer polling 30s kèm âm báo hệ thống, rate limiting + graceful shutdown + cache dashboard + index truy vấn ở backend, health-check deploy; **[1.26.1]** chế độ "Chữ to, dễ đọc" cho người lớn tuổi ở `mobile-app-citizen` (phóng to `MediaQuery.textScaler` toàn app, lưu `shared_preferences`); bản đồ nhiệt cho "Bản đồ tin báo" ở `dashboard-web-react` (toggle marker/heatmap, dùng lại dữ liệu đã fetch); chore backend — AI Gateway dùng chung (WebApp/BaoTin/Soul Diary) làm default cho `OPENAI_BASE_URL` khi `LLM_PROVIDER=openai`, mặc định vẫn "none" nên không đổi hành vi hiện tại |
 | **v1.25** | Camera an ninh có hướng/góc nhìn — `Camera.directionDegrees`/`fovDegrees`, `facesLocation` (đúng/sai/chưa rõ) tính bằng bearing PostGIS thật (`ST_Azimuth`) chứ không chỉ khoảng cách; trang "Camera" độc lập vẽ hình quạt hướng trên `dashboard-web-react`, overlay "Hiện camera" trên tab Địa điểm của `mobile-app-officer`; admin/senior_officer thêm/sửa/xoá camera (web-only, chọn toạ độ bằng click bản đồ hoặc nhập tay); vá lỗi validate khoá ngoại `districtId` (tránh lộ lỗi DB thô ra ngoài); **[1.25.1]** vá 2 lỗi khiến tra cứu văn bản luật không dùng được trên production — role DB runtime (`baotin_app`) thiếu quyền trên schema `public` (nay GRANT qua Prisma migration, tự áp trên mọi môi trường thay vì script init 1 lần); pipeline deploy chưa từng đưa corpus PDF luật lên VPS nên chưa import được (nay copy PDF + workflow import riêng); **[1.25.2]** vá SOS emergency response — tách biệt xử lý SOS khỏi latency push notification, đảm bảo SOS luôn phản hồi tức thời; **[1.25.3]** security: fix glob@10.5.0 vulnerability via npm audit |
 | **v1.24** | Trạng thái tin báo chia 5 mức (Mới gửi/Đã định tuyến/Đang xác minh/Đã xử lý/Tin giả-Hủy); cảnh báo theo địa bàn (geo-fence broadcast) cho officer gửi hàng loạt tới dân; offline sync hardening cho `mobile-app-citizen` (`clientRequestId` chống trùng, `flutter_secure_storage`, background sync qua `workmanager`); tra cứu văn bản luật/quy định bằng AI local (Ollama) trên cả 4 app/web — câu trả lời luôn nguyên văn từ corpus PDF thật, AI chỉ diễn giải câu hỏi; vá lỗi bản đồ 403 do `Referrer-Policy` chặn OSM tile server |
 | **v1.23** | Push notification FCM thật; Redis cache geo-matching; MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode 4 app; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ); vá lỗ hổng dependency mức high (`sharp`, `fast-xml-parser`); scaffold ký release Android thật; **[1.23.1]** audit bảo mật toàn hệ thống — vá lỗi `trust proxy` làm rate-limit SOS bị gộp chung, transaction report+attachment, index/unique constraint DB, validate link mobile |
 | **v1.22** | Sửa (thay ảnh) và xóa cho "Lệnh truy nã" — admin-only, tự dọn ảnh cũ khỏi MinIO |
 | **v1.21** | Dữ liệu demo mới trải khắp vùng Phú Yên cũ (sáp nhập Đắk Lắk 2025) để demo geo-matching/duyệt tài khoản toàn tỉnh |
-| **v1.20** | Gộp trang quản lý admin vào `mobile-app-officer` (Trợ lý tìm kiếm + Quản lý tài khoản) — admin không còn bắt buộc dùng `dashboard-web-react` |
 
 <details>
 <summary><b>Toàn bộ lịch sử từ v1.0</b> (bấm để xem)</summary>
@@ -275,6 +275,7 @@ npm run dev   # http://localhost:5173, cần backend đang chạy
 | **v1.23** | Push notification FCM thật; Redis cache geo-matching (fail-open); MFA/TOTP + password policy 12 ký tự + session riêng cho officer/admin; dark mode theo hệ thống cho `mobile-app-citizen`/`mobile-app-officer`, toggle thủ công cho `dashboard-web-react`; offline queue cho `mobile-app-citizen`; AI provider mở rộng (OpenAI-compatible bất kỳ, không chỉ OpenAI/Gemini/Ollama); vá 2 lỗ hổng bảo mật high-severity (`sharp`, `fast-xml-parser`); scaffold ký release Android thật (minify/shrink + `key.properties`) |
 | **v1.24** | Status badge tách "pending" thành Mới gửi/Đã định tuyến theo `assignedOfficerId`, đổi nhãn Đã xử lý/Tin giả-Hủy — wire xuyên 4 file theme + 7 màn danh sách/chi tiết tin báo (backend + citizen + officer + dashboard-web(-react)); geo-fence broadcast alert (`OfficerBroadcastAlert`, `POST /officer/broadcast-alerts`, mở rộng `GET /area-alerts`) cho officer gửi cảnh báo hàng loạt tới dân trong địa bàn được phân công; offline sync hardening cho `mobile-app-citizen` — `clientRequestId` idempotency chống trùng report khi retry, hàng đợi offline chuyển sang `flutter_secure_storage`, background sync thật qua `workmanager` (Android) / `BGTaskScheduler` (iOS); tra cứu văn bản luật/quy định bằng AI local (Ollama) — corpus PDF thật (Bộ luật Hình sự, Dân sự) nạp thủ công vào DB, AI chỉ diễn giải câu hỏi thành điều/khoản/từ khóa, câu trả lời luôn nguyên văn từ dữ liệu đã nạp, không do AI tự viết; vá lỗi bản đồ 403 do `Referrer-Policy: no-referrer` chặn Referer tới OSM tile server, đổi sang `strict-origin-when-cross-origin` |
 | **v1.25** | Camera an ninh có hướng/góc nhìn: `Camera.directionDegrees`/`fovDegrees` (nullable, camera thật đăng ký sau vẫn hiển thị được), endpoint `GET/POST/PUT/DELETE /officer/cameras` (đọc mở cho mọi officer, ghi/xoá giới hạn admin/senior_officer); `facesLocation` tính bằng `ST_Azimuth` + hàm thuần `isFacingBearing` (xử lý đúng wraparound 0°/360°) để phân biệt "camera gần hiện trường" với "camera *thực sự nhìn thấy* hiện trường" — badge/hình quạt xanh (đúng hướng)/cam (sai hướng)/xanh dương (chưa rõ) ở cả widget cũ lẫn trang mới; trang "Camera" độc lập trên `dashboard-web-react` liệt kê + vẽ bản đồ toàn bộ camera trong địa bàn; `mobile-app-officer` thêm overlay "Hiện camera" trên tab Địa điểm sẵn có thay vì thêm tab bottom-nav thứ 10; form thêm/sửa/xoá camera cho admin/senior_officer (chỉ web, chọn toạ độ bằng click bản đồ hoặc nhập tay) — xoá chặn trước lỗi ràng buộc khoá ngoại (409 nếu camera còn yêu cầu trích xuất/cảnh báo tai nạn liên quan) thay vì để crash; vá lỗi thiếu validate `districtId` tồn tại thật trước khi ghi camera (tránh lộ lỗi ràng buộc DB thô thành lỗi hệ thống chung chung) |
+| **v1.26** | SOS reliability & backend perf: hàng đợi SOS offline tự retry ở `mobile-app-citizen` (`emergency_queue.dart`, idempotency + phản hồi UI rõ khi mất mạng), `mobile-app-officer` polling 30s kèm âm báo hệ thống khi có SOS mới; backend: rate limiting cho luồng report, graceful shutdown, cache dashboard stats, thêm index truy vấn, health-check script cho pipeline deploy; **[1.26.1]** chế độ "Chữ to, dễ đọc" cho người lớn tuổi ở `mobile-app-citizen` — toggle ở màn Hồ sơ, phóng to `MediaQuery.textScaler` toàn app, lưu qua `shared_preferences`; bản đồ nhiệt cho "Bản đồ tin báo" ở `dashboard-web-react` — toggle marker/heatmap (`leaflet.heat`), tái dùng đúng dữ liệu `report-locations` đã fetch sẵn; chore backend — AI Gateway dùng chung (WebApp/BaoTin/Soul Diary) làm default cho `OPENAI_BASE_URL` khi `LLM_PROVIDER=openai` (mặc định vẫn "none", không đổi hành vi hiện tại) |
 
 </details>
 
