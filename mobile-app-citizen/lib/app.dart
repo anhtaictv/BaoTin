@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/accessibility_settings.dart';
 import 'core/api_client.dart';
 import 'core/theme.dart';
 import 'features/auth/auth_gate.dart';
@@ -9,14 +11,14 @@ import 'features/auth/citizen_login_screen.dart';
 /// once other routes are pushed on top of it.
 final navigatorKey = GlobalKey<NavigatorState>();
 
-class BaoTinCitizenApp extends StatefulWidget {
+class BaoTinCitizenApp extends ConsumerStatefulWidget {
   const BaoTinCitizenApp({super.key});
 
   @override
-  State<BaoTinCitizenApp> createState() => _BaoTinCitizenAppState();
+  ConsumerState<BaoTinCitizenApp> createState() => _BaoTinCitizenAppState();
 }
 
-class _BaoTinCitizenAppState extends State<BaoTinCitizenApp> {
+class _BaoTinCitizenAppState extends ConsumerState<BaoTinCitizenApp> {
   @override
   void initState() {
     super.initState();
@@ -50,15 +52,23 @@ class _BaoTinCitizenAppState extends State<BaoTinCitizenApp> {
       // layout at kWideBreakpoint (side nav rail, split hero+form) — this only stops content
       // from stretching absurdly wide on an ultrawide monitor, it does not letterbox to a
       // phone width (that read as "a mobile app in a box" on a normal desktop browser).
-      builder: (context, child) => ColoredBox(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1600),
-            child: child,
+      builder: (context, child) {
+        final largeText = ref.watch(largeTextProvider);
+        return ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1600),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: largeText ? const TextScaler.linear(largeTextScale) : MediaQuery.of(context).textScaler,
+                ),
+                child: child!,
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

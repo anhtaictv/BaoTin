@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/accessibility_settings.dart';
 import '../../core/providers.dart';
 import '../auth/auth_gate.dart';
 import '../auth/change_password_screen.dart';
@@ -71,6 +72,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
               ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(Icons.text_increase),
+              title: const Text('Chữ to, dễ đọc'),
+              subtitle: const Text('Phù hợp cho người lớn tuổi'),
+              value: ref.watch(largeTextProvider),
+              onChanged: (enabled) => ref.read(largeTextProvider.notifier).toggle(enabled),
             ),
           ),
           const SizedBox(height: 12),

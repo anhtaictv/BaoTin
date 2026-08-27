@@ -53,15 +53,18 @@ const EnvSchema = z.object({
     .min(1, "PHONE_BLIND_INDEX_KEY is required (HMAC key, base64)"),
   OTP_HASH_PEPPER: z.string().default(""),
 
-  /** Giai đoạn 2 crawler — AI tóm tắt 1-2 câu. No key configured => falls back to a plain
-   * truncation, never crashes the crawler pipeline (see crawler/summarizer.ts). "ollama" runs
-   * a local model (no API key, no data leaving the machine) via Ollama's REST API. "openai"
-   * calls any OpenAI-compatible chat-completions endpoint — set OPENAI_BASE_URL to point it at
-   * a different host (e.g. NVIDIA NIM: https://integrate.api.nvidia.com/v1) and OPENAI_MODEL to
-   * that provider's model id. */
+  /** Every AI business task (crawler summarizer/relevance/dedup, report classifier, heat
+   * narrative, search interpreter) reads this same block — one place to point them all.
+   * No key configured => falls back to a plain truncation/heuristic, never crashes the
+   * pipeline (see crawler/summarizer.ts). "ollama" runs a local model directly via Ollama's
+   * REST API. "openai" calls any OpenAI-compatible chat-completions endpoint — default
+   * OPENAI_BASE_URL is the shared AI Gateway (AI_GATEWAY.md) running on this same VPS at
+   * 127.0.0.1:8080, which routes to Ollama on "máy A" via Tailscale with cloud fallback; set
+   * OPENAI_API_KEY to the gateway's GATEWAY_API_KEY. Override OPENAI_BASE_URL to call a real
+   * provider directly instead (e.g. https://api.openai.com/v1 or NVIDIA NIM). */
   LLM_PROVIDER: z.enum(["openai", "gemini", "ollama", "none"]).default("none"),
   OPENAI_API_KEY: z.string().default(""),
-  OPENAI_BASE_URL: z.string().min(1).default("https://api.openai.com/v1"),
+  OPENAI_BASE_URL: z.string().min(1).default("http://127.0.0.1:8080/v1"),
   OPENAI_MODEL: z.string().min(1).default("gpt-4o-mini"),
   GEMINI_API_KEY: z.string().default(""),
   OLLAMA_BASE_URL: z.string().min(1).default("http://localhost:11434"),

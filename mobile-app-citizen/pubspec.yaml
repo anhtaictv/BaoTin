@@ -1,7 +1,7 @@
 name: bao_tin_citizen
 description: "Báo Tin — ứng dụng báo tin nhanh cho người dân."
 publish_to: "none"
-version: 1.12.0+19
+version: 1.13.0+20
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -28,6 +28,9 @@ dependencies:
   # pending_reports_queue.dart can import it for the queue's JSON file location.
   path_provider: ^2.1.3
   workmanager: ^0.10.7
+  # Persist the "chữ to, dễ đọc" accessibility toggle (accessibility_settings.dart) across app
+  # restarts — plain key/value, no need for flutter_secure_storage (that's for auth tokens only).
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
