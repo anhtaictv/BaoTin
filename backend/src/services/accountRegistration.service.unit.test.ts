@@ -101,11 +101,21 @@ function fakePrisma() {
       },
     },
     officerDistrictAssignment: {
-      async upsert({ where, create, update }: any) {
-        const key = `${where.officerId_districtId.officerId}:${where.officerId_districtId.districtId}`;
-        const existing = assignments.get(key);
-        const row = existing ? { ...existing, ...update } : { id: randomUUID(), ...create };
-        assignments.set(key, row);
+      async findFirst({ where }: any) {
+        return (
+          [...assignments.values()].find(
+            (a) => a.officerId === where.officerId && a.districtId === where.districtId && a.oldDistrictId == null,
+          ) ?? null
+        );
+      },
+      async create({ data }: any) {
+        const row = { id: randomUUID(), oldDistrictId: null, ...data };
+        assignments.set(row.id, row);
+        return row;
+      },
+      async update({ where, data }: any) {
+        const row = assignments.get(where.id);
+        Object.assign(row, data);
         return row;
       },
     },
@@ -407,7 +417,7 @@ describe("accountRegistration.service — registerOfficer / loginOfficer / appro
       },
     ]);
     expect([...prisma.store.assignments.values()]).toEqual([
-      { id: expect.any(String), officerId, districtId, isActive: true },
+      { id: expect.any(String), officerId, districtId, isActive: true, oldDistrictId: null },
     ]);
   });
 
@@ -507,6 +517,39 @@ describe("accountRegistration.service — registerOfficer / loginOfficer / appro
     await expect(service.registerOfficer({ ...input, username: "officer_5b" })).rejects.toMatchObject({
       status: 409,
       code: "PHONE_ALREADY_REGISTERED",
+    });
+  });
+
+  it("setOfficerRole promotes an officer to commune_head and audit-logs it", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    await service.registerOfficer({
+      username: "officer_6",
+      password: "Correct-Horse-1",
+      fullName: "M",
+      phoneNumber: "0911111116",
+      cccdNumber: "079099001246",
+      address: "addr",
+    });
+    const officerId = [...prisma.store.officers.values()][0]!.id;
+    const adminId = randomUUID();
+
+    await service.setOfficerRole(adminId, officerId, "commune_head");
+
+    expect(prisma.store.officers.get(officerId)?.role).toBe("commune_head");
+    expect(prisma.store.auditLogRows).toContainEqual({
+      officerId: adminId,
+      action: "set_officer_role",
+      target: { type: "officer", id: officerId },
+      metadata: { role: "commune_head" },
+    });
+  });
+
+  it("setOfficerRole 404s for an unknown officer id", async () => {
+    const prisma = fakePrisma();
+    const { service } = buildService(prisma);
+    await expect(service.setOfficerRole(randomUUID(), randomUUID(), "commune_head")).rejects.toMatchObject({
+      status: 404,
     });
   });
 });

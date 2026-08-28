@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Camera, Gavel, LayoutGrid, LogOut, Monitor, Moon, RadioTower, RefreshCw, Search, Siren, Sun, UsersRound } from 'lucide-react';
+import { Camera, Gavel, LayoutGrid, LogOut, MapPinned, Monitor, Moon, RadioTower, RefreshCw, Search, Siren, Sun, UsersRound } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../core/AuthContext';
 import { canAccessDashboard, roleLabel } from '../core/theme';
@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { to: '/search', label: 'Tìm kiếm', icon: Search, end: false, dashboardOnly: true },
   { to: '/legal-lookup', label: 'Tra cứu luật', icon: Gavel, end: false, dashboardOnly: false },
   { to: '/cameras', label: 'Camera', icon: Camera, end: false, dashboardOnly: false },
+  { to: '/commune', label: 'Phân địa bàn', icon: MapPinned, end: false, dashboardOnly: false },
 ];
 
 function navLinkStyle({ isActive }: { isActive: boolean }): React.CSSProperties {

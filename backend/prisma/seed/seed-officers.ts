@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { encryptField } from "../../src/crypto/aesGcm.js";
 import { hashPhoneNumber } from "../../src/crypto/phoneBlindIndex.js";
+import { upsertWholeDistrictAssignment } from "../../src/db/officerDistrictAssignment.js";
 
 export interface SeedOfficerSpec {
   fullName: string;
@@ -9,7 +10,7 @@ export interface SeedOfficerSpec {
   /** Must match a districts.ten_xa value seeded from data/raw/Daklak.geojson. */
   wardTenXa: string;
   /** Defaults to 'officer' — see backend/prisma/schema.prisma OfficerRole. */
-  role?: "officer" | "senior_officer" | "admin";
+  role?: "officer" | "senior_officer" | "commune_head" | "admin";
 }
 
 /** Obviously-fake demo data — [DEMO] prefix + 09000000xx numbers, never a real officer roster. */
@@ -37,6 +38,13 @@ export const SEED_OFFICERS: SeedOfficerSpec[] = [
     phoneNumber: "0900000004",
     unitName: "Công an xã Cư Pơng",
     wardTenXa: "Cư Pơng",
+  },
+  {
+    fullName: "[DEMO] Y Bơn Niê — Trưởng xã",
+    phoneNumber: "0900000098",
+    unitName: "UBND phường Buôn Ma Thuột",
+    wardTenXa: "Buôn Ma Thuột",
+    role: "commune_head",
   },
   {
     fullName: "[DEMO] Quản trị — Trung tâm điều hành",
@@ -155,11 +163,7 @@ export async function seedOfficers(deps: SeedOfficersDeps): Promise<void> {
       },
     });
 
-    await deps.prisma.officerDistrictAssignment.upsert({
-      where: { officerId_districtId: { officerId: officer.id, districtId: district.id } },
-      update: { isActive: true },
-      create: { officerId: officer.id, districtId: district.id, isActive: true },
-    });
+    await upsertWholeDistrictAssignment(deps.prisma, officer.id, district.id);
 
     // eslint-disable-next-line no-console
     console.log(`[seed-officers] ${spec.fullName} -> ${spec.wardTenXa}`);

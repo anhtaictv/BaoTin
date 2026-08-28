@@ -37,7 +37,7 @@ describe('AccountPage', () => {
     );
 
     expect(await screen.findByText('0900001111')).toBeInTheDocument();
-    expect(screen.getByText('Cán bộ cấp cao')).toBeInTheDocument();
+    expect(screen.getByText('Lãnh đạo')).toBeInTheDocument();
     expect(screen.getByText('Buôn Ma Thuột')).toBeInTheDocument();
   });
 

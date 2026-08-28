@@ -27,6 +27,13 @@ export function createOfficerApprovalController(service: AccountRegistrationServ
       await service.rejectOfficer(req.user.id, req.params.id as string);
       res.status(200).json({ success: true, data: { rejected: true }, error: null });
     },
+
+    async setRole(req: Request, res: Response) {
+      if (!req.user) throw new HttpError(401, "UNAUTHENTICATED", "Thiếu access token.");
+      const { role } = req.body as { role: "officer" | "senior_officer" | "commune_head" | "admin" };
+      await service.setOfficerRole(req.user.id, req.params.id as string, role);
+      res.status(200).json({ success: true, data: { role }, error: null });
+    },
   };
 }
 

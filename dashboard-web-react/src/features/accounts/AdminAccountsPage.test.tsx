@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -48,6 +48,7 @@ describe('AdminAccountsPage', () => {
   beforeEach(() => {
     vi.mocked(apiClient.get).mockReset();
     vi.mocked(apiClient.post).mockReset();
+    vi.mocked(apiClient.patch).mockReset();
   });
 
   it('lists every provisioned account with role/district/status', async () => {
@@ -88,5 +89,69 @@ describe('AdminAccountsPage', () => {
     await user.click(screen.getAllByRole('button', { name: 'Đặt lại mật khẩu' })[0]);
 
     expect(await screen.findByText('Đặt lại mật khẩu thất bại. Vui lòng thử lại.')).toBeInTheDocument();
+  });
+
+  describe('Đổi vai trò', () => {
+    function mockGetByUrl() {
+      vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+        if (url === '/admin/web-accounts') return { data: { data: ACCOUNTS } };
+        if (url === '/admin/dashboard/districts') {
+          return { data: { data: [{ id: 'd1', tenXa: 'Buôn Ma Thuột' }, { id: 'd2', tenXa: 'Buôn Hồ' }] } };
+        }
+        throw new Error(`unmocked GET ${url}`);
+      });
+    }
+
+    it('opens the dialog pre-filled with the account current role and saves just the role', async () => {
+      mockGetByUrl();
+      vi.mocked(apiClient.patch).mockResolvedValueOnce({ data: { success: true, data: { role: 'commune_head' }, error: null } });
+      renderPage();
+      const user = userEvent.setup();
+
+      await screen.findByText('0900001111');
+      await user.click(screen.getAllByRole('button', { name: 'Đổi vai trò' })[0]);
+
+      expect(await screen.findByText('Đổi vai trò — [DEMO] Nguyễn Văn A')).toBeInTheDocument();
+      await user.selectOptions(screen.getByLabelText('Vai trò'), 'Trưởng xã');
+      await user.click(screen.getByRole('button', { name: 'Lưu' }));
+
+      expect(apiClient.patch).toHaveBeenCalledWith('/admin/officers/o1/role', { role: 'commune_head' });
+      expect(apiClient.post).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByText('Đổi vai trò — [DEMO] Nguyễn Văn A')).not.toBeInTheDocument());
+    });
+
+    it('also assigns the picked district before saving the role, when one is chosen', async () => {
+      mockGetByUrl();
+      vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { success: true, data: { approved: true }, error: null } });
+      vi.mocked(apiClient.patch).mockResolvedValueOnce({ data: { success: true, data: { role: 'commune_head' }, error: null } });
+      renderPage();
+      const user = userEvent.setup();
+
+      await screen.findByText('0900001111');
+      await user.click(screen.getAllByRole('button', { name: 'Đổi vai trò' })[0]);
+      await screen.findByText('Đổi vai trò — [DEMO] Nguyễn Văn A');
+
+      await user.selectOptions(screen.getByLabelText('Vai trò'), 'Trưởng xã');
+      await user.selectOptions(screen.getByLabelText(/Gán thêm xã\/phường/), 'Buôn Hồ');
+      await user.click(screen.getByRole('button', { name: 'Lưu' }));
+
+      expect(apiClient.post).toHaveBeenCalledWith('/admin/officers/o1/approve', { districtId: 'd2' });
+      expect(apiClient.patch).toHaveBeenCalledWith('/admin/officers/o1/role', { role: 'commune_head' });
+    });
+
+    it('shows an error and keeps the dialog open when saving fails', async () => {
+      mockGetByUrl();
+      vi.mocked(apiClient.patch).mockRejectedValueOnce(new Error('network down'));
+      renderPage();
+      const user = userEvent.setup();
+
+      await screen.findByText('0900001111');
+      await user.click(screen.getAllByRole('button', { name: 'Đổi vai trò' })[0]);
+      await screen.findByText('Đổi vai trò — [DEMO] Nguyễn Văn A');
+      await user.click(screen.getByRole('button', { name: 'Lưu' }));
+
+      expect(await screen.findByText('Cập nhật thất bại. Vui lòng thử lại.')).toBeInTheDocument();
+      expect(screen.getByText('Đổi vai trò — [DEMO] Nguyễn Văn A')).toBeInTheDocument();
+    });
   });
 });

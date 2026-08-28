@@ -21,6 +21,9 @@ const LegalLookupPage = lazy(() =>
   import('./features/legal_lookup/LegalLookupPage').then((m) => ({ default: m.LegalLookupPage })),
 );
 const CamerasPage = lazy(() => import('./features/cameras/CamerasPage').then((m) => ({ default: m.CamerasPage })));
+const CommuneAssignmentPage = lazy(() =>
+  import('./features/commune/CommuneAssignmentPage').then((m) => ({ default: m.CommuneAssignmentPage })),
+);
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { account, loading } = useAuth();
@@ -83,6 +86,7 @@ function App() {
         />
         <Route path="legal-lookup" element={<LegalLookupPage />} />
         <Route path="cameras" element={<CamerasPage />} />
+        <Route path="commune" element={<CommuneAssignmentPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route
           path="accounts"

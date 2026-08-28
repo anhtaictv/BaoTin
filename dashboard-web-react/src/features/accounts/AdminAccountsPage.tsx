@@ -1,10 +1,18 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KeyRound, Lock, ShieldAlert, Users } from 'lucide-react';
 import { Card, ChartCardError, ChartCardSkeleton } from '../../components/ChartCard';
 import { PageHeader } from '../../components/PageHeader';
 import { roleLabel, theme } from '../../core/theme';
-import { listWebAccounts, resetWebAccountPassword } from './accountsAdminApi';
+import {
+  assignOfficerToDistrict,
+  listWebAccounts,
+  resetWebAccountPassword,
+  setOfficerRole,
+  type OfficerRole,
+  type WebAccountSummary,
+} from './accountsAdminApi';
+import { ChangeRoleDialog } from './ChangeRoleDialog';
 
 function formatDate(iso: string | null): string {
   if (!iso) return 'Chưa đăng nhập';
@@ -19,10 +27,12 @@ function formatDate(iso: string | null): string {
  * password exactly once in the UI (mirrors backend/prisma/seed/seed-web-accounts.ts's
  * console-print-once contract) — it is never stored in plaintext anywhere. */
 export function AdminAccountsPage() {
+  const queryClient = useQueryClient();
   const accounts = useQuery({ queryKey: ['admin', 'web-accounts'], queryFn: listWebAccounts });
   const [resetResult, setResetResult] = useState<{ username: string; tempPassword: string } | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [editingAccount, setEditingAccount] = useState<WebAccountSummary | null>(null);
 
   async function handleReset(officerId: string, username: string) {
     setResettingId(officerId);
@@ -35,6 +45,13 @@ export function AdminAccountsPage() {
     } finally {
       setResettingId(null);
     }
+  }
+
+  async function handleChangeRole(officerId: string, role: OfficerRole, districtId: string | null) {
+    if (districtId) await assignOfficerToDistrict(officerId, districtId);
+    await setOfficerRole(officerId, role);
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'web-accounts'] });
+    setEditingAccount(null);
   }
 
   if (accounts.isLoading) return <ChartCardSkeleton height={300} />;
@@ -104,13 +121,18 @@ export function AdminAccountsPage() {
                     </div>
                   </td>
                   <td>
-                    <button
-                      disabled={resettingId === account.officerId}
-                      onClick={() => handleReset(account.officerId, account.username)}
-                      className="btn-sm"
-                    >
-                      {resettingId === account.officerId ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        disabled={resettingId === account.officerId}
+                        onClick={() => handleReset(account.officerId, account.username)}
+                        className="btn-sm"
+                      >
+                        {resettingId === account.officerId ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
+                      </button>
+                      <button onClick={() => setEditingAccount(account)} className="btn-sm">
+                        Đổi vai trò
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -124,6 +146,14 @@ export function AdminAccountsPage() {
           )}
         </div>
       </Card>
+
+      {editingAccount && (
+        <ChangeRoleDialog
+          account={editingAccount}
+          onCancel={() => setEditingAccount(null)}
+          onSubmit={(role, districtId) => handleChangeRole(editingAccount.officerId, role, districtId)}
+        />
+      )}
     </div>
   );
 }

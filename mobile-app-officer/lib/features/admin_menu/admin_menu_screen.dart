@@ -5,6 +5,7 @@ import '../auth/change_password_screen.dart';
 import '../admin_citizens/locked_citizens_screen.dart';
 import '../search/search_screen.dart';
 import '../admin_web_accounts/admin_web_accounts_screen.dart';
+import '../commune/commune_assignment_screen.dart';
 
 /// Groups the 3 admin/senior_officer-only screens (previously 3 separate bottom-nav tabs,
 /// crowding it to 10 alongside the 7 everyone-uses tabs) behind one "Quản trị" entry point.
@@ -60,6 +61,14 @@ class AdminMenuScreen extends StatelessWidget {
             subtitle: 'Danh sách tài khoản admin cấp sẵn, đặt lại mật khẩu',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AdminWebAccountsScreen()),
+            ),
+          ),
+          _AdminMenuTile(
+            icon: Icons.map_outlined,
+            title: 'Phân địa bàn',
+            subtitle: 'Trưởng xã chia địa bàn theo xã/phường cũ cho tài khoản cấp dưới',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CommuneAssignmentScreen()),
             ),
           ),
           _AdminMenuTile(

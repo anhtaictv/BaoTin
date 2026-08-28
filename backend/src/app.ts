@@ -38,6 +38,10 @@ export interface AppRouters {
   /** Admin unlock for citizen accounts auto-locked after repeated false reports — mounted
    * at "/admin/citizens". */
   adminCitizensRouter?: Router;
+  /** Trưởng xã phân địa bàn (xã/phường cũ) cho tài khoản cấp dưới trong xã/phường mình phụ
+   * trách — mounted at "/officer/commune". Write is commune_head/admin only (ownership
+   * enforced in communeAssignment.service.ts); read is any authenticated officer role. */
+  communeAssignmentRouter?: Router;
   /** Detector worker ingestion (X-Detector-Api-Key, not a user JWT) — mounted at
    * "/detections/traffic-accidents". */
   trafficAccidentIngestRouter?: Router;
@@ -93,6 +97,9 @@ export function createApp(routers: AppRouters, config: AppConfig = {}) {
   }
   if (routers.adminCitizensRouter) {
     app.use("/admin/citizens", routers.adminCitizensRouter);
+  }
+  if (routers.communeAssignmentRouter) {
+    app.use("/officer/commune", routers.communeAssignmentRouter);
   }
   if (routers.citizenReportsRouter) {
     app.use("/reports", routers.citizenReportsRouter);

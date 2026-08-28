@@ -60,6 +60,11 @@ export const approveOfficerSchema = z.object({
   districtId: z.string().uuid(),
 });
 
+/** Admin-only role promotion/demotion — see accountRegistration.service.ts's setOfficerRole. */
+export const setOfficerRoleSchema = z.object({
+  role: z.enum(["officer", "senior_officer", "commune_head", "admin"]),
+});
+
 /** Citizen-only now (/auth/citizen/change-password) — kept at the shared min-8 passwordSchema.
  * Used to also back /auth/officer/change-password, but that route now uses
  * changeOfficerPasswordSchema below (officerPasswordSchema's 12+/complexity rule) instead, so

@@ -4,6 +4,8 @@ import { PrismaClient } from "@prisma/client";
 import { loadEnv } from "../../src/config/env.js";
 import { createStorageClient } from "../../src/storage/minioClient.js";
 import { seedDistricts } from "./seed-districts.js";
+import { seedOldDistricts } from "./seed-old-districts.js";
+import { seedOldDistrictOverlaps } from "./seed-old-district-overlaps.js";
 import { seedOfficers, seedOfficersForAllDistricts } from "./seed-officers.js";
 import { seedWebAccounts } from "./seed-web-accounts.js";
 import { seedCameras } from "./seed-cameras.js";
@@ -21,6 +23,16 @@ async function main() {
   console.log("Seeding districts from data/raw/Daklak.geojson ...");
   const count = await seedDistricts(prisma, geojsonPath);
   console.log(`Districts seeded: ${count}`);
+
+  console.log("Seeding old (pre-2025-merger, '63') ward boundaries ...");
+  const rawDir = join(process.cwd(), "..", "data", "raw");
+  const oldDakLakCount = await seedOldDistricts(prisma, join(rawDir, "Đắk Lắk (phường xã) - 63.geojson"));
+  const oldPhuYenCount = await seedOldDistricts(prisma, join(rawDir, "Phú Yên (phường xã) - 63.geojson"));
+  console.log(`Old districts seeded: ${oldDakLakCount + oldPhuYenCount}`);
+
+  console.log("Computing old-ward -> new-district spatial overlaps ...");
+  const overlapCount = await seedOldDistrictOverlaps(prisma);
+  console.log(`Old district overlaps seeded: ${overlapCount}`);
 
   console.log("Seeding demo officers (named + admin) ...");
   const officerSeedDeps = {

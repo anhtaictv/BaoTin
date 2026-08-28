@@ -13,7 +13,7 @@ export interface Account {
   lastLoginAt: string | null;
   fullName: string;
   unitName: string | null;
-  role: 'officer' | 'senior_officer' | 'admin';
+  role: 'officer' | 'senior_officer' | 'commune_head' | 'admin';
   districts: District[];
 }
 

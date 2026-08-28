@@ -56,6 +56,9 @@ import { createRegistrationController } from "./api/auth/registration.controller
 import { createRegistrationRoutes } from "./api/auth/registration.routes.js";
 import { createOfficerApprovalController } from "./api/admin/officerApproval.controller.js";
 import { createOfficerApprovalRoutes } from "./api/admin/officerApproval.routes.js";
+import { createCommuneAssignmentService } from "./services/communeAssignment.service.js";
+import { createCommuneAssignmentController } from "./api/officer/communeAssignment.controller.js";
+import { createCommuneAssignmentRoutes } from "./api/officer/communeAssignment.routes.js";
 import { createAdminCitizensController } from "./api/admin/adminCitizens.controller.js";
 import { createAdminCitizensRoutes } from "./api/admin/adminCitizens.routes.js";
 import { createTrafficAccidentAlertsService } from "./services/trafficAccidentAlerts.service.js";
@@ -209,6 +212,14 @@ async function main() {
   const adminCitizensController = createAdminCitizensController(accountRegistrationService);
   const adminCitizensRouter = createAdminCitizensRoutes(adminCitizensController, requireAuth);
 
+  const communeAssignmentService = createCommuneAssignmentService({
+    prisma,
+    piiEncryptionKey: env.PII_ENCRYPTION_KEY,
+    auditLog,
+  });
+  const communeAssignmentController = createCommuneAssignmentController(communeAssignmentService);
+  const communeAssignmentRouter = createCommuneAssignmentRoutes(communeAssignmentController, requireAuth);
+
   const trafficAccidentAlertsService = createTrafficAccidentAlertsService({
     prisma,
     districtScope,
@@ -263,6 +274,7 @@ async function main() {
       registrationRouter,
       officerApprovalRouter,
       adminCitizensRouter,
+      communeAssignmentRouter,
       trafficAccidentIngestRouter,
       trafficAccidentAlertsRouter,
       newsFeedRouter,

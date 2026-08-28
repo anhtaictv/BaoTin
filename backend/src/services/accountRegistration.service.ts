@@ -8,6 +8,7 @@ import { validateImageBuffer } from "../api/citizen/imageValidation.js";
 import type { StorageClient } from "../storage/minioClient.js";
 import type { AuthService, TokenPair } from "../api/auth/auth.service.js";
 import type { AuditLogService } from "./auditLog.service.js";
+import { upsertWholeDistrictAssignment } from "../db/officerDistrictAssignment.js";
 
 export interface AccountRegistrationDeps {
   prisma: PrismaClient;
@@ -240,12 +241,24 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     if (!district) throw new HttpError(404, "DISTRICT_NOT_FOUND", "Không tìm thấy địa bàn.");
 
     await deps.prisma.officer.update({ where: { id: officerId }, data: { approvalStatus: "approved" } });
-    await deps.prisma.officerDistrictAssignment.upsert({
-      where: { officerId_districtId: { officerId, districtId } },
-      update: { isActive: true },
-      create: { officerId, districtId, isActive: true },
-    });
+    await upsertWholeDistrictAssignment(deps.prisma, officerId, districtId);
     await deps.auditLog.record(adminOfficerId, "approve_officer", { type: "officer", id: officerId }, { districtId });
+  }
+
+  /** Admin-only — promotes/demotes an officer's role tier (vd. nâng lên commune_head =
+   * "trưởng xã" để họ được phân địa bàn con cho cấp dưới qua communeAssignment.service.ts).
+   * Deliberately separate from approveOfficer: role changes can happen anytime, not just at
+   * first approval. */
+  async function setOfficerRole(
+    adminOfficerId: string,
+    officerId: string,
+    role: "officer" | "senior_officer" | "commune_head" | "admin",
+  ): Promise<void> {
+    const officer = await deps.prisma.officer.findUnique({ where: { id: officerId } });
+    if (!officer) throw new HttpError(404, "OFFICER_NOT_FOUND", "Không tìm thấy tài khoản cán bộ.");
+
+    await deps.prisma.officer.update({ where: { id: officerId }, data: { role } });
+    await deps.auditLog.record(adminOfficerId, "set_officer_role", { type: "officer", id: officerId }, { role });
   }
 
   async function rejectOfficer(adminOfficerId: string, officerId: string): Promise<void> {
@@ -304,6 +317,7 @@ export function createAccountRegistrationService(deps: AccountRegistrationDeps) 
     listDistrictsForAssignment,
     approveOfficer,
     rejectOfficer,
+    setOfficerRole,
     listLockedCitizens,
     unlockCitizen,
   };

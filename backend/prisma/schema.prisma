@@ -41,9 +41,13 @@ enum TrustLevel {
   @@map("trust_level")
 }
 
+/// 4 tầng: admin (Quản lý — toàn quyền), senior_officer (Lãnh đạo — chỉ xem toàn bộ),
+/// commune_head (Trưởng xã — chỉ xem/sửa trong district mình phụ trách, được phân địa bàn
+/// con cho cấp dưới), officer (cấp dưới — chỉ xem/sửa trong địa bàn được trưởng xã gán).
 enum OfficerRole {
   officer
   senior_officer
+  commune_head
   admin
 
   @@map("officer_role")
@@ -247,8 +251,53 @@ model District {
   trafficAccidentAlerts TrafficAccidentAlert[]
   chatMessages          ChatMessage[]
   broadcastAlerts       OfficerBroadcastAlert[]
+  oldDistrictOverlaps   OldDistrictOverlap[]
 
   @@map("districts")
+}
+
+/// Xã/phường CŨ (trước sáp nhập 2025, mã tỉnh theo danh mục 63 tỉnh thành) — nạp từ
+/// data/raw/"Đắk Lắk (phường xã) - 63.geojson" và "Phú Yên (phường xã) - 63.geojson"
+/// (seed-old-districts.ts). Dùng để trưởng xã (District mới, sau sáp nhập) phân địa bàn
+/// phụ trách cho tài khoản cấp dưới chính xác theo ranh giới cũ thay vì chỉ theo District mới.
+model OldDistrict {
+  id        String   @id @default(uuid())
+  maTinh    String   @map("ma_tinh")
+  maXa      String   @map("ma_xa")
+  tenXa     String   @map("ten_xa")
+  maHuyen   String?  @map("ma_huyen")
+  tenHuyen  String?  @map("ten_huyen")
+  tenTinh   String?  @map("ten_tinh")
+  loai      String?
+  boundary  Unsupported("geometry(MultiPolygon,4326)")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  overlaps    OldDistrictOverlap[]
+  assignments OfficerDistrictAssignment[]
+
+  @@unique([maTinh, maXa])
+  @@map("old_districts")
+}
+
+/// Kết quả chồng lớp không gian (ST_Intersection, tính 1 lần khi seed — xem
+/// seed-old-district-overlaps.ts) giữa 1 xã cũ (OldDistrict) và 1 xã mới (District).
+/// overlapRatio = diện tích chồng lấn / diện tích xã cũ; chỉ lưu các cặp có tỉ lệ đáng kể
+/// (lọc nhiễu ranh giới số hoá) — đây là danh sách "địa bàn con" mà communeAssignment.service.ts
+/// cho trưởng xã của districtId chọn để gán cho tài khoản cấp dưới.
+model OldDistrictOverlap {
+  id             String   @id @default(uuid())
+  oldDistrictId  String   @map("old_district_id")
+  districtId     String   @map("district_id")
+  overlapAreaKm2 Float    @map("overlap_area_km2")
+  overlapRatio   Float    @map("overlap_ratio")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  oldDistrict OldDistrict @relation(fields: [oldDistrictId], references: [id])
+  district    District    @relation(fields: [districtId], references: [id])
+
+  @@unique([oldDistrictId, districtId])
+  @@index([districtId])
+  @@map("old_district_overlaps")
 }
 
 /// Giai đoạn 3 "Danh bạ khẩn cấp tự động theo vị trí". districtId null = liên hệ mặc định/
@@ -272,12 +321,18 @@ model OfficerDistrictAssignment {
   id         String   @id @default(uuid())
   officerId  String   @map("officer_id")
   districtId String   @map("district_id")
+  /// Địa bàn con (xã/phường cũ) trong phạm vi districtId — null nghĩa là phụ trách toàn bộ
+  /// xã/phường mới (trưởng xã, senior_officer/admin, hoặc cấp dưới chưa được chia nhỏ địa
+  /// bàn). Gán bởi trưởng xã của districtId qua communeAssignment.service.ts, validate phải
+  /// nằm trong old_district_overlaps của districtId đó.
+  oldDistrictId String? @map("old_district_id")
   isActive   Boolean  @default(true) @map("is_active")
 
-  officer  Officer  @relation(fields: [officerId], references: [id])
-  district District @relation(fields: [districtId], references: [id])
+  officer     Officer      @relation(fields: [officerId], references: [id])
+  district    District     @relation(fields: [districtId], references: [id])
+  oldDistrict OldDistrict? @relation(fields: [oldDistrictId], references: [id])
 
-  @@unique([officerId, districtId])
+  @@unique([officerId, districtId, oldDistrictId])
   @@index([districtId, isActive])
   @@map("officer_district_assignments")
 }

@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { loadEnv } from "../src/config/env.js";
 import { hashPhoneNumber } from "../src/crypto/phoneBlindIndex.js";
+import { upsertWholeDistrictAssignment } from "../src/db/officerDistrictAssignment.js";
 
 /**
  * One-off admin ops tool — never takes a password, only usernames/phone numbers, so it's safe
@@ -24,11 +25,7 @@ async function main() {
   if (!district) throw new Error('District "Buôn Ma Thuột" not found — run seed:districts first.');
 
   await prisma.officer.update({ where: { id: officer.id }, data: { role: "admin", approvalStatus: "approved" } });
-  await prisma.officerDistrictAssignment.upsert({
-    where: { officerId_districtId: { officerId: officer.id, districtId: district.id } },
-    update: { isActive: true },
-    create: { officerId: officer.id, districtId: district.id, isActive: true },
-  });
+  await upsertWholeDistrictAssignment(prisma, officer.id, district.id);
   console.log(`[promote-officer-role] ${promoteUsername} -> role=admin, approved, assigned to Buôn Ma Thuột`);
 
   const demotePhone = process.env.DEMOTE_PHONE;

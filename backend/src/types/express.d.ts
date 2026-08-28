@@ -1,6 +1,6 @@
 import "express";
 
-export type AuthSubjectRole = "citizen" | "officer" | "senior_officer" | "admin";
+export type AuthSubjectRole = "citizen" | "officer" | "senior_officer" | "commune_head" | "admin";
 
 export interface AuthenticatedSubject {
   id: string;

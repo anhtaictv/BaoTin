@@ -106,9 +106,11 @@ export function defaultRouteForRole(role: string | undefined): string {
 export function roleLabel(role: string): string {
   switch (role) {
     case 'senior_officer':
-      return 'Cán bộ cấp cao';
+      return 'Lãnh đạo';
+    case 'commune_head':
+      return 'Trưởng xã';
     case 'admin':
-      return 'Quản trị viên';
+      return 'Quản lý';
     case 'officer':
     default:
       return 'Cán bộ';
