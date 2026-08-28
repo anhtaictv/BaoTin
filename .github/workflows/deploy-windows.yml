@@ -148,10 +148,14 @@ jobs:
           Sync-Dir "artifact\officer" "C:\inetpub\baotin\officer"
           Sync-Dir "artifact\downloads" "C:\inetpub\baotin\downloads"
 
+          # Wildcard copy, not per-file names — Windows PowerShell 5.1 (powershell.EXE, not
+          # pwsh) reads this script's own .ps1 file in the wrong codepage and mangles any
+          # Vietnamese diacritics written literally into a Copy-Item -Path/-Destination string
+          # (hit this for real: run 33155437881, "Đắk Lắk..." became "Ä^Páº¯k Láº¯k..." and
+          # Copy-Item then couldn't find the path). A wildcard needs no non-ASCII literal at
+          # all, and also means a future new file under data/raw needs no workflow edit.
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\raw" | Out-Null
-          Copy-Item -Path "artifact\data\raw\Daklak.geojson" -Destination "C:\baotin\data\raw\Daklak.geojson" -Force
-          Copy-Item -Path "artifact\data\raw\Đắk Lắk (phường xã) - 63.geojson" -Destination "C:\baotin\data\raw\Đắk Lắk (phường xã) - 63.geojson" -Force
-          Copy-Item -Path "artifact\data\raw\Phú Yên (phường xã) - 63.geojson" -Destination "C:\baotin\data\raw\Phú Yên (phường xã) - 63.geojson" -Force
+          Copy-Item -Path "artifact\data\raw\*" -Destination "C:\baotin\data\raw\" -Force
 
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\legal-corpus" | Out-Null
           Copy-Item -Path "artifact\data\legal-corpus\*.pdf" -Destination "C:\baotin\data\legal-corpus\" -Force
