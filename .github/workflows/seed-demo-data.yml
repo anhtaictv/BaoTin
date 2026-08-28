@@ -52,3 +52,11 @@ jobs:
           $env:Path = "C:\node20;$env:Path"
           Set-Location C:\baotin\backend
           node --env-file=.env dist\prisma\seed\run-seed-locked-citizen.js
+
+      - name: Run old-districts seed (trưởng xã / commune_head feature)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = "Stop"
+          $env:Path = "C:\node20;$env:Path"
+          Set-Location C:\baotin\backend
+          node --env-file=.env dist\prisma\seed\run-seed-old-districts.js

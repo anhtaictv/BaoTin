@@ -91,6 +91,10 @@ jobs:
           # Only actually needed once (Phần 2's manual seed step), but the VPS has no inbound
           # path to fetch it any other way — riding along in the artifact is simplest.
           cp data/raw/Daklak.geojson artifact/data/raw/
+          # Old-ward (pre-2025-merger, "63") boundaries — needed once for `npm run
+          # seed:old-districts` (see seed-demo-data.yml), same "no inbound path" reasoning.
+          cp "data/raw/Đắk Lắk (phường xã) - 63.geojson" artifact/data/raw/
+          cp "data/raw/Phú Yên (phường xã) - 63.geojson" artifact/data/raw/
           # Same reasoning — only actually needed once (import-legal-corpus.yml's manual run),
           # but the VPS has no other way to fetch these PDFs.
           cp data/legal-corpus/*.pdf artifact/data/legal-corpus/
@@ -146,6 +150,8 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\raw" | Out-Null
           Copy-Item -Path "artifact\data\raw\Daklak.geojson" -Destination "C:\baotin\data\raw\Daklak.geojson" -Force
+          Copy-Item -Path "artifact\data\raw\Đắk Lắk (phường xã) - 63.geojson" -Destination "C:\baotin\data\raw\Đắk Lắk (phường xã) - 63.geojson" -Force
+          Copy-Item -Path "artifact\data\raw\Phú Yên (phường xã) - 63.geojson" -Destination "C:\baotin\data\raw\Phú Yên (phường xã) - 63.geojson" -Force
 
           New-Item -ItemType Directory -Force -Path "C:\baotin\data\legal-corpus" | Out-Null
           Copy-Item -Path "artifact\data\legal-corpus\*.pdf" -Destination "C:\baotin\data\legal-corpus\" -Force
