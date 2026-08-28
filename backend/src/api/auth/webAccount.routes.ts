@@ -14,7 +14,7 @@ import {
   webLoginSchema,
 } from "../../validation/schemas/webAccount.schema.js";
 
-const OFFICER_ROLES = ["officer", "senior_officer", "admin"] as const;
+const OFFICER_ROLES = ["officer", "senior_officer", "commune_head", "admin"] as const;
 
 /**
  * dashboard-web-react's auth surface — mounted at "/" (routes below spell out their full

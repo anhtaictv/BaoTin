@@ -114,6 +114,24 @@ describe("GET /web-accounts/me", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.username).toBe("0900001111");
   });
+
+  // Regression: OFFICER_ROLES in webAccount.routes.ts once omitted commune_head, so a
+  // trưởng xã's own AuthContext account fetch (right after login) 403'd — the whole
+  // commune_head feature was unreachable even with correct credentials.
+  it("200s for a commune_head token", async () => {
+    const { app, fakePrisma, tokenFor } = await buildTestApp();
+    const passwordHash = await hashPassword("Correct-Horse-1");
+    const officerId = seedFullAccount(fakePrisma, {
+      username: "0900000098",
+      passwordHash,
+      fullNameEnc: encryptField("[DEMO] Trưởng xã", PII_KEY),
+    });
+
+    const res = await request(app)
+      .get("/web-accounts/me")
+      .set("Authorization", `Bearer ${await tokenFor("commune_head", officerId)}`);
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("PATCH /web-accounts/me/password", () => {
